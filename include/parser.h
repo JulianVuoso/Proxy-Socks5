@@ -13,6 +13,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/** predicado para utilizar en `when' que retorna siempre true */
+#define ANY (1 << 9)
+
 /**
  * Evento que retorna el parser.
  * Cada tipo de evento tendrá sus reglas en relación a data.
@@ -40,9 +43,6 @@ struct parser_state_transition {
     /** otra acción opcional */
     void    (*act2)(struct parser_event *ret, const uint8_t c);
 };
-
-/** predicado para utilizar en `when' que retorna siempre true */
-static const unsigned ANY = 1 << 9;
 
 /** declaración completa de una máquina de estados */
 struct parser_definition {
