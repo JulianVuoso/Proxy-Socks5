@@ -22,7 +22,7 @@ START_TEST (test_hello_normal) {
     uint8_t method = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
     struct hello_parser parser = {
         .data                     = &method,
-        .on_authentication_method = on_hello_method,
+        .on_authentication_method = &on_hello_method,
     };
     hello_parser_init(&parser);
     uint8_t data[] = {
