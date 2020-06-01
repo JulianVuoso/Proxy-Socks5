@@ -56,3 +56,6 @@ dkms.conf
 
 # Junk Files
 *.swp
+
+# VisualStudioConfig
+.vscode/

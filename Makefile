@@ -25,16 +25,16 @@ hello: src/hello.c
 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/hello.o
 
 parser_test: test/parser_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/parser_test $(TEST_LIB)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/parser_test.out $(TEST_LIB)
 
 parser_utils_test: test/parser_utils_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/parser_utils_test $(TEST_LIB)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/parser_utils_test.out $(TEST_LIB)
 
 buffer_test: test/buffer_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/buffer_test $(TEST_LIB)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/buffer_test.out $(TEST_LIB)
 
 hello_test: test/hello_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/hello_test $(TEST_LIB)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/hello_test.out $(TEST_LIB)
 
 clean:
 	rm -rf src/*.o src/*.out test/*.o test/*.out \
