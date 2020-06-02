@@ -52,13 +52,13 @@ typedef struct negot_parser {
 
 typedef struct negot_username {
     uint8_t ulen;
-    char * uname;
+    uint8_t * uname;
     uint8_t index;
 } negot_username;
 
 typedef struct negot_password {
     uint8_t plen;
-    char * passwd;
+    uint8_t * passwd;
     uint8_t index;
 } negot_password;
 
@@ -74,7 +74,7 @@ void negot_parser_init(negot_parser *p);
  *   si el parsing se debió a una condición de error
  */
 enum negot_state
-negot_consume(buffer *b, struct negot_parser *p, bool *errored)
+negot_consume(buffer *b, struct negot_parser *p, bool *errored);
 
 /** entrega un byte al parser, retorna estado al salir  */
 enum negot_state

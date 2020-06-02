@@ -9,9 +9,11 @@ negot_parser_init(negot_parser *p)
     p->state = negot_version;
     p->error = error_negot_no_error;
     p->username->ulen = 0;
-    p->username->uname = NULL;   // malloc?
+    p->username->uname = NULL; 
+    p->username->index = 0;
     p->password->plen = 0;
-    p->password->passwd = NULL;  //  ^^^^
+    p->password->passwd = NULL;  
+    p->password->index = 0;
 }
 
 enum negot_state
@@ -39,9 +41,9 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
             }
             break;
         case negot_ulen:
-            if (byte > 0) { // ver cual seria un uname erroneo 
-                p->username->ulen = b;
-                p->username->uname = malloc(sizeof(char) * b);
+            if (byte > -1) { // ver cual seria un uname erroneo 
+                p->username->ulen = byte;
+                p->username->uname = malloc(sizeof(uint8_t) * (byte+1));
                 p->state = negot_uname;
             } else {
                 p->error = error_negot_invalid_ulen;
@@ -49,20 +51,22 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
             }
             break;
         case negot_uname:
-            if (byte > 0) { // ver cual seria un error
+            if (byte > -1) { // ver cual seria un error
                 p->username->ulen--;
-                strcat(p->username->uname,(char) byte);
-                if(p->username->ulen == 0)
+                p->username->uname[p->username->index++] = byte;
+                if(p->username->ulen == 0){
+                    p->username->uname[index]='\0';
                     p->state = negot_plen;
+                }
             } else {
                 p->error = error_negot_invalid_uname;
                 p->state = negot_error;
             }
             break;
         case negot_plen:
-            if (byte > 0) {
+            if (byte > -1) {
                 p->password->plen = b;
-                p->password->passwd = malloc(sizeof(char) * b);
+                p->password->passwd = malloc(sizeof(uint8_t) * (byte+1));
                 p->state = negot_uname;
             } else {
                 p->error = error_negot_invalid_plen;
@@ -70,11 +74,13 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
             }
             break;
         case negot_passwd:
-            if (byte > 0) {
+            if (byte > -1) {
                 p->password->plen--;
-                strcat(p->password->passwd,(char) byte);
-                if(p->password->plen == 0)
+                p->password->passwd[p->password->index++] = byte;
+                if(p->password->plen == 0){
+                    p->password->passwd[index]='\0';
                     p->state = negot_done;
+                }
             } else {
                 p->error = error_negot_invalid_passwd;
                 p->state = negot_error;
