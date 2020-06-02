@@ -1,5 +1,5 @@
 /**
- * request.c -- parser del hello de SOCKS5
+ * hello.c -- parser del hello de SOCKS5
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,8 +62,12 @@ hello_is_done(const enum hello_state state, bool *errored) {
             if (0 != errored) {
                 *errored = true;
             }
-            /* no break */
+            ret = true;
+            break;
         case hello_done:
+            if (0 != errored) {
+                *errored = false;
+            }
             ret = true;
             break;
         default:
