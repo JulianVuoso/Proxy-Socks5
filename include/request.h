@@ -6,10 +6,13 @@
 
 #include "buffer.h"
 
+#define REQUEST_ADDRESS_TYPE_IPV4 0x01
+#define REQUEST_ADDRESS_TYPE_NAME 0x03
+#define REQUEST_ADDRESS_TYPE_IPV6 0x04
 static const uint8_t REQUEST_COMMAND_CONNECT = 0x01;
-static const uint8_t REQUEST_ADDRESS_TYPE_IPV4 = 0x01;
-static const uint8_t REQUEST_ADDRESS_TYPE_NAME = 0x03;
-static const uint8_t REQUEST_ADDRESS_TYPE_IPV6 = 0x04;
+// static const uint8_t REQUEST_ADDRESS_TYPE_IPV4 = 0x01;
+// static const uint8_t REQUEST_ADDRESS_TYPE_NAME = 0x03;
+// static const uint8_t REQUEST_ADDRESS_TYPE_IPV6 = 0x04;
 
 /*
     The SOCKS request is formed as follows:
@@ -60,7 +63,7 @@ enum address_types {
     address_ipv4,
     address_fqdn,
     address_ipv6,
-}
+};
 
 // Set initial port to determine if its first or second byte
 static const uint16_t INITIAL_PORT = 1;

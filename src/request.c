@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h> // malloc
 
 #include "request.h"
 
@@ -15,6 +16,31 @@ void request_parser_init (request_parser * p) {
     p->dest->address_length = 0;
     p->dest->address_index = 0;
     p->dest->port = INITIAL_PORT;
+}
+
+static void solve_address_type(request_parser * p, uint8_t byte) {
+    switch (byte)
+    {
+        case REQUEST_ADDRESS_TYPE_IPV4:
+            p->dest->address_type = address_ipv4;
+            p->dest->address_length = 4;
+            p->state = request_address_data;
+            break;
+        case REQUEST_ADDRESS_TYPE_NAME:
+            p->dest->address_type = address_fqdn;
+            p->dest->address_length = 0;
+            p->state = request_address_data;
+            break;
+        case REQUEST_ADDRESS_TYPE_IPV6:
+            p->dest->address_type = address_ipv6;
+            p->dest->address_length = 16;
+            p->state = request_address_data;
+            break;
+        default: // Error
+            p->error = error_request_invalid_address_type;
+            p->state = request_error;
+            break;
+    }
 }
 
 enum request_state
@@ -34,7 +60,7 @@ request_parser_feed (request_parser * p, uint8_t byte) {
             if (byte == REQUEST_COMMAND_CONNECT) {
                 p->state = request_reserved;
             } else {
-                p->error = error_request_unsupported_version;
+                p->error = error_request_unsupported_command;
                 p->state = request_error;
             }
             break;
@@ -95,31 +121,6 @@ request_parser_feed (request_parser * p, uint8_t byte) {
     }
 
     return p->state;
-}
-
-static void solve_address_type(request_parser * p, uint8_t byte) {
-    switch (byte)
-    {
-        case REQUEST_ADDRESS_TYPE_IPV4:
-            p->dest->address_type = address_ipv4;
-            p->dest->address_length = 4;
-            p->state = request_address_data;
-            break;
-        case REQUEST_ADDRESS_TYPE_NAME:
-            p->dest->address_type = address_fqdn;
-            p->dest->address_length = 0;
-            p->state = request_address_data;
-            break;
-        case REQUEST_ADDRESS_TYPE_IPV6:
-            p->dest->address_type = address_ipv6;
-            p->dest->address_length = 16;
-            p->state = request_address_data;
-            break;
-        default: // Error
-            p->error = error_request_invalid_address_type;
-            p->state = request_error;
-            break;
-    }
 }
 
 enum request_state
