@@ -21,6 +21,7 @@ START_TEST (test_request_normal_ipv4) {
     ck_assert_uint_eq(address_ipv4, parser.dest->address_type);
     // Cuando tenga netutils, verificar IP + Puerto
     // Agregar un metodo en request que me complete un struct sockaddr *
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -43,6 +44,7 @@ START_TEST (test_request_normal_ipv6) {
     ck_assert_uint_eq(address_ipv6, parser.dest->address_type);
     // Cuando tenga netutils, verificar IP + Puerto
     // Agregar un metodo en request que me complete un struct sockaddr *
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -64,6 +66,7 @@ START_TEST (test_request_normal_fqdn) {
     ck_assert_uint_eq(address_fqdn, parser.dest->address_type);
     // Cuando tenga netutils, verificar IP + Puerto
     // Agregar un metodo en request que me complete un struct sockaddr *
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -98,7 +101,7 @@ START_TEST (test_request_multiple_request) {
     ck_assert_uint_eq(address_ipv6, parser.dest->address_type);
     // Cuando tenga netutils, verificar IP + Puerto
     // Agregar un metodo en request que me complete un struct sockaddr *
-
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -116,6 +119,7 @@ START_TEST (test_request_unsupported_version) {
     ck_assert_uint_eq(true, errored);
     ck_assert_uint_eq(request_error, state);
     ck_assert_uint_eq(error_request_unsupported_version, parser.error);
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -133,6 +137,7 @@ START_TEST (test_request_unsupported_command) {
     ck_assert_uint_eq(true, errored);
     ck_assert_uint_eq(request_error, state);
     ck_assert_uint_eq(error_request_unsupported_command, parser.error);
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -150,6 +155,7 @@ START_TEST (test_request_invalid_reserved_byte) {
     ck_assert_uint_eq(true, errored);
     ck_assert_uint_eq(request_error, state);
     ck_assert_uint_eq(error_request_invalid_reserved_byte, parser.error);
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -167,6 +173,7 @@ START_TEST (test_request_invalid_address_type) {
     ck_assert_uint_eq(true, errored);
     ck_assert_uint_eq(request_error, state);
     ck_assert_uint_eq(error_request_invalid_address_type, parser.error);
+    request_parser_close(&parser);
 }
 END_TEST
 
@@ -184,6 +191,7 @@ START_TEST (test_request_invalid_fqdn_length) {
     ck_assert_uint_eq(true, errored);
     ck_assert_uint_eq(request_error, state);
     ck_assert_uint_eq(error_request_invalid_fqdn_length, parser.error);
+    request_parser_close(&parser);
 }
 END_TEST
 
