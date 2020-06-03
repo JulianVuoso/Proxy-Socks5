@@ -1,8 +1,8 @@
-// #ifndef 
+#ifndef NEGOTIATION_H_da39a3ee5e6b4b0d3255bfef95601890afd80709
+#define NEGOTIATION_H_da39a3ee5e6b4b0d3255bfef95601890afd80709
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <string.h>
 #include "buffer.h"
 
 /*
@@ -11,7 +11,7 @@
     +-----+------+----------+------+------------+
     | VER | ULEN |   UNAME  | PLEN |   PASSWD   |
     +-----+------+----------+------+------------+
-    |  1  |   1  | 1 to 255 |   1  |  1 to 255  |
+    |  1  |  1   | 1 to 255 |   1  |  1 to 255  |
     +-----+------+----------+------+------------+
 
     Where: 
@@ -93,4 +93,8 @@ negot_error_description(const struct negot_parser *p);
 bool 
 negot_is_done(const enum negot_state state, bool *errored);
 
-// #endif
+/** libera recursos internos del parser */
+void 
+negot_parser_close(struct negot_parser *p);
+
+#endif
