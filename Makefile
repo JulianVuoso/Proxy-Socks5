@@ -1,8 +1,8 @@
 .PHONY=clean all
 include Makefile.inc
 
-all: buffer parser parser_utils hello negotiation \
-buffer_test parser_test parser_utils_test hello_test negotiation_test
+all: buffer parser parser_utils hello request negotiation \
+buffer_test parser_test parser_utils_test hello_test request_test negotiation_test
 
 # compile: $(SOURCES)
 # 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $(SOURCES) -o $(OBJECTS)
@@ -24,6 +24,9 @@ buffer: src/buffer.c
 hello: src/hello.c
 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/hello.o
 
+request: src/request.c
+	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/request.o
+
 negotiation: src/negotiation.c
 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/negotiation.o
 
@@ -39,9 +42,12 @@ buffer_test: test/buffer_test.o
 hello_test: test/hello_test.o
 	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/hello_test.out $(TEST_LIB)
 
+request_test: test/request_test.o
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/request_test.out $(TEST_LIB)
+
 negotiation_test: test/negotiation_test.o
 	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/negotiation_test.out $(TEST_LIB)
 
 clean:
 	rm -rf src/*.o src/*.out test/*.o test/*.out \
-	parser_test parser_utils_test buffer_test hello_test negotiation_test
+	parser_test parser_utils_test buffer_test hello_test request_test negotiation_test
