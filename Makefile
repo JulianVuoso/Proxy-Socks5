@@ -1,53 +1,75 @@
 .PHONY=clean all
 include Makefile.inc
+EXEC = run
+EXEC_TESTS = test
 
-all: buffer parser parser_utils hello request negotiation \
-buffer_test parser_test parser_utils_test hello_test request_test negotiation_test
-
+# all: $(EXEC_TESTS)
+# all: buffer parser parser_utils hello request negotiation selector stm 
+all: buffer_test parser_test parser_utils_test hello_test request_test negotiation_test stm_test
+# selector_test
 # compile: $(SOURCES)
 # 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $(SOURCES) -o $(OBJECTS)
 
 # tests: $(TEST_OBJECTS)
 #	$(CC) $(CFLAGS) -I$(LIBRARY) $(TEST_OBJECTS) -o $(CLIENT)
+# $(EXEC_TESTS): $(OBJECTS) $(TEST_OBJECTS)
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $(TEST_OBJECTS) $< -o test/$@.out $(TEST_LIB_FLAGS)
+
 %.o: %.c
 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o $@
 
-parser: src/parser.c
-	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/parser.o
+# parser: src/parser.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/parser.o
 
-parser_utils: src/parser_utils.c
-	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/parser_utils.o
+# parser_utils: src/parser_utils.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/parser_utils.o
 
-buffer: src/buffer.c
-	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/buffer.o
+# buffer: src/buffer.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/buffer.o
 
-hello: src/hello.c
-	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/hello.o
+# hello: src/hello.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/hello.o
 
-request: src/request.c
-	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/request.o
+# request: src/request.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/request.o
 
-negotiation: src/negotiation.c
-	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/negotiation.o
+# negotiation: src/negotiation.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/negotiation.o
 
-parser_test: test/parser_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/parser_test.out $(TEST_LIB)
+# selector: src/selector.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/selector.o
 
-parser_utils_test: test/parser_utils_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/parser_utils_test.out $(TEST_LIB)
+# stm: src/stm.c
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/stm.o
 
-buffer_test: test/buffer_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/buffer_test.out $(TEST_LIB)
+parser_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-hello_test: test/hello_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/hello_test.out $(TEST_LIB)
+parser_utils_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-request_test: test/request_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/request_test.out $(TEST_LIB)
+buffer_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-negotiation_test: test/negotiation_test.o
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) $< -o test/negotiation_test.out $(TEST_LIB)
+hello_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+
+request_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+
+negotiation_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+
+# selector_test: $(OBJECTS) $(TEST_OBJECTS)
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+
+stm_test: $(OBJECTS) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+
+# clean:
+# 	rm -rf src/*.o src/*.out test/*.o test/*.out \
+# 	parser_test parser_utils_test buffer_test hello_test request_test negotiation_test \
+# 	selector_test stm_test
 
 clean:
-	rm -rf src/*.o src/*.out test/*.o test/*.out \
-	parser_test parser_utils_test buffer_test hello_test request_test negotiation_test
+	rm -f $(OBJECTS) $(TEST_OBJECTS)

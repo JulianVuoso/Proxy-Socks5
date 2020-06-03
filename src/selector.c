@@ -17,8 +17,6 @@
 #include <sys/signal.h>
 #include "selector.h"
 
-#define N(x) (sizeof(x)/sizeof((x)[0]))
-
 #define ERROR_DEFAULT_MSG "something failed"
 
 /** retorna una descripción humana del fallo */
