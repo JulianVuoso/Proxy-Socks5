@@ -5,7 +5,8 @@ EXEC_TESTS = test
 
 # all: $(EXEC_TESTS)
 # all: buffer parser parser_utils hello request negotiation selector stm 
-all: buffer_test parser_test parser_utils_test hello_test request_test negotiation_test stm_test
+all: buffer_test parser_test parser_utils_test hello_test request_test negotiation_test stm_test \
+	run
 # selector_test
 # compile: $(SOURCES)
 # 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $(SOURCES) -o $(OBJECTS)
@@ -42,29 +43,32 @@ all: buffer_test parser_test parser_utils_test hello_test request_test negotiati
 # stm: src/stm.c
 # 	$(CC) $(CFLAGS) -I$(LIBRARY) -c $< -o src/stm.o
 
-parser_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+run: $(OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) -o src/$@.out
 
-parser_utils_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+parser_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-buffer_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+parser_utils_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-hello_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+buffer_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-request_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+hello_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-negotiation_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+request_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-# selector_test: $(OBJECTS) $(TEST_OBJECTS)
-# 	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+negotiation_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
-stm_test: $(OBJECTS) $(TEST_OBJECTS)
-	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+# selector_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+# 	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
+
+stm_test: $(OBJECTS_NO_MAIN) $(TEST_OBJECTS)
+	$(CC) $(CFLAGS) -I$(LIBRARY) $(OBJECTS_NO_MAIN) test/$@.o -o test/$@.out $(TEST_LIB_FLAGS)
 
 # clean:
 # 	rm -rf src/*.o src/*.out test/*.o test/*.out \
@@ -72,4 +76,4 @@ stm_test: $(OBJECTS) $(TEST_OBJECTS)
 # 	selector_test stm_test
 
 clean:
-	rm -f $(OBJECTS) $(TEST_OBJECTS)
+	rm -f $(OBJECTS) $(TEST_OBJECTS) src/*.out test/*.out
