@@ -1,3 +1,6 @@
+#include <stdlib.h> // malloc
+#include <string.h> // memset
+
 #include <sys/socket.h>
 #include <netdb.h>
 
@@ -11,28 +14,35 @@
 #include "negotiation.h"
 #include "request.h"
 
+#include "sm_hello_state.h"
+
+// Retorna la cantidad de elementos de un arreglo
+#define N(x) (sizeof(x)/sizeof(x[0]))
+
 /* Definicion de variables para cada estado */
 
 
 // NEGOT_READ y NEGOT_WRITE
-typedef struct negot_state {
+typedef struct negot_st {
     buffer * read_buf, write_buf;
     struct negot_parser parser;
-} negot_state;
+} negot_st;
 
 // REQUEST_READ, REQUEST_RESOLV, REQUEST_CONNECT y REQUEST_WRITE
-typedef struct request_state {
+typedef struct request_st {
     buffer * read_buf, write_buf;
     struct request_parser parser;
-} request_state;
+} request_st;
 
 // COPY
-typedef struct copy_state {
-} copy_state;
+typedef struct copy_st {
+    buffer * read_buf, write_buf;
+} copy_st;
 
 // CONNECTING (origin_server)
-typedef struct connecting_state {
-} connecting_state;
+typedef struct connecting_st {
+    buffer * read_buf, write_buf;
+} connecting_st;
 
 struct socks5 {
     /** maquinas de estados */
@@ -40,14 +50,15 @@ struct socks5 {
 
     /** estados para el client_fd */
     union {
-        struct hello_state        hello;
-        struct request_state      request;
-        struct copy_state         copy;
+        struct hello_st     hello;
+        struct negot_st     negot;
+        struct request_st   request;
+        struct copy_st      copy;
     } client;
     /** estados para el origin_fd */
     union {
-        struct connecting_state   conn;
-        struct copy_state         copy;
+        struct connecting_st   conn;
+        struct copy_st         copy;
     } origin;
     
     /* Informacion del cliente */
@@ -74,9 +85,9 @@ socks5_destroy_(struct socks5 * s) {
  * destruye un  `struct socks5', tiene en cuenta las referencias
  * y el pool de objetos.
  */
-/* static void
+static void
 socks5_destroy(struct socks5 *s) {
-    if(s == NULL) {
+    /* if(s == NULL) {
         // nada para hacer
     } else if(s->references == 1) {
         if(s != NULL) {
@@ -90,18 +101,18 @@ socks5_destroy(struct socks5 *s) {
         }
     } else {
         s->references -= 1;
-    }
+    } */
 }
- */
+
 /* Libera la lista entera de socks5 */
-/* void
+void
 socks5_pool_destroy(void) {
-    struct socks5 *next, *s;
+    /* struct socks5 *next, *s;
     for(s = pool; s != NULL ; s = next) {
         next = s->next;
         free(s);
-    }
-} */
+    } */
+}
 
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)

@@ -4,7 +4,7 @@
 #include "stm.h"
 #include "selector.h"
 
-#include "hello_state.h"
+#include "sm_hello_state.h"
 
 /* Maquina de estados general */
 enum socks5_state {
