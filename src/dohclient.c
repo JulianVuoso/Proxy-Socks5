@@ -141,19 +141,19 @@ int getQuery(const char *fqdn, BASE64DNSQuery *query)
         //get the 6 least significant bits
         query->query[pos++] = base64encoder[queryBod[(j * 3) + 2] & 0x3F];
     }
+    //could have a realloc
     if (i % 3 == 1)
     {
         query->query[pos++] = base64encoder[(queryBod[i - 1] >> 2) & 0x3F];
         query->query[pos++] = base64encoder[queryBod[i - 1] & 0x03];
-        query->query[pos++] = '=';
-        query->query[pos++] = '=';
+        query->length -= 2;
     }
     else if (i % 3 == 2)
     {
         query->query[pos++] = base64encoder[(queryBod[i - 2] >> 2) & 0x3F];
         query->query[pos++] = base64encoder[(((queryBod[i-2] << 4) & 0x30) | ((queryBod[i-1] >> 4) & 0x0F)) & 0x3F];
         query->query[pos++] = base64encoder[queryBod[i - 1] & 0x0F];
-        query->query[pos++] = '=';
+        query->length -= 1;
     }
     query->query[pos] = 0;
     return 0;
