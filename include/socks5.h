@@ -6,6 +6,6 @@
 /* Recibe la llave del item */
 void socks5_passive_accept(selector_key * key);
 /* Destruye toda la pool de socks */
-void socks5_pool_destroy(void);
+/* void socks5_pool_destroy(void); */
 
 #endif

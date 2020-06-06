@@ -1,10 +1,16 @@
 #ifndef HANDLERS_H_d4f12e31ae9fe3878d44027fdab552d63b292952
 #define HANDLERS_H_d4f12e31ae9fe3878d44027fdab552d63b292952
 
+#include <sys/socket.h>
 #include "stm.h"
 #include "selector.h"
+#include "buffer.h"
 
 #include "sm_hello_state.h"
+
+// Borrar cuando tenga su sm_state
+#include "negotiation.h"
+#include "request.h"
 
 /* Maquina de estados general */
 enum socks5_state {
@@ -132,6 +138,8 @@ enum socks5_state {
     ERROR,
 };
 
+void error_arrival(const unsigned state, struct selector_key *key);
+
 static const struct state_definition client_statbl[] = {
     {
         .state            = HELLO_READ,
@@ -139,6 +147,106 @@ static const struct state_definition client_statbl[] = {
         .on_departure     = hello_read_close,
         .on_read_ready    = hello_read,
     },
+    {
+        .state            = HELLO_WRITE,
+        .on_arrival       = hello_write_init,
+        .on_departure     = hello_write_close,
+        .on_write_ready   = hello_write,
+    },
+    {
+        .state            = NEGOT_READ,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = NEGOT_WRITE,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = REQUEST_READ,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = REQUEST_RESOLV,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = REQUEST_CONNECT,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = REQUEST_WRITE,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = COPY,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = DONE,
+        .on_arrival       = error_arrival,
+    },
+    {
+        .state            = ERROR,
+        .on_arrival       = error_arrival,
+    },
+};
+
+/** obtiene el struct (socks5 *) desde la llave de seleccion  */
+#define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
+
+/* Definicion de variables para cada estado */
+
+// NEGOT_READ y NEGOT_WRITE
+typedef struct negot_st {
+    buffer * read_buf, write_buf;
+    struct negot_parser parser;
+} negot_st;
+
+// REQUEST_READ, REQUEST_RESOLV, REQUEST_CONNECT y REQUEST_WRITE
+typedef struct request_st {
+    buffer * read_buf, write_buf;
+    struct request_parser parser;
+} request_st;
+
+// COPY
+typedef struct copy_st {
+    buffer * read_buf, write_buf;
+} copy_st;
+
+// CONNECTING (origin_server)
+typedef struct connecting_st {
+    buffer * read_buf, write_buf;
+} connecting_st;
+
+struct socks5 {
+    /** maquinas de estados */
+    struct state_machine          stm;
+
+    /** estados para el client_fd */
+    union {
+        struct hello_st     hello;
+        struct negot_st     negot;
+        struct request_st   request;
+        struct copy_st      copy;
+    } client;
+    /** estados para el origin_fd */
+    union {
+        struct connecting_st   conn;
+        struct copy_st         copy;
+    } origin;
+    
+    /* Informacion del cliente */
+    struct sockaddr_storage client_addr;
+    socklen_t client_addr_len;
+    int client_fd;
+
+    /* Resolucion de la direc del origin server */
+    struct addrinfo * origin_resolution;
+    int origin_fd;
+
+    /* Buffers */
+    uint8_t read_buffer_mem[2048], write_buffer_mem[2048];
+    buffer read_buffer, write_buffer;
 };
 
 #endif

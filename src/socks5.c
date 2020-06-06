@@ -14,62 +14,8 @@
 #include "negotiation.h"
 #include "request.h"
 
-#include "sm_hello_state.h"
-
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
-
-/* Definicion de variables para cada estado */
-
-
-// NEGOT_READ y NEGOT_WRITE
-typedef struct negot_st {
-    buffer * read_buf, write_buf;
-    struct negot_parser parser;
-} negot_st;
-
-// REQUEST_READ, REQUEST_RESOLV, REQUEST_CONNECT y REQUEST_WRITE
-typedef struct request_st {
-    buffer * read_buf, write_buf;
-    struct request_parser parser;
-} request_st;
-
-// COPY
-typedef struct copy_st {
-    buffer * read_buf, write_buf;
-} copy_st;
-
-// CONNECTING (origin_server)
-typedef struct connecting_st {
-    buffer * read_buf, write_buf;
-} connecting_st;
-
-struct socks5 {
-    /** maquinas de estados */
-    struct state_machine          stm;
-
-    /** estados para el client_fd */
-    union {
-        struct hello_st     hello;
-        struct negot_st     negot;
-        struct request_st   request;
-        struct copy_st      copy;
-    } client;
-    /** estados para el origin_fd */
-    union {
-        struct connecting_st   conn;
-        struct copy_st         copy;
-    } origin;
-    
-    /* Informacion del cliente */
-    struct sockaddr_storage client_addr;
-    socklen_t client_addr_len;
-    int client_fd;
-
-    /* Resolucion de la direc del origin server */
-    struct addrinfo * origin_resolution;
-    int origin_fd;
-};
 
 /* Destruye realmente el struct socks5 */
 static void
@@ -85,9 +31,9 @@ socks5_destroy_(struct socks5 * s) {
  * destruye un  `struct socks5', tiene en cuenta las referencias
  * y el pool de objetos.
  */
-static void
+/* static void
 socks5_destroy(struct socks5 *s) {
-    /* if(s == NULL) {
+    if(s == NULL) {
         // nada para hacer
     } else if(s->references == 1) {
         if(s != NULL) {
@@ -101,18 +47,18 @@ socks5_destroy(struct socks5 *s) {
         }
     } else {
         s->references -= 1;
-    } */
-}
+    }
+} */
 
-/* Libera la lista entera de socks5 */
-void
+/* Libera el pool entero de socks5 */
+/* void
 socks5_pool_destroy(void) {
-    /* struct socks5 *next, *s;
+    struct socks5 *next, *s;
     for(s = pool; s != NULL ; s = next) {
         next = s->next;
         free(s);
-    } */
-}
+    }
+} */
 
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
@@ -131,7 +77,23 @@ static const fd_handler socks5_handler = {
 
 /* Crea un nuevo struct socks5 */
 static struct socks5 * socks5_new(int client_fd) {
-    return NULL;
+    struct socks5 * ret = calloc(1, sizeof(*ret));
+    if (ret == NULL) {
+        return ret;
+    }
+    ret->origin_fd = -1;
+    ret->client_fd = client_fd;
+    // ret->client_addr_len = sizeof(ret->client_addr);
+
+    ret->stm.initial = HELLO_READ;
+    ret->stm.max_state = ERROR;
+    ret->stm.states = client_statbl;
+    stm_init(&ret->stm);
+
+    buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
+    buffer_init(&ret->write_buffer, N(ret->write_buffer_mem), ret->write_buffer_mem);
+
+    return ret;
 }
 
 /* Intenta aceptar la nueva conexion entrante */
@@ -168,10 +130,10 @@ fail:
     if(client != -1) {
         close(client);
     }
-    socks5_destroy(state);
+    socks5_destroy_(state);
 }
 
-// Handlers top level de la conexiÃ³n pasiva.
+// Handlers top level de la conexion pasiva.
 // son los que emiten los eventos a la maquina de estados.
 static void
 socks5_done(struct selector_key* key);
@@ -208,7 +170,7 @@ socks5_block(struct selector_key *key) {
 
 static void
 socks5_close(struct selector_key *key) {
-    socks5_destroy(ATTACHMENT(key));
+    socks5_destroy_(ATTACHMENT(key));
 }
 
 static void

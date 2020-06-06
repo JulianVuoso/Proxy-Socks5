@@ -145,7 +145,7 @@ finally:
     }
     selector_close();
 
-    socks5_pool_destroy();
+    // socks5_pool_destroy();
 
     if(server >= 0) {
         close(server);

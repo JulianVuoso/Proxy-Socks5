@@ -1,6 +1,6 @@
 # Compilation flags
 CC = gcc
-CFLAGS = -pthread -g --std=c11 -pedantic -pedantic-errors \
+CFLAGS = -pthread -g -ggdb --std=c11 -pedantic -pedantic-errors \
 	-Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough \
 	-D_POSIX_C_SOURCE=200112L
 
