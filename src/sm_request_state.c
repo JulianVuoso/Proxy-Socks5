@@ -124,6 +124,8 @@ unsigned request_connect(struct selector_key *key) {
     if((sock->origin_fd = socket(sock->origin_domain, SOCK_STREAM, 0)) < 0) {
         goto errors;
     }
+    /* Agrego referencia en el sock, se agrega un fd */
+    sock->references += 1;
     if (selector_fd_set_nio(sock->origin_fd) < 0) {
         goto errors;
     }

@@ -8,6 +8,7 @@
 
 #include "sm_hello_state.h"
 #include "sm_request_state.h"
+#include "sm_copy_state.h"
 
 // Borrar cuando tenga su sm_state
 #include "negotiation.h"
@@ -188,15 +189,15 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = COPY,
-        .on_arrival       = error_arrival,
+        .on_arrival       = copy_init,
+        .on_read_ready    = copy_read,
+        .on_write_ready   = copy_write,
     },
     {
         .state            = DONE,
-        .on_arrival       = error_arrival,
     },
     {
         .state            = ERROR,
-        .on_arrival       = error_arrival,
     },
 };
 
@@ -211,33 +212,18 @@ typedef struct negot_st {
     struct negot_parser parser;
 } negot_st;
 
-// COPY
-typedef struct copy_st {
-    buffer * read_buf, * write_buf;
-} copy_st;
-
-// CONNECTING (origin_server)
-typedef struct connecting_st {
-    buffer * read_buf, * write_buf;
-} connecting_st;
-
 struct socks5 {
     /** maquinas de estados */
     struct state_machine          stm;
 
-    /** estados para el client_fd */
+    /** estados para el cliente */
     union {
         struct hello_st     hello;
         struct negot_st     negot;
         struct request_st   request;
         struct copy_st      copy;
     } client;
-    /** estados para el origin_fd */
-    union {
-        struct connecting_st   conn;
-        struct copy_st         copy;
-    } origin;
-    
+
     /* Informacion del cliente */
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
@@ -252,6 +238,9 @@ struct socks5 {
     /* Buffers */
     uint8_t read_buffer_mem[2048], write_buffer_mem[2048];
     buffer read_buffer, write_buffer;
+
+    /* Reference count. If 1, it is destroyed */
+    unsigned references;
 };
 
 #endif

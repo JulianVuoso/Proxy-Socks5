@@ -170,6 +170,13 @@ selector_set_interest(fd_selector s, int fd, fd_interest i);
 selector_status
 selector_set_interest_key(struct selector_key *key, fd_interest i);
 
+/** permite obtener los intereses de un file descriptor */
+selector_status
+selector_get_interest(fd_selector s, int fd, fd_interest *i);
+
+/** permite obtener los intereses de un file descriptor */
+selector_status
+selector_get_interest_key(struct selector_key *key, fd_interest *i);
 
 /**
  * se bloquea hasta que hay eventos disponible y los despacha.

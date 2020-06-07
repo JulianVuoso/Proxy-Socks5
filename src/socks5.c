@@ -32,24 +32,17 @@ socks5_destroy_(struct socks5 * s) {
  * destruye un  `struct socks5', tiene en cuenta las referencias
  * y el pool de objetos.
  */
-/* static void
+static void
 socks5_destroy(struct socks5 *s) {
     if(s == NULL) {
-        // nada para hacer
-    } else if(s->references == 1) {
-        if(s != NULL) {
-            if(pool_size < max_pool) {
-                s->next = pool;
-                pool    = s;
-                pool_size++;
-            } else {
-                socks5_destroy_(s);
-            }
-        }
+        return;
+    } 
+    if(s->references == 1) {
+        socks5_destroy_(s);
     } else {
         s->references -= 1;
     }
-} */
+}
 
 /* Libera el pool entero de socks5 */
 /* void
@@ -82,6 +75,7 @@ static struct socks5 * socks5_new(int client_fd) {
     buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
     buffer_init(&ret->write_buffer, N(ret->write_buffer_mem), ret->write_buffer_mem);
 
+    ret->references = 1;
     return ret;
 }
 
@@ -119,7 +113,7 @@ fail:
     if(client != -1) {
         close(client);
     }
-    socks5_destroy_(state);
+    socks5_destroy(state);
 }
 
 // Handlers top level de la conexion pasiva.
@@ -155,7 +149,7 @@ void socks5_block(struct selector_key *key) {
 }
 
 void socks5_close(struct selector_key *key) {
-    socks5_destroy_(ATTACHMENT(key));
+    socks5_destroy(ATTACHMENT(key));
 }
 
 static void
