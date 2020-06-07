@@ -6,6 +6,10 @@
 //without null termination
 #define BASE64URL_LENGTH(len) ((((len) + 2) / 3) * 4)
 
+#define HTTP_QUERY_START "GET /dns-query?dns="
+#define HTTP_QUERY_END " HTTP/1.1\r\nhost:localhost\r\naccept:application/dns-message\r\n\r\n"
+
+
 // BASE64URL
 // Value Encoding  Value Encoding  Value Encoding  Value Encoding
 //         0 A            17 R            34 i            51 z
@@ -157,4 +161,71 @@ int getQuery(const char *fqdn, BASE64DNSQuery *query)
     }
     query->query[pos] = 0;
     return 0;
+}
+
+
+
+int dnsLookUp(const char *fqdn)
+{
+    //variables
+    int sockfd = -1;
+    struct sockaddr_in address;
+    BASE64DNSQuery query;
+    query.query = NULL;
+    query.length = -1;
+    
+    //create the query
+    if(getQuery(fqdn,&query)){
+        perror("failed to create query");
+        goto error;
+    }else{
+        write(STDOUT_FILENO,query.query,query.length);
+        printf("\n");
+    }
+
+    //create socket
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("failed socket creation");
+        goto error;
+    }
+
+    //create address
+    address.sin_family = AF_INET;
+    address.sin_port = htons(PORT);
+    if (inet_pton(AF_INET, "127.0.0.1", &address.sin_addr) <= 0)
+    {
+        perror("problema con la direccion");
+        goto error;
+    }
+
+    //connect to address
+    if (connect(sockfd, (struct sockaddr*)&address, sizeof(address)) < 0)
+    {
+        perror("no se pudo conectar");
+        goto error;
+    }
+
+    //send query
+    send(sockfd,HTTP_QUERY_START,sizeof(HTTP_QUERY_START)-1,0);
+    send(sockfd,query.query,query.length,0);
+    send(sockfd,HTTP_QUERY_END,sizeof(HTTP_QUERY_END),0);
+
+    //parse response
+
+
+    //free resources and exit
+    close(sockfd);
+    free(query.query);
+    return 0;
+error:
+    if (sockfd > 0)
+    {
+        close(sockfd);
+    }
+    if (query.query != NULL)
+    {
+        free(query.query);
+    }
+    return -1;
 }

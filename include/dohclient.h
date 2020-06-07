@@ -1,5 +1,5 @@
-#ifndef __DNS_LOOK_UP__
-#define __DNS_LOOK_UP__
+#ifndef __PROTOS_DOH_CLIENT__
+#define __PROTOS_DOH_CLIENT__
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <string.h>
 
+#define PORT 80
 typedef struct{
     size_t length;
     char *query;
@@ -21,5 +22,6 @@ typedef struct{
         -another number if not
 */
 int getQuery(const char *fqdn,BASE64DNSQuery *query);
+int dnsLookUp(const char *fqdn);
 
 #endif
