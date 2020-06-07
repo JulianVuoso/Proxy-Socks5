@@ -7,10 +7,10 @@
 #include "buffer.h"
 
 #include "sm_hello_state.h"
+#include "sm_request_state.h"
 
 // Borrar cuando tenga su sm_state
 #include "negotiation.h"
-#include "request.h"
 
 /* Maquina de estados general */
 enum socks5_state {
@@ -67,15 +67,17 @@ enum socks5_state {
     NEGOT_WRITE,
 
     /**
-     * recibe un request del cliente.
+     * recibe un request del cliente y lo procesa
      *
      * Intereses:
      *     - OP_READ sobre client_fd
      *
      * Transiciones:
      *   - REQUEST_READ     mientras el request no esta completo
-     *   - REQUEST_RESOLV   si esta completo y es un fqdn
-     *   - REQUEST_CONNECT  si esta completo y NO es un fqdn
+     *   - REQUEST_SOLVE    si esta completo y es un fqdn
+     *   - REQUEST_CONNECT  si esta completo, NO es un fqdn y se puede 
+     *                      establecer la conexion al origin server
+     *   - REQUEST_WRITE    si hay un error de soporte de comando o similar
      *   - ERROR            ante cualquier error (IO/parseo)
      */
     REQUEST_READ,
@@ -87,16 +89,17 @@ enum socks5_state {
      *     - OP_NOOP sobre client_fd
      *
      * Transiciones:
-     *   - REQUEST_CONNECT  si resuelve correctamente el fqdn
+     *   - REQUEST_CONNECT  si resuelve correctamente el fqdn y se puede
+     *                      establecer la conexion al origin server
      *   - REQUEST_WRITE    si no puede resolver el fqdn, responde != 00
      */
-    REQUEST_RESOLV,
+    REQUEST_SOLVE,
 
     /**
-     * realiza la conexion a la direccion y puerto
+     * Se espera a que la conexion este establecida // TODO: PUEDE NO ESTABLECERSE?
      *
      * Intereses:
-     *     - ??
+     *     - OP_WRITE sobre origin_fd
      * 
      * Transiciones:
      *   - REQUEST_WRITE    en caso satisfactorio o de error
@@ -108,7 +111,7 @@ enum socks5_state {
      *
      * Intereses:
      *     - OP_WRITE sobre client_fd
-     *     - ??
+     *     - OP_NOOP  sobre origin_fd
      *
      * Transiciones:
      *   - REQUEST_WRITE    mientras queden bytes por enviar
@@ -120,9 +123,11 @@ enum socks5_state {
     /**
      * copia la respuesta del origin server en el cliente
      *
-     * Intereses:
-     *     - OP_READ sobre origin_fd
-     *     - OP_WRITE sobre client_fd
+     * Intereses: (inicialmente solo OP_READ en client_fd)
+     *     - OP_READ  sobre client_fd y origin_fd si tienen espacio para 
+     *                escribir en su buffer de lectura
+     *     - OP_WRITE sobre client_fd y origin_fd si tienen bytes para 
+     *                leer en su buffer de escritura
      *
      * Transiciones:
      *   - COPY         mientras queden bytes por copiar
@@ -163,19 +168,23 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = REQUEST_READ,
-        .on_arrival       = error_arrival,
+        .on_arrival       = request_read_init,
+        .on_departure     = request_read_close,
+        .on_read_ready    = request_read,
     },
     {
-        .state            = REQUEST_RESOLV,
+        .state            = REQUEST_SOLVE,
         .on_arrival       = error_arrival,
     },
     {
         .state            = REQUEST_CONNECT,
-        .on_arrival       = error_arrival,
+        .on_write_ready   = request_connect_write,
     },
     {
         .state            = REQUEST_WRITE,
-        .on_arrival       = error_arrival,
+        .on_arrival       = request_write_init,
+        .on_departure     = request_write_close,
+        .on_write_ready   = request_write,
     },
     {
         .state            = COPY,
@@ -198,24 +207,18 @@ static const struct state_definition client_statbl[] = {
 
 // NEGOT_READ y NEGOT_WRITE
 typedef struct negot_st {
-    buffer * read_buf, write_buf;
+    buffer * read_buf, * write_buf;
     struct negot_parser parser;
 } negot_st;
 
-// REQUEST_READ, REQUEST_RESOLV, REQUEST_CONNECT y REQUEST_WRITE
-typedef struct request_st {
-    buffer * read_buf, write_buf;
-    struct request_parser parser;
-} request_st;
-
 // COPY
 typedef struct copy_st {
-    buffer * read_buf, write_buf;
+    buffer * read_buf, * write_buf;
 } copy_st;
 
 // CONNECTING (origin_server)
 typedef struct connecting_st {
-    buffer * read_buf, write_buf;
+    buffer * read_buf, * write_buf;
 } connecting_st;
 
 struct socks5 {
@@ -241,8 +244,10 @@ struct socks5 {
     int client_fd;
 
     /* Resolucion de la direc del origin server */
+    struct sockaddr_storage origin_addr;
+    socklen_t origin_addr_len;
+    int origin_fd, origin_domain;
     struct addrinfo * origin_resolution;
-    int origin_fd;
 
     /* Buffers */
     uint8_t read_buffer_mem[2048], write_buffer_mem[2048];

@@ -9,6 +9,7 @@
 #include "buffer.h"
 #include "stm.h"
 #include "socks5mt.h"
+#include "socks5_handler.h"
 
 #include "hello.h"
 #include "negotiation.h"
@@ -62,18 +63,6 @@ socks5_pool_destroy(void) {
 
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
-
-static void socks5_read(selector_key * key);
-static void socks5_write(selector_key * key);
-static void socks5_block(selector_key * key);
-static void socks5_close(selector_key * key);
-
-static const fd_handler socks5_handler = {
-    .handle_read = socks5_read,
-    .handle_write = socks5_write,
-    .handle_block = socks5_block,
-    .handle_close = socks5_close,
-};
 
 /* Crea un nuevo struct socks5 */
 static struct socks5 * socks5_new(int client_fd) {
@@ -138,8 +127,7 @@ fail:
 static void
 socks5_done(struct selector_key* key);
 
-static void
-socks5_read(struct selector_key *key) {
+void socks5_read(struct selector_key *key) {
     struct state_machine *stm   = &ATTACHMENT(key)->stm;
     const enum socks5_state st = stm_handler_read(stm, key);
 
@@ -148,8 +136,7 @@ socks5_read(struct selector_key *key) {
     }
 }
 
-static void
-socks5_write(struct selector_key *key) {
+void socks5_write(struct selector_key *key) {
     struct state_machine *stm   = &ATTACHMENT(key)->stm;
     const enum socks5_state st = stm_handler_write(stm, key);
 
@@ -158,8 +145,7 @@ socks5_write(struct selector_key *key) {
     }
 }
 
-static void
-socks5_block(struct selector_key *key) {
+void socks5_block(struct selector_key *key) {
     struct state_machine *stm   = &ATTACHMENT(key)->stm;
     const enum socks5_state st = stm_handler_block(stm, key);
 
@@ -168,8 +154,7 @@ socks5_block(struct selector_key *key) {
     }
 }
 
-static void
-socks5_close(struct selector_key *key) {
+void socks5_close(struct selector_key *key) {
     socks5_destroy_(ATTACHMENT(key));
 }
 

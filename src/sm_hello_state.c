@@ -31,7 +31,7 @@ unsigned hello_read(struct selector_key *key) {
     if (n > 0) {
         buffer_write_adv(st_vars->read_buf, n);
         const enum hello_state st = hello_consume(st_vars->read_buf, &st_vars->parser, &errored);
-        if (hello_is_done(st, 0)) {
+        if (hello_is_done(st, 0)) { // TODO: check if errored va en la condicion
             if (selector_set_interest_key(key, OP_WRITE) == SELECTOR_SUCCESS) {
                 ret = hello_process(st_vars);
             } else {
@@ -78,7 +78,11 @@ unsigned hello_write(struct selector_key *key) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->method != SOCKS_HELLO_NO_ACCEPTABLE_METHODS) {
-                ret = REQUEST_READ; // TODO: Change to NEGOT_READ
+                if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
+                    ret = REQUEST_READ; // TODO: Change to NEGOT_READ
+                } else {
+                    ret = ERROR;
+                }
             } else {
                 ret = ERROR;
             }
