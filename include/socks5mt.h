@@ -243,6 +243,8 @@ struct socks5 {
 
     /* Reference count. If 1, it is destroyed */
     unsigned references;
+    /* Proxy Server fd to update interest if needed when destroyed */
+    int proxy_fd;
 };
 
 #endif

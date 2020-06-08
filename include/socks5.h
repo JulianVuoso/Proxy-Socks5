@@ -3,6 +3,8 @@
 
 #include "selector.h"
 
+#define MAX_CONCURRENT_CON  500
+
 /* Recibe la llave del item */
 void socks5_passive_accept(selector_key * key);
 /* Destruye toda la pool de socks */
