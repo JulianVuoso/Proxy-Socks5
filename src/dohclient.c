@@ -149,17 +149,18 @@ int getQuery(const char *fqdn, BASE64DNSQuery *query)
     if (i % 3 == 1)
     {
         query->query[pos++] = base64encoder[(queryBod[i - 1] >> 2) & 0x3F];
-        query->query[pos++] = base64encoder[queryBod[i - 1] & 0x03];
+        query->query[pos++] = base64encoder[(queryBod[(j * 3)] << 4) & 0x30];
         query->length -= 2;
     }
     else if (i % 3 == 2)
     {
         query->query[pos++] = base64encoder[(queryBod[i - 2] >> 2) & 0x3F];
         query->query[pos++] = base64encoder[(((queryBod[i-2] << 4) & 0x30) | ((queryBod[i-1] >> 4) & 0x0F)) & 0x3F];
-        query->query[pos++] = base64encoder[queryBod[i - 1] & 0x0F];
+        query->query[pos++] = base64encoder[(queryBod[(j * 3) + 1] << 2) & 0x3C];
         query->length -= 1;
     }
     query->query[pos] = 0;
+    query->length = pos;
     return 0;
 }
 
