@@ -95,7 +95,7 @@ request_parser_feed (request_parser * p, uint8_t byte) {
             }
             p->dest->address[p->dest->address_index++] = byte;
             p->dest->address_length--;
-            if (p->dest->address_length <= 0) {
+            if (p->dest->address_length == 0) {
                 p->dest->address[p->dest->address_index] = '\0';
                 p->dest->address_length = p->dest->address_index;
                 p->dest->address_index = 0;
@@ -196,4 +196,41 @@ void request_parser_close(struct request_parser *p) {
         free(p->dest->address);
         free(p->dest);
     }
+}
+
+int
+request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * addr, uint16_t port) {
+    size_t n;
+    uint8_t * buff = buffer_write_ptr(b, &n);
+    size_t addr_size, addr_type;
+    switch (type)
+    {
+        case address_ipv4:
+            addr_size = 4;
+            addr_type = REQUEST_ADDRESS_TYPE_IPV4;
+            break;
+        case address_ipv6:
+            addr_size = 16;
+            addr_type = REQUEST_ADDRESS_TYPE_IPV6;
+            break;
+        default:
+            fprintf(stderr, "unknown address type %d\n", type);
+            abort();
+            break;
+    }
+    if (n < (6 + addr_size)) {
+        return -1;
+    }
+    uint8_t index = 0;
+    buff[index++] = 0x05;
+    buff[index++] = status;
+    buff[index++] = 0x00;
+    buff[index++] = addr_type;
+    for (uint8_t j = 0; j < addr_size; j++) {
+        buff[index++] = addr[j];
+    }
+    buff[index++] = (port & 0xFF00) >> 8;
+    buff[index++] = port & 0x00FF;
+    buffer_write_adv(b, 6 + addr_size);
+    return 6 + addr_size;
 }

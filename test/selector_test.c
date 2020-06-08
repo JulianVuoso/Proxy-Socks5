@@ -4,10 +4,10 @@
 #define INITIAL_SIZE ((size_t) 1024)
 
 // para poder testear las funciones estaticas
-// #include "selector.c"
+#include "../src/selector.c"
 #include "tests.h"
 
-/* START_TEST (test_selector_error) {
+START_TEST (test_selector_error) {
     const selector_status data[] = {
         SELECTOR_SUCCESS,
         SELECTOR_ENOMEM,
@@ -178,4 +178,3 @@ main(void) {
     return (number_failed == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
- */

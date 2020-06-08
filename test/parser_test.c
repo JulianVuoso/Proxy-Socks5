@@ -3,6 +3,7 @@
 #include <check.h>
 
 #include "parser.h"
+#include "tests.h"
 
 // definición de maquina
 
@@ -45,8 +46,6 @@ static const struct parser_state_transition *states [] = {
     ST_S0,
     ST_S1,
 };
-
-#define N(x) (sizeof(x)/sizeof((x)[0]))
 
 static const size_t states_n [] = {
     N(ST_S0),

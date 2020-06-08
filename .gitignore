@@ -59,3 +59,9 @@ dkms.conf
 
 # VisualStudioConfig
 .vscode/
+
+# CMake Folder
+build/
+
+# GDB History
+.gdb_history

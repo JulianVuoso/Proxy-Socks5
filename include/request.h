@@ -9,10 +9,16 @@
 #define REQUEST_ADDRESS_TYPE_IPV4 0x01
 #define REQUEST_ADDRESS_TYPE_NAME 0x03
 #define REQUEST_ADDRESS_TYPE_IPV6 0x04
+
 static const uint8_t REQUEST_COMMAND_CONNECT = 0x01;
-// static const uint8_t REQUEST_ADDRESS_TYPE_IPV4 = 0x01;
-// static const uint8_t REQUEST_ADDRESS_TYPE_NAME = 0x03;
-// static const uint8_t REQUEST_ADDRESS_TYPE_IPV6 = 0x04;
+
+static const uint8_t REQUEST_RESPONSE_SUCCESS = 0x00;
+static const uint8_t REQUEST_RESPONSE_NET_UNREACH = 0x03;
+static const uint8_t REQUEST_RESPONSE_HOST_UNREACH = 0x04;
+static const uint8_t REQUEST_RESPONSE_CON_REFUSED = 0x05;
+static const uint8_t REQUEST_RESPONSE_TTL_EXPIRED = 0x06;
+static const uint8_t REQUEST_RESPONSE_CMD_NOT_SUP = 0x07;
+static const uint8_t REQUEST_RESPONSE_ADD_TYPE_NOT_SUP = 0x08;
 
 /*
     The SOCKS request is formed as follows:
@@ -88,7 +94,7 @@ void request_parser_init (struct request_parser *p);
 
 /** entrega un byte al parser, retorna estado al salir  */
 enum request_state 
-request_parser_feed (struct request_parser *p, uint8_t b);
+request_parser_feed (struct request_parser *p, uint8_t byte);
 
 /**
  * por cada elemento del buffer llama a request_parser_feed hasta que
@@ -116,5 +122,14 @@ request_error_description(const struct request_parser *p);
 
 /** libera recursos internos del parser */
 void request_parser_close(struct request_parser *p);
+
+/**
+ * serializa en buff la una respuesta al request.
+ *
+ * Retorna la cantidad de bytes ocupados del buffer o -1 si no había
+ * espacio suficiente.
+ */
+int
+request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * addr, uint16_t port);
 
 #endif
