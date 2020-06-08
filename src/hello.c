@@ -27,7 +27,7 @@ hello_parser_feed(struct hello_parser *p, const uint8_t b) {
             p->remaining = b;
             p->state     = hello_methods;
 
-            if(p->remaining <= 0) {
+            if(p->remaining == 0) {
                 p->state = hello_done;
             }
 
@@ -38,7 +38,7 @@ hello_parser_feed(struct hello_parser *p, const uint8_t b) {
                 p->on_authentication_method(p, b);
             }
             p->remaining--;
-            if(p->remaining <= 0) {
+            if(p->remaining == 0) {
                 p->state = hello_done;
             }
             break;

@@ -95,7 +95,7 @@ request_parser_feed (request_parser * p, uint8_t byte) {
             }
             p->dest->address[p->dest->address_index++] = byte;
             p->dest->address_length--;
-            if (p->dest->address_length <= 0) {
+            if (p->dest->address_length == 0) {
                 p->dest->address[p->dest->address_index] = '\0';
                 p->dest->address_length = p->dest->address_index;
                 p->dest->address_index = 0;

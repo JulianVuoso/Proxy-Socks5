@@ -17,7 +17,7 @@ void hello_read_init(const unsigned state, struct selector_key *key);
 unsigned hello_read(struct selector_key *key);
 void hello_read_close(const unsigned state, struct selector_key *key);
 
-unsigned hello_process(const struct hello_st * d);
+unsigned hello_process(const struct hello_st * st_vars);
 
 void hello_write_init(const unsigned state, struct selector_key *key);
 unsigned hello_write(struct selector_key *key);

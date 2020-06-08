@@ -94,7 +94,7 @@ void request_parser_init (struct request_parser *p);
 
 /** entrega un byte al parser, retorna estado al salir  */
 enum request_state 
-request_parser_feed (struct request_parser *p, uint8_t b);
+request_parser_feed (struct request_parser *p, uint8_t byte);
 
 /**
  * por cada elemento del buffer llama a request_parser_feed hasta que
