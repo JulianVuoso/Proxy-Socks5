@@ -202,7 +202,9 @@ unsigned request_write(struct selector_key *key) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->reply_code == REQUEST_RESPONSE_SUCCESS) {
-                if (selector_set_interest(key->s, sock->client_fd, OP_READ) == SELECTOR_SUCCESS) {
+                /** TODO: Ver si esta bien habilitar el interes de lectura del origin_server  */
+                if (selector_set_interest(key->s, sock->client_fd, OP_READ) == SELECTOR_SUCCESS && 
+                        selector_set_interest(key->s, sock->origin_fd, OP_READ) == SELECTOR_SUCCESS) {
                     ret = COPY;
                 } else {
                     ret = ERROR;

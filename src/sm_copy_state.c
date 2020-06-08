@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include "socks5mt.h"
 
+#include <stdio.h>
+
 void copy_init(const unsigned state, struct selector_key *key) {
     struct copy_st * st = &ATTACHMENT(key)->client.copy;
     st->cli_to_or_buf = &(ATTACHMENT(key)->read_buffer);
@@ -17,6 +19,7 @@ static unsigned try_jump_done(struct selector_key * key) {
     if (selector_set_interest(key->s, sock->origin_fd, OP_NOOP) != SELECTOR_SUCCESS) {
         ret = ERROR;
     }
+    puts("\nRequest resuelto correctamente");
     return ret;
 }
 
@@ -67,7 +70,7 @@ unsigned copy_read(struct selector_key * key) {
         if (nbytes == 0) {
             abort();
         }
-        /* Si el cliente cerro la conexion, DONE. Sino, ERROR */
+        /** Si el cliente cerro la conexion, DONE. Sino, ERROR. TODO: VER SI va asi o es siempre try_jump_done */
         ret = (key->fd == sock->client_fd) ? try_jump_done(key) : ERROR;
     } else {
         ret = ERROR;
@@ -119,16 +122,17 @@ unsigned copy_write(struct selector_key * key) {
             ret = ERROR;
         }
         /* Si le escribi al origin server y tengo espacio de escritura en el buffer or_to_cli_buf
-        ** me suscribo a la lectura del origin server */
-        if (key->fd == sock->origin_fd && buffer_can_write(st_vars->or_to_cli_buf)) {
-            /* Si tenia apagado OP_READ del origin_fd, lo prendo */
+        ** me suscribo a la lectura del origin server 
+        ** TODO: VER SI ESTO VA */
+        /* if (key->fd == sock->origin_fd && buffer_can_write(st_vars->or_to_cli_buf)) {
+            // Si tenia apagado OP_READ del origin_fd, lo prendo
             if (selector_get_interest(key->s, sock->origin_fd, &cur_int) != SELECTOR_SUCCESS) {
                 ret = ERROR;
             }
             if ((cur_int & OP_READ) == 0 && selector_set_interest(key->s, sock->origin_fd, cur_int | OP_READ) != SELECTOR_SUCCESS) {
                 ret = ERROR;
             }
-        }
+        } */
     } else {
         ret = ERROR;
     }

@@ -204,6 +204,8 @@ static const struct state_definition client_statbl[] = {
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
+#define INITIAL_BUF_SIZE 2048
+
 /* Definicion de variables para cada estado */
 
 // NEGOT_READ y NEGOT_WRITE
@@ -236,7 +238,7 @@ struct socks5 {
     struct addrinfo * origin_resolution;
 
     /* Buffers */
-    uint8_t read_buffer_mem[2048], write_buffer_mem[2048];
+    uint8_t read_buffer_mem[INITIAL_BUF_SIZE], write_buffer_mem[INITIAL_BUF_SIZE];
     buffer read_buffer, write_buffer;
 
     /* Reference count. If 1, it is destroyed */
