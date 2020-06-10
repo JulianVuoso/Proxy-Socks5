@@ -43,7 +43,7 @@ socks5_destroy_(struct selector_key *key) {
 }
 
 /**
- * destruye un  `struct socks5', tiene en cuenta las referencias
+ * destruye un  'struct socks5', tiene en cuenta las referencias
  * y el pool de objetos.
  */
 static void

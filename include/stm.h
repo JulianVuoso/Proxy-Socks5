@@ -10,14 +10,14 @@
  * Los estados se identifican con un número entero (típicamente proveniente de
  * un enum).
  *
- *  - El usuario instancia un `struct state_machine'
+ *  - El usuario instancia un 'struct state_machine'
  *  - Describe la maquina de estados:
- *      - describe el estado inicial en `initial'
- *      - todos los posibles estados en `states' (el orden debe coincidir con
+ *      - describe el estado inicial en 'initial'
+ *      - todos los posibles estados en 'states' (el orden debe coincidir con
  *        el identificador)
- *      - describe la cantidad de estados en `states'.
+ *      - describe la cantidad de estados en 'states'.
  *
- * Provee todas las funciones necesitadas en un `struct fd_handler'
+ * Provee todas las funciones necesitadas en un 'struct fd_handler'
  * de selector.c.
  */
 
@@ -59,28 +59,28 @@ struct state_definition {
 };
 
 
-/** inicializa el la máquina */
+/** inicializa la máquina */
 void
-stm_init(struct state_machine *stm);
+stm_init (struct state_machine *stm);
 
 /** obtiene el identificador del estado actual */
 unsigned
-stm_state        (struct state_machine *stm);
+stm_state (struct state_machine *stm);
 
 /** indica que ocurrió el evento read. retorna nuevo id de nuevo estado. */
 unsigned
-stm_handler_read(struct state_machine *stm, struct selector_key *key);
+stm_handler_read (struct state_machine *stm, struct selector_key *key);
 
 /** indica que ocurrió el evento write. retorna nuevo id de nuevo estado. */
 unsigned
-stm_handler_write(struct state_machine *stm, struct selector_key *key);
+stm_handler_write (struct state_machine *stm, struct selector_key *key);
 
 /** indica que ocurrió el evento block. retorna nuevo id de nuevo estado. */
 unsigned
-stm_handler_block(struct state_machine *stm, struct selector_key *key);
+stm_handler_block (struct state_machine *stm, struct selector_key *key);
 
 /** indica que ocurrió el evento close. retorna nuevo id de nuevo estado. */
 void
-stm_handler_close(struct state_machine *stm, struct selector_key *key);
+stm_handler_close (struct state_machine *stm, struct selector_key *key);
 
 #endif
