@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include "dohParser.h"
 
 #define PORT 80
 typedef struct{

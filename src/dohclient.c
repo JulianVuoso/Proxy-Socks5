@@ -208,8 +208,8 @@ int dnsLookUp(const char *fqdn)
     }
 
     //send query
-    send(sockfd,HTTP_QUERY_START,sizeof(HTTP_QUERY_START)-1,0);
-    send(sockfd,query.query,query.length,0);
+    send(sockfd,HTTP_QUERY_START,sizeof(HTTP_QUERY_START)-1,MSG_MORE);
+    send(sockfd,query.query,query.length,MSG_MORE);
     send(sockfd,HTTP_QUERY_END,sizeof(HTTP_QUERY_END),0);
 
     //parse response
