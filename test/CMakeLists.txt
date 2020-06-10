@@ -53,3 +53,8 @@ add_executable(request_test
 target_link_libraries(request_test check subunit rt m)
 add_test(NAME request_test COMMAND request_test)
 
+add_executable(dohParser_test 
+                dohParser_test.c 
+                ../src/dohParser.c )
+target_link_libraries(dohParser_test check subunit rt m)
+add_test(NAME dohParser_test COMMAND dohParser_test)

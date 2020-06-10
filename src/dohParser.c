@@ -1,3 +1,10 @@
+#include "dohParser.h"
+
+#define DOH_CONTENT_STRING "CONTENT-"
+#define DOH_LENGTH_STRING "LENGTH"
+#define DOH_TYPE_STRING "TYPE"
+#define DOH_APPLICATION_DNS_MESSAGE "APPLICATION/DNS-MESSAGE"
+
 void statusLineParser(const char c, DOHQueryResSM *qrsm);
 void headerParser(const char c, DOHQueryResSM *qrsm);
 void bodyParser(const char c, DOHQueryResSM *qrsm);

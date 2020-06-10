@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
+#include <ctype.h>
 #include "dohclient.h"
 
 
