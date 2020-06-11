@@ -7,8 +7,8 @@ void copy_init(const unsigned state, struct selector_key *key) {
     struct copy_st * st = &ATTACHMENT(key)->client.copy;
     st->cli_to_or_buf = &(ATTACHMENT(key)->read_buffer);
     st->or_to_cli_buf = &(ATTACHMENT(key)->write_buffer);
-    st->cli_to_or_eof = false;
-    st->or_to_cli_eof = false;
+    st->cli_to_or_eof = 0;
+    st->or_to_cli_eof = 0;
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
@@ -34,7 +34,7 @@ unsigned copy_read(struct selector_key * key) {
     ssize_t n;
     buffer * buff;
     int other_fd;
-    bool * cur_eof, * other_eof;
+    uint8_t * cur_eof, * other_eof;
     if (key->fd == sock->client_fd) {
         /* Lectura del cliente */
         buff = st_vars->cli_to_or_buf;
@@ -70,12 +70,15 @@ unsigned copy_read(struct selector_key * key) {
         if (nbytes == 0) {
             abort();
         }
-        *cur_eof = true;
-        if (*other_eof) {
+        /* Me desuscribo de lectura del fd actual */
+        if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
+            ret = ERROR;
+        }
+        (*cur_eof) += 1;
+        if ((*other_eof) >= 1) {
+            /** Si ambos cerraron la conexion, intento ir a DONE. TODO: VER SI ES ASI o NO */
             ret = try_jump_done(key);
         }
-        /** Si el cliente cerro la conexion, DONE. Sino, ERROR. TODO: VER SI va asi o es siempre try_jump_done */
-        ret = (key->fd == sock->client_fd) ? try_jump_done(key) : ERROR;
     } else {
         ret = ERROR;
     }
@@ -92,14 +95,19 @@ unsigned copy_write(struct selector_key * key) {
     ssize_t n;
     buffer * buff;
     int other_fd;
+    uint8_t * cur_eof, * other_eof;
     if (key->fd == sock->client_fd) {
         /* Escritura del cliente */
         buff = st_vars->or_to_cli_buf;
         other_fd = sock->origin_fd;
+        cur_eof = &st_vars->or_to_cli_eof;
+        other_eof = &st_vars->cli_to_or_eof;
     } else if (key->fd == sock->origin_fd) {
         /* Escritura del origin_server */
         buff = st_vars->cli_to_or_buf;
         other_fd = sock->client_fd;
+        cur_eof = &st_vars->cli_to_or_eof;
+        other_eof = &st_vars->or_to_cli_eof;
     } else {
         /* Lectura de ?? */
         abort();
@@ -113,15 +121,26 @@ unsigned copy_write(struct selector_key * key) {
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) != SELECTOR_SUCCESS) {
                 ret = ERROR;
             }
+            /** TODO: ESTO DE ACA VA? NO ME LO LLAMAN NUNCA. Idem para el try_jump_done de abajo */
+            if (*other_eof) {
+                printf("\n\nAt write: CUR EOF = %d, OTHER EOF = %d", *cur_eof, *other_eof);
+                (*other_eof) += 1;
+                if (shutdown(key->fd, SHUT_WR) < 0) {
+                    ret = ERROR;
+                }
+            }
         }
-        /* Si tenia apagado OP_READ del otro fd, lo prendo */
-        if (selector_add_interest(key->s, other_fd, OP_READ) != SELECTOR_SUCCESS) {
+        /* Si no me cerraron conexion y tenia apagado OP_READ del otro fd, lo prendo */
+        if (!(*other_eof) && selector_add_interest(key->s, other_fd, OP_READ) != SELECTOR_SUCCESS) {
             ret = ERROR;
         }
     } else {
         ret = ERROR;
     }
 
+/*     if (ret != ERROR && (*cur_eof) == 2 && (*other_eof) == 2) {
+        ret = try_jump_done(key);
+    } */
     return ret;
 }
 
