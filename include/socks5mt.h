@@ -204,7 +204,7 @@ static const struct state_definition client_statbl[] = {
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
-#define INITIAL_BUF_SIZE 2048
+#define INITIAL_BUF_SIZE 4096
 
 /* Definicion de variables para cada estado */
 

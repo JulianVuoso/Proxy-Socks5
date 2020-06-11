@@ -469,6 +469,28 @@ selector_get_interest_key(struct selector_key *key, fd_interest *i) {
     return ret;
 }
 
+selector_status
+selector_add_interest(fd_selector s, int fd, fd_interest i) {
+    selector_status ret;
+    fd_interest cur_int;
+    ret = selector_get_interest(s, fd, &cur_int);
+    if (ret == SELECTOR_SUCCESS && (cur_int & i) == 0) {
+        ret = selector_set_interest(s, fd, cur_int | i);
+    }
+    return ret;
+}
+
+selector_status
+selector_remove_interest(fd_selector s, int fd, fd_interest i) {
+    selector_status ret;
+    fd_interest cur_int;
+    ret = selector_get_interest(s, fd, &cur_int);
+    if (ret == SELECTOR_SUCCESS && (cur_int & i) != 0) {
+        ret = selector_set_interest(s, fd, cur_int - i);
+    }
+    return ret;
+}
+
 /**
  * se encarga de manejar los resultados del select.
  * se encuentra separado para facilitar el testing

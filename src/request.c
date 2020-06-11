@@ -199,7 +199,7 @@ void request_parser_close(struct request_parser *p) {
 }
 
 int
-request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * addr, uint16_t port) {
+request_marshall(buffer *b, uint8_t status, enum address_types type) {
     size_t n;
     uint8_t * buff = buffer_write_ptr(b, &n);
     size_t addr_size, addr_type;
@@ -227,10 +227,9 @@ request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * a
     buff[index++] = 0x00;
     buff[index++] = addr_type;
     for (uint8_t j = 0; j < addr_size; j++) {
-        buff[index++] = addr[j];
+        buff[index++] = 0; // Bind address
     }
-    buff[index++] = (port & 0xFF00) >> 8;
-    buff[index++] = port & 0x00FF;
+    buff[index++] = 0; buff[index++] = 0; // Bind port
     buffer_write_adv(b, 6 + addr_size);
     return 6 + addr_size;
 }

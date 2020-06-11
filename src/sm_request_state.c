@@ -92,10 +92,10 @@ unsigned request_process(struct selector_key * key) {
 }
 
 static unsigned try_jump_request_write(struct selector_key *key) {
-    struct socks5 * sock = ATTACHMENT(key);
-    struct request_st * st_vars = &sock->client.request;
+    // struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st_vars = &ATTACHMENT(key)->client.request;
     /* VER SI VA ESTO, PARA EL REQUEST_MARSHALL */
-    struct sockaddr client_addr;
+    /* struct sockaddr client_addr;
     socklen_t client_addr_len = sizeof(client_addr);
     if (getsockname(sock->client_fd, &client_addr, &client_addr_len) < 0) {
         return ERROR;
@@ -115,6 +115,9 @@ static unsigned try_jump_request_write(struct selector_key *key) {
         if (request_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv6, ipv6, port) < 0) {
             return ERROR;
         }
+    } */
+    if (request_marshall(st_vars->write_buf, st_vars->reply_code, st_vars->parser.dest->address_type) < 0) {
+        return ERROR;
     }
     return REQUEST_WRITE;
 }
@@ -202,7 +205,6 @@ unsigned request_write(struct selector_key *key) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->reply_code == REQUEST_RESPONSE_SUCCESS) {
-                /** TODO: Ver si esta bien habilitar el interes de lectura del origin_server  */
                 if (selector_set_interest(key->s, sock->client_fd, OP_READ) == SELECTOR_SUCCESS && 
                         selector_set_interest(key->s, sock->origin_fd, OP_READ) == SELECTOR_SUCCESS) {
                     ret = COPY;

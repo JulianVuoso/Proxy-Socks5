@@ -130,6 +130,6 @@ void request_parser_close(struct request_parser *p);
  * espacio suficiente.
  */
 int
-request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * addr, uint16_t port);
+request_marshall(buffer *b, uint8_t status, enum address_types type);
 
 #endif
