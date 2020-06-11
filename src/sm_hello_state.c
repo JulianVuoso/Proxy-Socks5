@@ -2,7 +2,7 @@
 #include "hello.h"
 
 static void
-on_hello_method(struct hello_parser * p, const uint8_t method) {
+on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t * selected = p->data;
     // TODO: Change to SOCKS_HELLO_AUTHENTICATION_REQUIRED
     if (method == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED) {

@@ -94,7 +94,7 @@ finally:
 selector_status
 selector_close(void) {
     // Nada para liberar.
-    // TODO(juan): podriamos reestablecer el handler de la señal.
+    /** TODO (juan): podriamos reestablecer el handler de la señal. **/
     return SELECTOR_SUCCESS;
 }
 
@@ -328,7 +328,7 @@ selector_destroy(fd_selector s) {
 #define INVALID_FD(fd)  ((fd) < 0 || (fd) >= ITEMS_MAX_SIZE)
 
 selector_status
-selector_register(fd_selector        s,
+selector_register(   fd_selector        s,
                      const int          fd,
                      const fd_handler  *handler,
                      const fd_interest  interest,

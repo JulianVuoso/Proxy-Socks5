@@ -29,7 +29,7 @@ enum socks5_state {
     HELLO_READ,
 
     /**
-     * envi­a la respuesta del `hello' al cliente.
+     * envi­a la respuesta del 'hello' al cliente.
      *
      * Intereses:
      *     - OP_WRITE sobre client_fd
@@ -137,10 +137,10 @@ enum socks5_state {
      */
     COPY,
 
-    /* Estado terminal */
+    /* Estado terminal exitoso */
     DONE,
 
-    /* Estado terminal */
+    /* Estado terminal sin exito */
     ERROR,
 };
 
