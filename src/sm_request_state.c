@@ -103,7 +103,7 @@ static int set_origin_resolution(struct socks5 * sock, struct sockaddr * sock_ad
         return -1;
     }
     sock->origin_resolution->ai_family = family;
-    sock->origin_resolution->ai_addr = malloc(sizeof(*sock->origin_resolution->ai_addr));
+    sock->origin_resolution->ai_addr = malloc(length);
     if (sock->origin_resolution->ai_addr == NULL) {
         return -1;
     }
