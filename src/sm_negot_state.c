@@ -26,7 +26,7 @@ unsigned negot_read(struct selector_key *key) {
         const enum negot_state st = negot_consume(st_vars->read_buf, &st_vars->parser, &errored);
         if (negot_is_done(st, 0) && !errored) { // TODO: check if errored va en la condicion
             if (selector_set_interest_key(key, OP_WRITE) == SELECTOR_SUCCESS) {
-                ret = negot_process(st_vars);
+                ret = try_jump_negot_write(key);
             } else {
                 ret = ERROR;
             }
@@ -38,33 +38,14 @@ unsigned negot_read(struct selector_key *key) {
     return errored ? ERROR : ret;
 }
 
-unsigned negot_process(const struct negot_st * st_vars) {
-    unsigned ret = NEGOT_WRITE;
-    if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
-        ret = ERROR;
-    return ret;
-}
-
 void negot_read_close(const unsigned state, struct selector_key *key) {
     /* Do nothing */
 }
 
 static unsigned try_jump_negot_write(struct selector_key *key) {
-    struct socks5 * sock = ATTACHMENT(key);
-    struct negot_st * st_vars = &sock->client.negot;
-    /* VER SI VA ESTO, PARA EL negot_MARSHALL */
-    struct sockaddr client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-    if (getsockname(sock->client_fd, &client_addr, &client_addr_len) < 0) {
-        return ERROR;
-    }
-    
-    struct sockaddr_in6 * client_addr_ipv6 = (struct sockaddr_in6 *) &client_addr;
-    //uint8_t * ipv6 = (uint8_t *) &client_addr_ipv6->sin6_addr;
-    //uint16_t port = ntohs(client_addr_ipv6->sin6_port);
-    if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0) {
-        return ERROR;
-    }
+    struct negot_st * st_vars = &ATTACHMENT(key)->client.negot;
+    if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
+        return ERROR;   // TODO: No deberia ser NEGOT_RESPONSE_ERROR?
     return NEGOT_WRITE;
 }
 
@@ -74,7 +55,6 @@ void negot_write_init(const unsigned state, struct selector_key *key) {
 
 unsigned negot_write(struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
-    /* Reviso que haya sido por client_fd, no deberia ser por otra cosa */
     if (key->fd != sock->client_fd) {
         abort();
     }
