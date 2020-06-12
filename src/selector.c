@@ -535,7 +535,20 @@ handle_block_notifications(fd_selector s) {
         .s = s,
     };
     pthread_mutex_lock(&s->resolution_mutex);
-    for(struct blocking_job *j = s->resolution_jobs;
+    struct blocking_job *j = s->resolution_jobs;
+    while (j != NULL) {
+        struct item *item = s->fds + j->fd;
+        if(ITEM_USED(item)) {
+            key.fd   = item->fd;
+            key.data = item->data;
+            item->handler->handle_block(&key);
+        }
+
+        struct blocking_job * aux = j;
+        j = j->next;
+        free(aux);
+    }
+    /* for(struct blocking_job *j = s->resolution_jobs;
         j != NULL ;
         j  = j->next) {
 
@@ -547,7 +560,7 @@ handle_block_notifications(fd_selector s) {
         }
 
         free(j);
-    }
+    } */
     s->resolution_jobs = 0;
     pthread_mutex_unlock(&s->resolution_mutex);
 }

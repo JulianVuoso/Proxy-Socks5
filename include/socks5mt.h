@@ -175,7 +175,7 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = REQUEST_SOLVE,
-        .on_arrival       = error_arrival,
+        .on_block_ready   = request_solve_block,
     },
     {
         .state            = REQUEST_CONNECT,
@@ -198,6 +198,7 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = ERROR,
+        .on_arrival       = error_arrival,
     },
 };
 

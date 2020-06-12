@@ -77,6 +77,7 @@ static struct socks5 * socks5_new(int client_fd) {
     }
     ret->origin_fd = -1;
     ret->client_fd = client_fd;
+    ret->origin_resolution = NULL;
 
     ret->stm.initial = HELLO_READ;
     ret->stm.max_state = ERROR;
