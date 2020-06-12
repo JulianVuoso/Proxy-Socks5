@@ -11,6 +11,8 @@ typedef struct negot_st {
     uint8_t reply_code;
 } negot_st;
 
+unsigned negot_process(struct selector_key *key);
+
 void negot_read_init(const unsigned state, struct selector_key *key);
 unsigned negot_read(struct selector_key *key);
 void negot_read_close(const unsigned state, struct selector_key *key);

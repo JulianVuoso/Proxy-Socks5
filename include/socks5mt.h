@@ -12,7 +12,7 @@
 #include "sm_negot_state.h"
 
 // Borrar cuando tenga su sm_state
-#include "negotiation.h"
+// #include "negotiation.h"
 
 /* Maquina de estados general */
 enum socks5_state {
@@ -162,11 +162,15 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = NEGOT_READ,
-        .on_arrival       = error_arrival,
+        .on_arrival       = negot_read_init,
+        .on_departure     = negot_read_close,
+        .on_read_ready    = negot_read,
     },
     {
         .state            = NEGOT_WRITE,
-        .on_arrival       = error_arrival,
+        .on_arrival       = negot_write_init,
+        .on_departure     = negot_write_close,
+        .on_write_ready   = negot_write,
     },
     {
         .state            = REQUEST_READ,
