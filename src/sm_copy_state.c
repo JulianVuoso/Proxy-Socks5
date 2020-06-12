@@ -75,14 +75,21 @@ unsigned copy_read(struct selector_key * key) {
             ret = ERROR;
         }
         (*cur_eof) += 1;
-        if ((*other_eof) >= 1) {
-            /** Si ambos cerraron la conexion, intento ir a DONE. TODO: VER SI ES ASI o NO */
-            ret = try_jump_done(key);
+        /* Si consumieron todo lo que escribi en el buffer, mando EOF */
+        if (!buffer_can_read(buff)) {
+            (*other_eof) += 1;
+            if (shutdown(other_fd, SHUT_WR) < 0) {
+                ret = ERROR;
+            }
         }
     } else {
         ret = ERROR;
     }
 
+    /* Si conte dos EOF por lado --> DONE */
+    if (ret != ERROR && (*cur_eof) == 2 && (*other_eof) == 2) {
+        ret = try_jump_done(key);
+    }
     return ret;
 }
 
@@ -121,9 +128,8 @@ unsigned copy_write(struct selector_key * key) {
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) != SELECTOR_SUCCESS) {
                 ret = ERROR;
             }
-            /** TODO: ESTO DE ACA VA? NO ME LO LLAMAN NUNCA. Idem para el try_jump_done de abajo */
-            if (*other_eof) {
-                printf("\n\nAt write: CUR EOF = %d, OTHER EOF = %d", *cur_eof, *other_eof);
+            /** TODO: CHECK SI ESTO VA BIEN  */
+            if (*cur_eof) {
                 (*other_eof) += 1;
                 if (shutdown(key->fd, SHUT_WR) < 0) {
                     ret = ERROR;
@@ -131,16 +137,17 @@ unsigned copy_write(struct selector_key * key) {
             }
         }
         /* Si no me cerraron conexion y tenia apagado OP_READ del otro fd, lo prendo */
-        if (!(*other_eof) && selector_add_interest(key->s, other_fd, OP_READ) != SELECTOR_SUCCESS) {
+        if (!(*cur_eof) && selector_add_interest(key->s, other_fd, OP_READ) != SELECTOR_SUCCESS) {
             ret = ERROR;
         }
     } else {
         ret = ERROR;
     }
 
-/*     if (ret != ERROR && (*cur_eof) == 2 && (*other_eof) == 2) {
+    /* Si conte dos EOF por lado --> DONE */
+    if (ret != ERROR && (*cur_eof) == 2 && (*other_eof) == 2) {
         ret = try_jump_done(key);
-    } */
+    }
     return ret;
 }
 
