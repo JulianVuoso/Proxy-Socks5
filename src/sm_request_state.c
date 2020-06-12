@@ -412,3 +412,4 @@ void request_write_close(const unsigned state, struct selector_key *key) {
     request_parser_close(&st->parser);
 }
 
+/** TODO: WHEN ERROR, call this close ^ */
