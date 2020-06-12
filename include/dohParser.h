@@ -19,6 +19,7 @@ typedef enum{
     DOHQRSM_FIND_SPACE,
     DOHQRSM_FIND_ENDLINE,
     DOHQRSM_LINE_NOT_EMPTY,
+    DOHQRSM_SKIP_N,
     
     //firstline parser
     DOHQRSM_STATUS_CODE,
@@ -32,7 +33,34 @@ typedef enum{
     DOHQRSM_IS_CONTENT_TYPE,
     DOHQRSM_IS_CONTENT_LENGTH,
 
+    //bodyParser
+    DOHQRSM_DNS_QUESTION,
+    DOHQRSM_DNS_ANSWER,
+    // DOHQRSM_DNS_NAMESERVER,    // NOT
+    // DOHQRSM_DNS_ADITIONAL,    // NEEDED
+
 } DOHQRSM_STATE;
+
+typedef struct DNSQueryHeader
+{
+    //id and control skipped as not needed
+    uint16_t qcount;
+    uint16_t ancount;
+    uint16_t nscount;
+    uint16_t arcount;
+}DNSQueryHeader;
+
+typedef struct DNSResRec
+{
+    // int startOffset;    //not needed
+    // int length;         //not needed
+    // char *name;         //not needed
+    // uint16_t TTL;       //not needed 
+    // uint16_t dnstype;   //not needed
+    // uint8_t dnsclass;   //not needed
+    uint16_t rdlength;  
+    char *rddata;       
+}DNSResRec;
 
 typedef struct DOHQueryResSM{
     DOHQRSM_STATE state;
@@ -42,6 +70,10 @@ typedef struct DOHQueryResSM{
     int aux;
     int contentLegth;
     int statusCode;
+    int skip;
+    DNSQueryHeader header;
+    DNSResRec *records;
+    int rCount;
 }DOHQueryResSM;
 
 void initParser(DOHQueryResSM *qrsm);
