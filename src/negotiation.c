@@ -179,3 +179,16 @@ negot_parser_close(struct negot_parser *p) {
         free(p->password);
     }
 }
+
+extern int
+negot_marshall(buffer *b, uint8_t status) {
+    size_t n;
+    uint8_t *buff = buffer_write_ptr(b, &n);
+    if(n < 2) {
+        return -1;
+    }
+    buff[0] = 0x01;
+    buff[1] = status;
+    buffer_write_adv(b, 2);
+    return 2;
+}

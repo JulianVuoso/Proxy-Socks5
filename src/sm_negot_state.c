@@ -1,5 +1,4 @@
 #include <string.h>
-#include <netinet/in.h>
 #include <errno.h>
 #include <stdlib.h>
 
@@ -52,21 +51,12 @@ static unsigned try_jump_negot_write(struct selector_key *key) {
     if (getsockname(sock->client_fd, &client_addr, &client_addr_len) < 0) {
         return ERROR;
     }
-    if (client_addr.sa_family == AF_INET) {
-        struct sockaddr_in * client_addr_ipv4 = (struct sockaddr_in *) &client_addr;
-        uint8_t * ipv4 = (uint8_t *) &client_addr_ipv4->sin_addr;
-        uint16_t port = ntohs(client_addr_ipv4->sin_port);
-        if (negot_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv4, ipv4, port) < 0) {
-            return ERROR;
-        }
-        
-    } else if (client_addr.sa_family == AF_INET6) {
-        struct sockaddr_in6 * client_addr_ipv6 = (struct sockaddr_in6 *) &client_addr;
-        uint8_t * ipv6 = (uint8_t *) &client_addr_ipv6->sin6_addr;
-        uint16_t port = ntohs(client_addr_ipv6->sin6_port);
-        if (negot_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv6, ipv6, port) < 0) {
-            return ERROR;
-        }
+    
+    struct sockaddr_in6 * client_addr_ipv6 = (struct sockaddr_in6 *) &client_addr;
+    //uint8_t * ipv6 = (uint8_t *) &client_addr_ipv6->sin6_addr;
+    //uint16_t port = ntohs(client_addr_ipv6->sin6_port);
+    if (negot_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv6, ipv6, port) < 0) {
+        return ERROR;
     }
     return NEGOT_WRITE;
 }
