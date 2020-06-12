@@ -11,9 +11,19 @@
 #include <sys/socket.h>  // socket
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #include "selector.h"
 #include "socks5.h"
+
+#define IPV4_ADDRESS    INADDR_ANY
+#define IPV6_ADDRESS    "::"
+
+enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
+
+static unsigned create_socket_ipv4(uint32_t address, unsigned port, int * server_fd);
+static unsigned create_socket_ipv6(const char * address, unsigned port, int * server_fd);
+static const char * socket_error_description(enum socket_errors error);
 
 static bool done = false;
 
@@ -48,43 +58,32 @@ main(const int argc, const char **argv) {
     // no tenemos nada que leer de stdin
     close(0);
 
-    const char       *err_msg = NULL;
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    struct sockaddr_in addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port        = htons(port);
-
-    const int server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if(server < 0) {
-        err_msg = "unable to create socket";
+    const char * err_msg = NULL;
+    int server_ipv4, server_ipv6;
+    
+    enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, port, &server_ipv4);
+    if (error_ipv4 != socket_no_error) {
+        err_msg = socket_error_description(error_ipv4);
+        goto finally;
+    }
+    enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, port, &server_ipv6);
+    if (error_ipv6 != socket_no_error) {
+        err_msg = socket_error_description(error_ipv6);
         goto finally;
     }
 
     fprintf(stdout, "Listening on TCP port %u\n", port);
-
-    // man 7 ip. no importa reportar nada si falla.
-    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-
-    if(bind(server, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
-        err_msg = "unable to bind socket";
-        goto finally;
-    }
-
-    if (listen(server, 20) < 0) {
-        err_msg = "unable to listen";
-        goto finally;
-    }
 
     // registrar sigterm es útil para terminar el programa normalmente.
     // esto ayuda mucho en herramientas como valgrind.
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
 
-    if(selector_fd_set_nio(server) == -1) {
+    if(selector_fd_set_nio(server_ipv4) == -1 || 
+        selector_fd_set_nio(server_ipv6) == -1) {
         err_msg = "getting server socket flags";
         goto finally;
     }
@@ -110,8 +109,12 @@ main(const int argc, const char **argv) {
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server, &socks5,
+    ss = selector_register(selector, server_ipv4, &socks5,
                                               OP_READ, NULL);
+    if (ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, server_ipv6, &socks5,
+                                              OP_READ, NULL);
+    }
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
         goto finally;
@@ -147,8 +150,87 @@ finally:
 
     // socks5_pool_destroy();
 
-    if(server >= 0) {
-        close(server);
+    if(server_ipv4 >= 0) {
+        close(server_ipv4);
+    }
+    if(server_ipv6 >= 0) {
+        close(server_ipv6);
+    }
+    return ret;
+}
+
+static unsigned 
+create_socket_ipv4(uint32_t address, unsigned port, int * server_fd) {
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(address);
+    addr.sin_port        = htons(port);
+
+    *server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (*server_fd < 0) {
+        return error_socket_create;
+    }
+    // man 7 ip. no importa reportar nada si falla.
+    setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+
+    if(bind(*server_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+        return error_socket_bind;
+    }
+
+    if (listen(*server_fd, 20) < 0) {
+        return error_socket_listen;
+    }
+
+    return socket_no_error;
+}
+
+static unsigned 
+create_socket_ipv6(const char * address, unsigned port, int * server_fd) {
+    struct sockaddr_in6 addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin6_family      = AF_INET6;
+    addr.sin6_port        = htons(port);
+    if (inet_pton(AF_INET6, address, &addr.sin6_addr) == 0) {
+        return error_invalid_address;
+    }
+    
+    *server_fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+    if (*server_fd < 0) {
+        return error_socket_create;
+    }
+    
+    // man 7 ip. no importa reportar nada si falla.
+    setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+    setsockopt(*server_fd, SOL_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof(int));
+
+    if(bind(*server_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+        return error_socket_bind;
+    }
+
+    if (listen(*server_fd, 20) < 0) {
+        return error_socket_listen;
+    }
+
+    return socket_no_error;
+}
+
+static const char * socket_error_description(enum socket_errors error) {
+    char * ret;
+    switch (error)
+    {
+        case error_socket_create:
+            ret = "unable to create socket";
+            break;
+        case error_socket_bind:
+            ret = "unable to bind socket";
+            break;
+        case error_socket_listen:
+            ret = "unable to listen socket";
+            break;
+        default:
+            ret = "";
+            break;
     }
     return ret;
 }
