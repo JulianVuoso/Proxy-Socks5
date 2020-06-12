@@ -103,6 +103,7 @@ static int set_origin_resolution(struct socks5 * sock, struct sockaddr * sock_ad
         return -1;
     }
     sock->origin_resolution->ai_family = family;
+    /** TODO: freeaddrinfo is not freeing this malloc, do it manually  */
     sock->origin_resolution->ai_addr = malloc(length);
     if (sock->origin_resolution->ai_addr == NULL) {
         return -1;
@@ -215,7 +216,8 @@ static unsigned try_jump_request_write(struct selector_key *key) {
         puts("failed selector\n");
         return ERROR;
     }
-    if (request_marshall(st_vars->write_buf, st_vars->reply_code, st_vars->parser.dest->address_type) < 0) {
+    if (request_marshall(st_vars->write_buf, st_vars->reply_code, 
+            (sock->origin_domain == AF_INET) ? address_ipv4 : address_ipv6) < 0) {
         puts("failed request_marshall\n");
         return ERROR;
     }
@@ -288,6 +290,7 @@ unsigned request_connect(struct selector_key * key) {
         case CON_OK:
             memcpy(&(sock->origin_addr), node, sizeof(*node));
             sock->origin_addr_len = sizeof(*node);
+            sock->origin_domain = node->ai_family;
             sock->client.request.reply_code = REQUEST_RESPONSE_SUCCESS;
             return try_jump_request_write(key);
         case CON_ERROR:
@@ -359,6 +362,7 @@ unsigned request_connect_write(struct selector_key *key) {
     }
     memcpy(&(sock->origin_addr), node, sizeof(*node));
     sock->origin_addr_len = sizeof(*node);
+    sock->origin_domain = node->ai_family;
     sock->client.request.reply_code = REQUEST_RESPONSE_SUCCESS;
     return try_jump_request_write(key);
 }
