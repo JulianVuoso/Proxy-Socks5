@@ -84,7 +84,8 @@ static void * request_solve_blocking(void * args) {
     };
     
     char port[7];
-    snprintf(port, sizeof(port), "%d", ntohs(dest->port));
+    // snprintf(port, sizeof(port), "%d", ntohs(dest->port));
+    snprintf(port, sizeof(port), "%d", dest->port);
     if (getaddrinfo((char *) dest->address, port, &hints, &sock->origin_resolution) != 0) {
         /* If getaddrinfo fails, freeaddrinfo and set res to NULL */
         freeaddrinfo(sock->origin_resolution);
