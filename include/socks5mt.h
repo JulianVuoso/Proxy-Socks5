@@ -9,6 +9,7 @@
 #include "sm_hello_state.h"
 #include "sm_request_state.h"
 #include "sm_copy_state.h"
+#include "sm_negot_state.h"
 
 // Borrar cuando tenga su sm_state
 #include "negotiation.h"
@@ -209,10 +210,10 @@ static const struct state_definition client_statbl[] = {
 /* Definicion de variables para cada estado */
 
 // NEGOT_READ y NEGOT_WRITE
-typedef struct negot_st {
+/* typedef struct negot_st {
     buffer * read_buf, * write_buf;
     struct negot_parser parser;
-} negot_st;
+} negot_st; */
 
 struct socks5 {
     /** maquinas de estados */

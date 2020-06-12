@@ -5,6 +5,9 @@
 #include <stdbool.h>
 #include "buffer.h"
 
+static const uint8_t NEGOT_RESPONSE_SUCCESS = 0x00;
+static const uint8_t NEGOT_RESPONSE_USER_EXISTS = 0x01;
+
 /*
     The SOCKS negotiation is formed as follows:
 
