@@ -25,8 +25,8 @@ unsigned negot_read(struct selector_key *key) {
         buffer_write_adv(st_vars->read_buf, n);
         const enum negot_state st = negot_consume(st_vars->read_buf, &st_vars->parser, &errored);
         if (negot_is_done(st, 0) && !errored) { // TODO: check if errored va en la condicion
-            if (selector_set_interest_key(key, OP_NOOP) == SELECTOR_SUCCESS) {
-                ret = negot_process(key);
+            if (selector_set_interest_key(key, OP_WRITE) == SELECTOR_SUCCESS) {
+                ret = negot_process(st_vars);
             } else {
                 ret = ERROR;
             }
@@ -36,6 +36,13 @@ unsigned negot_read(struct selector_key *key) {
     }
 
     return errored ? ERROR : ret;
+}
+
+unsigned negot_process(const struct negot_st * st_vars) {
+    unsigned ret = NEGOT_WRITE;
+    if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
+        ret = ERROR;
+    return ret;
 }
 
 void negot_read_close(const unsigned state, struct selector_key *key) {
@@ -55,7 +62,7 @@ static unsigned try_jump_negot_write(struct selector_key *key) {
     struct sockaddr_in6 * client_addr_ipv6 = (struct sockaddr_in6 *) &client_addr;
     //uint8_t * ipv6 = (uint8_t *) &client_addr_ipv6->sin6_addr;
     //uint16_t port = ntohs(client_addr_ipv6->sin6_port);
-    if (negot_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv6, ipv6, port) < 0) {
+    if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0) {
         return ERROR;
     }
     return NEGOT_WRITE;
@@ -71,8 +78,7 @@ unsigned negot_write(struct selector_key *key) {
     if (key->fd != sock->client_fd) {
         abort();
     }
-
-    struct negot_st * st_vars = &sock->client.negot;
+    struct negot_st * st_vars = &ATTACHMENT(key)->client.negot;
     unsigned ret = NEGOT_WRITE;
     size_t nbytes;
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
@@ -83,9 +89,8 @@ unsigned negot_write(struct selector_key *key) {
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->reply_code == NEGOT_RESPONSE_SUCCESS) {
                 /** TODO: Ver si esta bien habilitar el interes de lectura del origin_server  */
-                if (selector_set_interest(key->s, sock->client_fd, OP_READ) == SELECTOR_SUCCESS && 
-                        selector_set_interest(key->s, sock->origin_fd, OP_READ) == SELECTOR_SUCCESS) {
-                    ret = COPY;
+                if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
+                    ret = REQUEST_READ;   // TODO: Cambiar a quien siga -> ESTA BIEN REQ?
                 } else {
                     ret = ERROR;
                 }

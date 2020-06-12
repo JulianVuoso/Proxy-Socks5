@@ -100,4 +100,7 @@ negot_is_done(const enum negot_state state, bool *errored);
 void 
 negot_parser_close(struct negot_parser *p);
 
+extern int 
+negot_marshall(buffer *b, uint8_t status);
+
 #endif
