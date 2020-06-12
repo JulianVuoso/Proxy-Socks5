@@ -343,7 +343,6 @@ unsigned request_connect(struct selector_key * key) {
 unsigned request_connect_write(struct selector_key *key) {
     puts("Gonna get SOL_SOCKET option");
     struct socks5 * sock = ATTACHMENT(key);
-    struct addrinfo * node = sock->client.request.current;
     /* Reviso que haya sido por origin_fd, no deberia ser por otra cosa */
     if (key->fd != sock->origin_fd) {
         abort();
@@ -358,9 +357,11 @@ unsigned request_connect_write(struct selector_key *key) {
             || optval != 0) {
         /* Avanzo al siguiente nodo e intento conectarme */
         puts("this one failed, go to next\n");
-        node = node->ai_next;
+        printf("Optval: %d\n", optval);
+        sock->client.request.current = sock->client.request.current->ai_next;
         return request_connect(key);
     }
+    struct addrinfo * node = sock->client.request.current;
     memcpy(&(sock->origin_addr), node, sizeof(*node));
     sock->origin_addr_len = sizeof(*node);
     sock->origin_domain = node->ai_family;
