@@ -15,6 +15,7 @@
 
 #include "selector.h"
 #include "socks5.h"
+#include "users.h"
 
 #define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
@@ -55,7 +56,8 @@ main(const int argc, const char **argv) {
         return 1;
     }
 
-    // no tenemos nada que leer de stdin
+    readUsers();
+
     close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;

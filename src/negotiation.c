@@ -75,8 +75,10 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
         case negot_uname:                       // ver cual seria un error
                 p->username->ulen--;
                 p->username->uname[p->username->index++] = byte;
-                if(p->username->ulen < 1 )
+                if(p->username->ulen < 1 ){
                     p->state = negot_plen;
+                    p->username->uname[p->username->index]='\0';
+                }
             break;
         case negot_plen:
             if (byte > 0) {                     // ver cual seria un error
@@ -101,8 +103,10 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
         case negot_passwd:                      // ver cual seria un error
                 p->password->plen--;
                 p->password->passwd[p->password->index++] = byte;
-                if(p->password->plen == 0)
+                if(p->password->plen == 0){
                     p->state = negot_done;
+                    p->password->passwd[p->password->index]='\0';
+                }
             break;
         case negot_done:
         case negot_error:
@@ -178,4 +182,17 @@ negot_parser_close(struct negot_parser *p) {
         free(p->username);
         free(p->password);
     }
+}
+
+extern int
+negot_marshall(buffer *b, uint8_t status) {
+    size_t n;
+    uint8_t *buff = buffer_write_ptr(b, &n);
+    if(n < 2) {
+        return -1;
+    }
+    buff[0] = 0x01;
+    buff[1] = status;
+    buffer_write_adv(b, 2);
+    return 2;
 }
