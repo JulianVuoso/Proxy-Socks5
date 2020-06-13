@@ -15,7 +15,11 @@ void initParser(DOHQueryResSM *qrsm)
     qrsm->nstate = DOHQRSM_START;
     qrsm->parser = statusLineParser;
     qrsm->statusCode = 0;
+    qrsm->contentLegth = 0;
     qrsm->res = 0;
+    qrsm->aux2 = 0;
+    qrsm->rCount = 0;
+    qrsm->records = NULL;
     return;
 }
 
@@ -81,9 +85,15 @@ void headerParser(const char c, DOHQueryResSM *qrsm)
         }
         else if (c == '\n')
         {
-            qrsm->state = DOHQRSM_START;
-            qrsm->aux = 0;
-            qrsm->parser = bodyParser;
+            if (qrsm->contentLegth > 0 && qrsm->contentLegth < 12)
+            {
+                qrsm->state = DOHQRSM_ERROR;
+            }else{
+                qrsm->state = DOHQRSM_START;
+                qrsm->aux = 0;
+                qrsm->parser = bodyParser;
+            }
+            
         }
         else if (!isspace(c))
         {
@@ -136,7 +146,9 @@ void headerParser(const char c, DOHQueryResSM *qrsm)
         else if (toupper(c) == DOH_TYPE_STRING[qrsm->aux])
         {
             qrsm->aux++;
-        }else if(c == ':'){
+        }
+        else if (c == ':')
+        {
             if (qrsm->aux == sizeof(DOH_TYPE_STRING) - 1)
             {
                 qrsm->state = DOHQRSM_IS_CONTENT_TYPE;
@@ -210,10 +222,14 @@ void headerParser(const char c, DOHQueryResSM *qrsm)
     }
 }
 
-void findNextRR(DOHQueryResSM *qrsm){
-    if(qrsm->header.qcount>0){
+void findNextRR(DOHQueryResSM *qrsm)
+{
+    if (qrsm->header.qcount > 0)
+    {
         qrsm->state = DOHQRSM_DNS_QUESTION;
-    }else if(qrsm->header.ancount>0){
+    }
+    else if (qrsm->header.ancount > 0)
+    {
         qrsm->state = DOHQRSM_DNS_ANSWER;
     }
     // commented because they are not needed
@@ -222,92 +238,209 @@ void findNextRR(DOHQueryResSM *qrsm){
     // }else if(qrsm->header.arcount>0){
     //     qrsm->state = DOHQRSM_DNS_ADITIONAL;
     // }
-    else{
+    else
+    {
         qrsm->state = DOHQRSM_EXIT;
     }
 }
 
-void bodyParser(const char c, DOHQueryResSM *qrsm){
+void bodyParser(const char c, DOHQueryResSM *qrsm)
+{
     switch (qrsm->state)
     {
     case DOHQRSM_START:
-        if(qrsm->contentLegth>0&&qrsm->contentLegth<12){
-            qrsm->state = DOHQRSM_ERROR;
-        }
         switch (qrsm->aux)
         {
+        case 0:
+        case 1:
+            break;
         //todo:should we consider AA
         //checking that the answer is in fact a response
         case 2:
-            qrsm->state = !(c&0x80)?DOHQRSM_ERROR:qrsm->state;
+            qrsm->state = !(c & 0x80) ? DOHQRSM_ERROR : qrsm->state;
             break;
         //check if error in response
         case 3:
-            qrsm->state = (c&0x0F)?DOHQRSM_ERROR:qrsm->state;
+            qrsm->state = (c & 0x0F) ? DOHQRSM_ERROR : qrsm->state;
             break;
         //qcount
         case 4:
-            qrsm->header.qcount = ((uint16_t)(c&0xFF))<<8;
+            qrsm->header.qcount = ((uint16_t)(c & 0xFF)) << 8;
             break;
         case 5:
-            qrsm->header.qcount += c&0xFF;
+            qrsm->header.qcount += c & 0xFF;
             break;
         //ancount
         case 6:
-            qrsm->header.ancount = ((uint16_t)(c&0xFF))<<8;
+            qrsm->header.ancount = ((uint16_t)(c & 0xFF)) << 8;
             break;
         case 7:
-            qrsm->header.ancount += c&0xFF;
+            qrsm->header.ancount += c & 0xFF;
             break;
         //nscount
         case 8:
-            qrsm->header.nscount = ((uint16_t)(c&0xFF))<<8;
+            qrsm->header.nscount = ((uint16_t)(c & 0xFF)) << 8;
             break;
         case 9:
-            qrsm->header.nscount += c&0xFF;
+            qrsm->header.nscount += c & 0xFF;
             break;
-        //arcount 
+        //arcount
         case 10:
-            qrsm->header.arcount = ((uint16_t)(c&0xFF))<<8;
+            qrsm->header.arcount = ((uint16_t)(c & 0xFF)) << 8;
             break;
         //second part of arcount and next state initialize
         case 11:
-            qrsm->header.arcount += c&0xFF;
+            qrsm->header.arcount += c & 0xFF;
             findNextRR(qrsm);
             break;
         default:
             qrsm->state = DOHQRSM_ERROR;
             break;
         }
+        qrsm->aux++;
         break;
     case DOHQRSM_DNS_QUESTION:
         //todo:check
-        if(c == 0){
+        if (c == 0)
+        {
             qrsm->header.qcount--;
             findNextRR(qrsm);
             qrsm->nstate = qrsm->state;
             qrsm->state = DOHQRSM_SKIP_N;
             qrsm->skip = 4;
         }
-        findNextRR(qrsm);
         break;
     case DOHQRSM_DNS_ANSWER:
-        //todo
-        findNextRR(qrsm);
-        break;
-    case DOHQRSM_SKIP_N:
-        qrsm->skip--;
-        if(qrsm->skip < 1){
-            qrsm->state = qrsm->nstate;
+        if (c == 0)
+        {
+            qrsm->state = DOHQRSM_DNSTYPE;
+            qrsm->aux = 0;
         }
         break;
 
+    case DOHQRSM_DNSTYPE:
+        if (qrsm->aux == 0)
+        {
+            qrsm->aux++;
+            qrsm->aux2 = c;
+        }
+        else
+        {
+            qrsm->aux2 = (qrsm->aux2 << 8) + c;
+            if (qrsm->aux2 != SHOULD_BE_DNSTYPE)
+            {
+                qrsm->skip = 6;
+                qrsm->state = DOHQRSM_SKIP_N;
+                qrsm->nstate = DOHQRSM_SKIP_RDLENGTH;
+            }
+            else
+            {
+                qrsm->state = DOHQRSM_DNSCLASS;
+            }
+            qrsm->aux = 0;
+        }
+        break;
+    case DOHQRSM_DNSCLASS:
+        if (qrsm->aux == 0)
+        {
+            qrsm->aux++;
+            qrsm->aux2 = c;
+        }
+        else
+        {
+            qrsm->aux2 = (qrsm->aux2 << 8) + c;
+            if (qrsm->aux2 != SHOULD_BE_DNSCLASS)
+            {
+                qrsm->skip = 4;
+                qrsm->state = DOHQRSM_SKIP_N;
+                qrsm->nstate = DOHQRSM_SKIP_RDLENGTH;
+            }
+            else
+            {
+                qrsm->skip = 4;
+                qrsm->state = DOHQRSM_SKIP_N;
+                qrsm->nstate = DOHQRSM_RDLENGTH;
+            }
+            qrsm->aux = 0;
+        }
+        break;
+    case DOHQRSM_RDLENGTH:
+        if (qrsm->aux == 0)
+        {
+            qrsm->aux++;
+            qrsm->aux2 = c;
+        }
+        else
+        {
+            qrsm->aux2 = (qrsm->aux2 << 8) + c;
+            if (qrsm->aux2 > 0)
+            {
+                //TODO: CHECK IF REALLOC OF NULL IS A GOOD IDEA
+                qrsm->rCount++;
+                void *aux = realloc(qrsm->records, qrsm->rCount * sizeof(DNSResRec));
+                if (aux == NULL)
+                {
+                    qrsm->state = DOHQRSM_ERROR;
+                }
+                else
+                {
+                    qrsm->records = aux;
+                    qrsm->records[qrsm->rCount - 1].rdlength = qrsm->aux2;
+                    qrsm->records[qrsm->rCount - 1].rddata = malloc(qrsm->aux2 * sizeof(DNSResRec));
+                    if (qrsm->records[qrsm->rCount - 1].rddata == NULL)
+                    {
+                        qrsm->state = DOHQRSM_ERROR;
+                    }
+                    else
+                    {
+                        qrsm->state = DOHQRSM_RDDATA;
+                    }
+                }
+            }
+            else
+            {
+                qrsm->state = DOHQRSM_DNS_ANSWER;
+            }
+            qrsm->aux = 0;
+        }
+        break;
+    case DOHQRSM_RDDATA:
+        if (qrsm->aux2 <= 0)
+        {
+            qrsm->header.ancount--;
+            findNextRR(qrsm);
+        }
+        else
+        {
+            //add to last record the next c
+            qrsm->records[qrsm->rCount - 1].rddata[qrsm->records[qrsm->rCount - 1].rdlength - qrsm->aux2] = c;
+            //one less character to read
+            qrsm->aux2--;
+        }
+        break;
+    case DOHQRSM_SKIP_N:
+        qrsm->skip--;
+        if (qrsm->skip < 1)
+        {
+            qrsm->state = qrsm->nstate;
+        }
+        break;
+    case DOHQRSM_SKIP_RDLENGTH:
+        if(qrsm->aux==0){
+            qrsm->aux2 = c;
+        }else{
+            qrsm->aux2 = (qrsm->aux2<<8) + c;
+            qrsm->skip = qrsm->aux2;
+            findNextRR(qrsm);
+            qrsm->nstate = qrsm->state; 
+            qrsm->state = DOHQRSM_SKIP_N;
+        }
+        break;
     // error state
     default:
         qrsm->state = DOHQRSM_ERROR;
         break;
     }
-    qrsm->aux++;
 }
 
 void dohParse(const char c, DOHQueryResSM *qrsm)

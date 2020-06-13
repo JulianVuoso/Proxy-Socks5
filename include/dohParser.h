@@ -9,7 +9,12 @@
 #include <ctype.h>
 #include "dohclient.h"
 
-
+//type of dns we are looking for
+// 1 = A
+#define SHOULD_BE_DNSTYPE 1
+//class of dns we are looking for
+// 1 = A
+#define SHOULD_BE_DNSCLASS 1
 
 typedef enum{
     //general purpose
@@ -38,6 +43,13 @@ typedef enum{
     DOHQRSM_DNS_ANSWER,
     // DOHQRSM_DNS_NAMESERVER,    // NOT
     // DOHQRSM_DNS_ADITIONAL,    // NEEDED
+
+    DOHQRSM_DNSTYPE,
+    DOHQRSM_DNSCLASS,
+    DOHQRSM_RDLENGTH,
+    DOHQRSM_RDDATA,
+
+    DOHQRSM_SKIP_RDLENGTH
 
 } DOHQRSM_STATE;
 
@@ -73,6 +85,8 @@ typedef struct DOHQueryResSM{
     int skip;
     DNSQueryHeader header;
     DNSResRec *records;
+    //used in body
+    int aux2;
     int rCount;
 }DOHQueryResSM;
 

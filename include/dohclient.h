@@ -23,6 +23,6 @@ typedef struct{
         -another number if not
 */
 int getQuery(const char *fqdn,BASE64DNSQuery *query);
-int dnsLookUp(const char *fqdn);
+int dnsLookUp(const char *fqdn,struct DOHQueryResSM *qrsm);
 
 #endif

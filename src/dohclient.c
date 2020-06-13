@@ -166,12 +166,14 @@ int getQuery(const char *fqdn, BASE64DNSQuery *query)
 
 
 
-int dnsLookUp(const char *fqdn)
+int dnsLookUp(const char *fqdn,DOHQueryResSM *qrsm)
 {
     //variables
     int sockfd = -1;
     struct sockaddr_in address;
     BASE64DNSQuery query;
+    int buffdim = 100;
+    char buffer[buffdim];
     query.query = NULL;
     query.length = -1;
     
@@ -179,9 +181,6 @@ int dnsLookUp(const char *fqdn)
     if(getQuery(fqdn,&query)){
         perror("failed to create query");
         goto error;
-    }else{
-        write(STDOUT_FILENO,query.query,query.length);
-        printf("\n");
     }
 
     //create socket
@@ -213,8 +212,16 @@ int dnsLookUp(const char *fqdn)
     send(sockfd,HTTP_QUERY_END,sizeof(HTTP_QUERY_END),0);
 
     //parse response
-
-
+    int readed;
+    initParser(qrsm);
+    while (qrsm->state != DOHQRSM_ERROR && qrsm->state != DOHQRSM_EXIT && (readed = read(sockfd,buffer,buffdim))!=0)
+    {
+        for (int i = 0; i < readed; i++)
+        {
+            dohParse(buffer[i],qrsm);
+        }
+        
+    }
     //free resources and exit
     close(sockfd);
     free(query.query);
