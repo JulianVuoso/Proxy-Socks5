@@ -12,7 +12,7 @@ void readUsers(){
     fprintf(stdout, "Opening **%s**\n", filename);   // ** will help checking for the presence of white spaces.
     file = fopen(filename, "r");
 
-    uint8_t * user = NULL, * pass = NULL, * token;
+    uint8_t * user, * pass, * token;
     char line[100];
     int i = 0, level;
     while(fgets(line, sizeof(line), file) != NULL)
@@ -22,9 +22,13 @@ void readUsers(){
         {
             switch (i)
             {
-                case 0: strcpy((char *)user, (char *)token); /* printf("User: %s\t", user);  */i++; 
+                case 0: user = malloc(sizeof(token));
+                        strcpy((char *)user, (char *)token); 
+                        i++; 
                         break;
-                case 1: strcpy((char *)pass, (char *)token); /* printf("Pass: %s\t", pass); */ i++; 
+                case 1: pass = malloc(sizeof(token));
+                        strcpy((char *)pass, (char *)token); 
+                        i++; 
                         break;
                 case 2: level = atoi((char *)token); 
                         addUser(user, pass, level);
@@ -44,7 +48,7 @@ void readUsers(){
 
 int initUsers(){
     ulist = (struct UserList *) malloc(sizeof(struct UserList));
-    if(ulist == NULL) return 0;
+    if(ulist == NULL) return 0;       /** TODO: como resolver error, same para todo el manejo de la lista */
     ulist->header = NULL; 
     ulist->tail = NULL;
     return 1;
