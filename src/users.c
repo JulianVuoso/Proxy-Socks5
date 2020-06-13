@@ -12,7 +12,7 @@ void readUsers(){
     fprintf(stdout, "Opening **%s**\n", filename);   // ** will help checking for the presence of white spaces.
     file = fopen(filename, "r");
 
-    uint8_t * user, * pass, * token;
+    uint8_t * user = NULL, * pass = NULL, * token;
     char line[100];
     int i = 0, level;
     while(fgets(line, sizeof(line), file) != NULL)
@@ -53,7 +53,6 @@ int initUsers(){
 int addUser(uint8_t * user, uint8_t * pwd, user_level lvl){
 
     struct UserNode * node = (struct UserNode *) malloc(sizeof(struct UserNode));
-
     node->user.username = malloc(sizeof(user));
     strcpy((char *)node->user.username, (char *)user);
     node->user.password = malloc(sizeof(pwd));

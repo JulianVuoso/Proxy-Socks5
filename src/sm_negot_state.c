@@ -59,7 +59,7 @@ void negot_write_init(const unsigned state, struct selector_key *key) {
 }
 
 unsigned negot_write(struct selector_key *key) {
-    struct socks5 * sock = ATTACHMENT(key);
+    //struct socks5 * sock = ATTACHMENT(key);
     /* if (key->fd != sock->client_fd) {
         abort();
     } */
