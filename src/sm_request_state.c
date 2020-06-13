@@ -104,7 +104,6 @@ static int set_origin_resolution(struct socks5 * sock, struct sockaddr * sock_ad
         return -1;
     }
     sock->origin_resolution->ai_family = family;
-    /** TODO: freeaddrinfo is not freeing this malloc, do it manually  */
     sock->origin_resolution->ai_addr = malloc(length);
     if (sock->origin_resolution->ai_addr == NULL) {
         return -1;
@@ -410,7 +409,11 @@ unsigned request_write(struct selector_key *key) {
 }
 
 void request_write_close(const unsigned state, struct selector_key *key) {
-    struct request_st * st = &ATTACHMENT(key)->client.request;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st = &sock->client.request;
+    if (st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
+        free(sock->origin_resolution->ai_addr);
+    }
     request_parser_close(&st->parser);
 }
 
