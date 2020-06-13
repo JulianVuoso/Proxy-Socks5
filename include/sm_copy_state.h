@@ -7,6 +7,7 @@
 // COPY
 typedef struct copy_st {
     buffer * cli_to_or_buf, * or_to_cli_buf;
+    uint8_t cli_to_or_eof, or_to_cli_eof;
 } copy_st;
 
 void copy_init(const unsigned state, struct selector_key *key);

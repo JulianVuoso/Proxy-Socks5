@@ -178,6 +178,14 @@ selector_get_interest(fd_selector s, int fd, fd_interest *i);
 selector_status
 selector_get_interest_key(struct selector_key *key, fd_interest *i);
 
+/** permite agregar un interes a un file descriptor */
+selector_status
+selector_add_interest(fd_selector s, int fd, fd_interest i);
+
+/** permite eliminar un interes de un file descriptor */
+selector_status
+selector_remove_interest(fd_selector s, int fd, fd_interest i);
+
 /**
  * se bloquea hasta que hay eventos disponible y los despacha.
  * Retorna luego de cada iteración, o al llegar al timeout.

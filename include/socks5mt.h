@@ -180,7 +180,7 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = REQUEST_SOLVE,
-        .on_arrival       = error_arrival,
+        .on_block_ready   = request_solve_block,
     },
     {
         .state            = REQUEST_CONNECT,
@@ -203,13 +203,14 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = ERROR,
+        .on_arrival       = error_arrival,
     },
 };
 
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
-#define INITIAL_BUF_SIZE 2048
+#define INITIAL_BUF_SIZE 4096
 
 /* Definicion de variables para cada estado */
 
