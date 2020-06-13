@@ -1,5 +1,5 @@
 /**
- * request.c -- parser del hello de SOCKS5
+ * hello.c -- parser del hello de SOCKS5
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,7 +27,7 @@ hello_parser_feed(struct hello_parser *p, const uint8_t b) {
             p->remaining = b;
             p->state     = hello_methods;
 
-            if(p->remaining <= 0) {
+            if(p->remaining == 0) {
                 p->state = hello_done;
             }
 
@@ -38,7 +38,7 @@ hello_parser_feed(struct hello_parser *p, const uint8_t b) {
                 p->on_authentication_method(p, b);
             }
             p->remaining--;
-            if(p->remaining <= 0) {
+            if(p->remaining == 0) {
                 p->state = hello_done;
             }
             break;
@@ -62,8 +62,12 @@ hello_is_done(const enum hello_state state, bool *errored) {
             if (0 != errored) {
                 *errored = true;
             }
-            /* no break */
+            ret = true;
+            break;
         case hello_done:
+            if (0 != errored) {
+                *errored = false;
+            }
             ret = true;
             break;
         default:
