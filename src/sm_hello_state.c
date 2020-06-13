@@ -5,7 +5,7 @@ static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t * selected = p->data;
     // TODO: Change to SOCKS_HELLO_AUTHENTICATION_REQUIRED
-    if (method == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED) {
+    if (method == SOCKS_HELLO_AUTHENTICATION_REQUIRED) {
         *selected = method;
     }
 }
@@ -79,7 +79,7 @@ unsigned hello_write(struct selector_key *key) {
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->method != SOCKS_HELLO_NO_ACCEPTABLE_METHODS) {
                 if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
-                    ret = NEGOT_READ; // TODO: Change to NEGOT_READ
+                    ret = NEGOT_READ; 
                 } else {
                     ret = ERROR;
                 }

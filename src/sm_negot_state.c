@@ -10,7 +10,7 @@ void negot_read_init(const unsigned state, struct selector_key *key) {
     struct negot_st * st = &ATTACHMENT(key)->client.negot;
     st->read_buf = &(ATTACHMENT(key)->read_buffer);
     st->write_buf = &(ATTACHMENT(key)->write_buffer);
-    st->reply_code = NEGOT_RESPONSE_SUCCESS;
+    st->reply_code = NEGOT_RESPONSE_ERROR;
     negot_parser_init(&st->parser);
 }
 
