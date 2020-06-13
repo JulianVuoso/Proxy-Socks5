@@ -5,15 +5,15 @@
 #define DOH_TYPE_STRING "TYPE"
 #define DOH_APPLICATION_DNS_MESSAGE "APPLICATION/DNS-MESSAGE"
 
-void statusLineParser(const char c, DOHQueryResSM *qrsm);
-void headerParser(const char c, DOHQueryResSM *qrsm);
-void bodyParser(const char c, DOHQueryResSM *qrsm);
+void dohStatusLineParser(const char c, DOHQueryResSM *qrsm);
+void dohHeaderParser(const char c, DOHQueryResSM *qrsm);
+void dohBodyParser(const char c, DOHQueryResSM *qrsm);
 
 void initParser(DOHQueryResSM *qrsm)
 {
     qrsm->state = DOHQRSM_START;
     qrsm->nstate = DOHQRSM_START;
-    qrsm->parser = statusLineParser;
+    qrsm->parser = dohStatusLineParser;
     qrsm->statusCode = 0;
     qrsm->contentLegth = 0;
     qrsm->res = 0;
@@ -23,7 +23,7 @@ void initParser(DOHQueryResSM *qrsm)
     return;
 }
 
-void statusLineParser(const char c, DOHQueryResSM *qrsm)
+void dohStatusLineParser(const char c, DOHQueryResSM *qrsm)
 {
     switch (qrsm->state)
     {
@@ -63,7 +63,7 @@ void statusLineParser(const char c, DOHQueryResSM *qrsm)
             else
             {
                 qrsm->state = DOHQRSM_START;
-                qrsm->parser = headerParser;
+                qrsm->parser = dohHeaderParser;
             }
         }
         break;
@@ -73,7 +73,7 @@ void statusLineParser(const char c, DOHQueryResSM *qrsm)
         break;
     }
 }
-void headerParser(const char c, DOHQueryResSM *qrsm)
+void dohHeaderParser(const char c, DOHQueryResSM *qrsm)
 {
     switch (qrsm->state)
     {
@@ -91,7 +91,7 @@ void headerParser(const char c, DOHQueryResSM *qrsm)
             }else{
                 qrsm->state = DOHQRSM_START;
                 qrsm->aux = 0;
-                qrsm->parser = bodyParser;
+                qrsm->parser = dohBodyParser;
             }
             
         }
@@ -244,7 +244,7 @@ void findNextRR(DOHQueryResSM *qrsm)
     }
 }
 
-void bodyParser(const char c, DOHQueryResSM *qrsm)
+void dohBodyParser(const char c, DOHQueryResSM *qrsm)
 {
     switch (qrsm->state)
     {
@@ -451,4 +451,14 @@ void dohParse(const char c, DOHQueryResSM *qrsm)
         return;
     }
     (*(qrsm->parser))(c, qrsm);
+}
+
+void freeDohParser(DOHQueryResSM *qrsm){
+    for (int i = 0; i < qrsm->rCount; i++)
+    {
+        if(qrsm->records[i].rddata != NULL){
+            free(qrsm->records[i].rddata);
+        }
+    }
+    free(qrsm->records);
 }

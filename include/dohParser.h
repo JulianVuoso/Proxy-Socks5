@@ -95,6 +95,6 @@ void statusLineParser(const char c, DOHQueryResSM *qrsm);
 void headerParser(const char c, DOHQueryResSM *qrsm);
 void bodyParser(const char c, DOHQueryResSM *qrsm);
 void dohParse(const char c, DOHQueryResSM *qrsm);
-
+void freeDohParser(DOHQueryResSM *qrsm);
 
 #endif
