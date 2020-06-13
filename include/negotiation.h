@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "buffer.h"
+#include "users.h"
 
 static const uint8_t NEGOT_RESPONSE_SUCCESS = 0x00;
 static const uint8_t NEGOT_RESPONSE_ERROR = 0x01;

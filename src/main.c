@@ -14,6 +14,7 @@
 
 #include "selector.h"
 #include "socks5.h"
+#include "users.h"
 
 static bool done = false;
 
@@ -45,7 +46,39 @@ main(const int argc, const char **argv) {
         return 1;
     }
 
-    // no tenemos nada que leer de stdin
+    /* FILE *file;
+    char * filename = "users.txt";
+
+    fprintf(stdout, "Opening **%s**\n", filename);   // ** will help checking for the presence of white spaces.
+
+    file = fopen(filename, "r");
+    const char * separator = ":";
+    char *token;
+    int i;
+    if(file != NULL)
+    {
+        char line[20];
+        while(fgets(line, sizeof(line), file) != NULL)
+        {
+            token = strtok(line, separator);
+            for(i=0;i<2;i++)
+            {
+                if(i==0)
+                {   
+                    printf("%s\t",token);
+                    token = strtok(NULL,separator);
+                } else {
+                    printf("%d\n",atoi(token));
+                }       
+            }
+        }
+        fclose(file);
+    } else {
+        perror("user.txt fail");
+    }    */
+
+    readUsers();
+
     close(0);
 
     const char       *err_msg = NULL;

@@ -1,7 +1,7 @@
 //#include <string.h>
 //#include <errno.h>
 #include <stdlib.h>
-
+#include <stdio.h>
 #include "socks5mt.h"
 #include "negotiation.h"
 // #include "socks5_handler.h"
@@ -10,7 +10,7 @@ void negot_read_init(const unsigned state, struct selector_key *key) {
     struct negot_st * st = &ATTACHMENT(key)->client.negot;
     st->read_buf = &(ATTACHMENT(key)->read_buffer);
     st->write_buf = &(ATTACHMENT(key)->write_buffer);
-    st->reply_code = NEGOT_RESPONSE_ERROR;
+    st->reply_code = NEGOT_RESPONSE_SUCCESS;
     negot_parser_init(&st->parser);
 }
 
@@ -45,11 +45,12 @@ void negot_read_close(const unsigned state, struct selector_key *key) {
 
 unsigned negot_process(struct selector_key *key) {
     struct negot_st * st_vars = &ATTACHMENT(key)->client.negot;
-
     // ver lista de usuarios y devolver el status
-
+    //unsigned ret = authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd);
+    //printf("Retorna %d", authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd));
+    st_vars->reply_code = authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd);
     if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
-        return ERROR;   // TODO: No deberia ser NEGOT_RESPONSE_ERROR?
+        return ERROR;   /** TODO: No deberia ser NEGOT_RESPONSE_ERROR? */
     return NEGOT_WRITE;
 }
 
