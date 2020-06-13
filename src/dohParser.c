@@ -231,6 +231,7 @@ void findNextRR(DOHQueryResSM *qrsm)
     else if (qrsm->header.ancount > 0)
     {
         qrsm->state = DOHQRSM_DNS_ANSWER;
+        qrsm->aux = 0;
     }
     // commented because they are not needed
     // else if(qrsm->header.nscount>0){
@@ -311,7 +312,14 @@ void dohBodyParser(const char c, DOHQueryResSM *qrsm)
         }
         break;
     case DOHQRSM_DNS_ANSWER:
-        if (c == 0)
+        //contemplate compression
+        qrsm->aux++;
+        if(qrsm->aux == 1 && (c&0xC0)==0xC0){
+            qrsm->skip = 1;
+            qrsm->nstate = DOHQRSM_DNSTYPE;
+            qrsm->state = DOHQRSM_SKIP_N;
+            qrsm->aux = 0;
+        }else if (c == 0)
         {
             qrsm->state = DOHQRSM_DNSTYPE;
             qrsm->aux = 0;
@@ -400,13 +408,19 @@ void dohBodyParser(const char c, DOHQueryResSM *qrsm)
             else
             {
                 qrsm->state = DOHQRSM_DNS_ANSWER;
+                qrsm->aux = 0;
             }
             qrsm->aux = 0;
         }
         break;
     case DOHQRSM_RDDATA:
-        if (qrsm->aux2 <= 0)
+        if(qrsm->aux2 < 1){
+            qrsm->header.ancount--;
+            findNextRR(qrsm);
+        }if (qrsm->aux2 <= 1)
         {
+            //add to last record the next c
+            qrsm->records[qrsm->rCount - 1].rddata[qrsm->records[qrsm->rCount - 1].rdlength - qrsm->aux2] = c;
             qrsm->header.ancount--;
             findNextRR(qrsm);
         }
@@ -428,12 +442,14 @@ void dohBodyParser(const char c, DOHQueryResSM *qrsm)
     case DOHQRSM_SKIP_RDLENGTH:
         if(qrsm->aux==0){
             qrsm->aux2 = c;
+            qrsm->aux++;
         }else{
             qrsm->aux2 = (qrsm->aux2<<8) + c;
             qrsm->skip = qrsm->aux2;
             findNextRR(qrsm);
             qrsm->nstate = qrsm->state; 
             qrsm->state = DOHQRSM_SKIP_N;
+            qrsm->header.ancount--;
         }
         break;
     // error state
