@@ -16,11 +16,15 @@
 #include "selector.h"
 #include "socks5.h"
 #include "users.h"
+#include "logger.h"
 
 #define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
 
 #define USERS_FILENAME      "users.txt"
+
+#define LOGGER_FD       1
+#define LOGGER_LEVEL    DEBUG
 
 enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
 
@@ -108,6 +112,10 @@ main(const int argc, const char **argv) {
         err_msg = "unable to create selector";
         goto finally;
     }
+
+    /* Initialize logger */
+    logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+
     const struct fd_handler socks5 = {
         .handle_read       = socks5_passive_accept,
         .handle_write      = NULL,
