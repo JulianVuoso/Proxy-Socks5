@@ -212,14 +212,6 @@ static const struct state_definition client_statbl[] = {
 
 #define INITIAL_BUF_SIZE 4096
 
-/* Definicion de variables para cada estado */
-
-// NEGOT_READ y NEGOT_WRITE
-/* typedef struct negot_st {
-    buffer * read_buf, * write_buf;
-    struct negot_parser parser;
-} negot_st; */
-
 struct socks5 {
     /** maquinas de estados */
     struct state_machine          stm;
@@ -236,6 +228,9 @@ struct socks5 {
     struct sockaddr_storage client_addr;
     socklen_t client_addr_len;
     int client_fd;
+
+    uint8_t * username;
+    uint8_t username_length;
 
     /* Resolucion de la direc del origin server */
     struct sockaddr_storage origin_addr;

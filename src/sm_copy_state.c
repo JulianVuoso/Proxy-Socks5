@@ -7,11 +7,13 @@
 #include "logger.h"
 
 void copy_init(const unsigned state, struct selector_key *key) {
-    struct copy_st * st = &ATTACHMENT(key)->client.copy;
-    st->cli_to_or_buf = &(ATTACHMENT(key)->read_buffer);
-    st->or_to_cli_buf = &(ATTACHMENT(key)->write_buffer);
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    st->cli_to_or_buf = &(sock->read_buffer);
+    st->or_to_cli_buf = &(sock->write_buffer);
     st->cli_to_or_eof = 0;
     st->or_to_cli_eof = 0;
+    logger_log(DEBUG, "User: %s", sock->username);
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
