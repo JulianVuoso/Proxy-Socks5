@@ -1,3 +1,7 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,7 +23,11 @@ void read_users_file(char * filename){
     init_users_list();
 
     fprintf(stdout, "Opening **%s**\n", filename);   // ** will help checking for the presence of white spaces.
-    FILE *file = fopen(filename, "r");
+    int fd = open(filename, O_NONBLOCK);
+    if (fd < 0) {
+        return;
+    }
+    FILE *file = fdopen(fd, "r");
 
     uint8_t * user, * pass, * token;
     char line[MAX_LINE_LENGTH];
