@@ -62,6 +62,8 @@ typedef enum ettercap_state {
 } ettercap_state;
 
 typedef enum ettercap_errors {
+    ettercap_error_none,
+    ettercap_error_heap_full,
     ettercap_error_http_invalid,
     ettercap_error_pop3_, // TODO finish 
 } ettercap_errors;
@@ -93,9 +95,9 @@ typedef struct ettercap_parser {
 
 
 
-/** Initialize parser */
+/** Initialize parser, sends corresponding port number */
 void 
-ettercap_parser_init(ettercap_parser * p);
+ettercap_parser_init(ettercap_parser * p, uint64_t port);
 
 
 /**
