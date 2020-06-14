@@ -20,6 +20,8 @@
 #define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
 
+#define USERS_FILENAME      "users.txt"
+
 enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
 
 static unsigned create_socket_ipv4(uint32_t address, unsigned port, int * server_fd);
@@ -56,7 +58,7 @@ main(const int argc, const char **argv) {
         return 1;
     }
 
-    readUsers();
+    read_users_file(USERS_FILENAME);
 
     close(0);
 
@@ -158,6 +160,9 @@ finally:
     if(server_ipv6 >= 0) {
         close(server_ipv6);
     }
+
+    free_users_list();
+    
     return ret;
 }
 
