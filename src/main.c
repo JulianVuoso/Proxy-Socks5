@@ -114,15 +114,17 @@ main(const int argc, const char **argv) {
     }
 
     /* Initialize logger */
-    logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
 
     const struct fd_handler socks5 = {
         .handle_read       = socks5_passive_accept,
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server_ipv4, &socks5,
+    if (ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, server_ipv4, &socks5,
                                               OP_READ, NULL);
+    }
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv6, &socks5,
                                               OP_READ, NULL);
