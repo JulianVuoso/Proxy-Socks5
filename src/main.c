@@ -31,6 +31,7 @@ enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, er
 static unsigned create_socket_ipv4(uint32_t address, unsigned port, int * server_fd);
 static unsigned create_socket_ipv6(const char * address, unsigned port, int * server_fd);
 static const char * socket_error_description(enum socket_errors error);
+static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
 
@@ -62,14 +63,19 @@ main(const int argc, const char **argv) {
         return 1;
     }
 
-    read_users_file(USERS_FILENAME);
+    const char * err_msg = NULL;
+
+    enum file_errors file_state = read_users_file(USERS_FILENAME);
+    if(file_state != file_no_error){
+        err_msg = file_error_description(file_state);
+        goto finally;
+    }
 
     close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    const char * err_msg = NULL;
     int server_ipv4, server_ipv6;
     
     enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, port, &server_ipv4);
@@ -244,6 +250,29 @@ static const char * socket_error_description(enum socket_errors error) {
             break;
         case error_socket_listen:
             ret = "unable to listen socket";
+            break;
+        default:
+            ret = "";
+            break;
+    }
+    return ret;
+}
+
+static const char * file_error_description(enum file_errors error) {
+    char * ret;
+    switch (error)
+    {
+        case opening_file:
+            ret = "unable to open file";
+            break;
+        case reading_file:
+            ret = "unable to read file";
+            break;
+        case closing_file:
+            ret = "unable to close file";
+            break;
+        case memory_heap:
+            ret = "not enough memory heap";
             break;
         default:
             ret = "";
