@@ -146,5 +146,9 @@ buffer_can_read(buffer *b);
 bool
 buffer_can_write(buffer *b);
 
+/** lee un caracter del buffer sin adelantar el puntero */
+uint8_t
+buffer_read_not_adv(buffer *b);
+
 
 #endif

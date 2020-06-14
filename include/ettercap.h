@@ -63,27 +63,96 @@ typedef enum ettercap_state {
 
 typedef enum ettercap_errors {
     ettercap_error_http_invalid,
-    ettercap_error_pop3_
+    ettercap_error_pop3_, // TODO finish 
 } ettercap_errors;
 
+/** Usrename model */ // TODO might not be needed 
 typedef struct ettercap_username {
     uint8_t ulen;
     uint8_t * uname;
     uint8_t index;
 } ettercap_username;
 
+/** Password model */ // TODO might not be needed 
 typedef struct ettercap_password {
     uint8_t plen;
     uint8_t * passwd;
     uint8_t index;
 } ettercap_password;
 
+/** Parser data struct */
 typedef struct ettercap_parser {
+    /** Current parser state */
     ettercap_state state;
+    /** Parser errors */
     ettercap_errors error;
+    /** Stolen credentials */
     ettercap_username * username;
     ettercap_password * password;
 } ettercap_parser;
 
+
+
+/** Initialize parser */
+void 
+ettercap_parser_init(ettercap_parser * p);
+
+
+/**
+ * Consumes one byte on the actual parser. Client side parser.
+ */
+ettercap_state 
+ettercap_parser_client_feed(ettercap_parser * p, uint8_t b);
+
+
+/**
+ * Consumes one byte on the actual parser. Server side parser.
+ */
+ettercap_state 
+ettercap_parser_server_feed(ettercap_parser * p, uint8_t b);
+
+
+/**
+ * For each element of buffer calls 'ettercap_parser_client_feed' until
+ * parsing is done or more bytes are required.
+ * 
+ * @param errored out param. If different from NULL then the parser must
+ * have an error.
+ */
+ettercap_state 
+ettercap_consume_client(buffer * b, ettercap_parser * p, bool * errored);
+
+
+/**
+ * For each element of buffer calls 'ettercap_parser_server_feed' until
+ * parsing is done or more bytes are required.
+ * 
+ * @param errored out param. If different from NULL then the parser must
+ * have an error.
+ */
+ettercap_state
+ettercap_consume_server(buffer * b, ettercap_parser * p, bool * errored);
+
+
+/**
+ * Allows to get a full representation of the error reached (if reached).
+ */
+const char *
+ettercap_error_desc(const ettercap_parser * p);
+
+
+/**
+ * Checks if the parser is finished processing information.
+ * In the event of an error, it is returned on @param errored.
+ */
+bool
+ettercap_is_done(const ettercap_state state, bool * errored);
+
+
+/**
+ * Frees all the resources used by the parser.
+ */
+void
+ettercap_parser_close(ettercap_parser * p);
 
 #endif

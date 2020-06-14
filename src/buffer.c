@@ -101,3 +101,10 @@ buffer_compact(buffer *b) {
         b->write = b->data + n;
     }
 }
+
+uint8_t
+buffer_read_not_adv(buffer *b) {
+    if (buffer_can_read(b))
+        return  *b->read;
+    return 0;    
+}
