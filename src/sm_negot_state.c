@@ -85,12 +85,14 @@ unsigned negot_write(struct selector_key *key) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->reply_code == NEGOT_RESPONSE_SUCCESS) {
+                logger_log(DEBUG, "Negot OK\n");
                 if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
                     ret = REQUEST_READ;
                 } else {
                     ret = ERROR;
                 }
             } else {
+                logger_log(DEBUG, "Negot failed\n");
                 ret = ERROR;
             }
         }

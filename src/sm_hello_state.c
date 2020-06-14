@@ -1,5 +1,6 @@
 #include "socks5mt.h"
 #include "hello.h"
+#include "logger.h"
 
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
@@ -75,12 +76,14 @@ unsigned hello_write(struct selector_key *key) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->method != SOCKS_HELLO_NO_ACCEPTABLE_METHODS) {
+                logger_log(DEBUG, "Hello OK\n");
                 if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
                     ret = NEGOT_READ; 
                 } else {
                     ret = ERROR;
                 }
             } else {
+                logger_log(DEBUG, "Hello Failed\n");
                 ret = ERROR;
             }
         }
