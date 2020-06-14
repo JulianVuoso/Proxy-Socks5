@@ -22,16 +22,10 @@ struct UserList{
     struct UserNode * tail;
 };
 
-struct UserList * ulist;
-
-int initUsers();
-
-void readUsers();
-
-int addUser(uint8_t * user, uint8_t * pwd, user_level lvl);
-
-void printUsers();
+void read_users_file();
 
 uint8_t authenticate(uint8_t* user, uint8_t * pwd);
+
+void free_users_list();
 
 #endif

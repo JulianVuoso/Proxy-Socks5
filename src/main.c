@@ -16,9 +16,15 @@
 #include "selector.h"
 #include "socks5.h"
 #include "users.h"
+#include "logger.h"
 
 #define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
+
+#define USERS_FILENAME      "users.txt"
+
+#define LOGGER_FD       1
+#define LOGGER_LEVEL    DEBUG
 
 enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
 
@@ -56,7 +62,7 @@ main(const int argc, const char **argv) {
         return 1;
     }
 
-    readUsers();
+    read_users_file(USERS_FILENAME);
 
     close(0);
 
@@ -106,13 +112,19 @@ main(const int argc, const char **argv) {
         err_msg = "unable to create selector";
         goto finally;
     }
+
+    /* Initialize logger */
+    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+
     const struct fd_handler socks5 = {
         .handle_read       = socks5_passive_accept,
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server_ipv4, &socks5,
+    if (ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, server_ipv4, &socks5,
                                               OP_READ, NULL);
+    }
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv6, &socks5,
                                               OP_READ, NULL);
@@ -158,6 +170,9 @@ finally:
     if(server_ipv6 >= 0) {
         close(server_ipv6);
     }
+
+    free_users_list();
+    
     return ret;
 }
 

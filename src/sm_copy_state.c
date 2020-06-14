@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include "logger.h"
 
 void copy_init(const unsigned state, struct selector_key *key) {
     struct copy_st * st = &ATTACHMENT(key)->client.copy;
@@ -18,14 +19,14 @@ static unsigned try_jump_done(struct selector_key * key) {
     unsigned ret = DONE;
 
     if (selector_set_interest(key->s, sock->client_fd, OP_NOOP) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         ret = ERROR;
     }
     if (selector_set_interest(key->s, sock->origin_fd, OP_NOOP) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         ret = ERROR;
     }
-    puts("\nRequest resuelto correctamente");
+    logger_log(DEBUG, "\nRequest resuelto correctamente");
     return ret;
 }
 
@@ -62,13 +63,13 @@ unsigned copy_read(struct selector_key * key) {
         if (!buffer_can_write(buff)) {
             /* Si tenia prendido OP_READ del fd actual, lo apago porque se lleno */
             if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
-                puts("failed selector\n");
+                logger_log(DEBUG, "failed selector\n");
                 ret = ERROR;
             }
         }
         /* Si tenia apagado OP_WRITE del otro fd, lo prendo */
         if (selector_add_interest(key->s, other_fd, OP_WRITE) != SELECTOR_SUCCESS) {
-            puts("failed selector\n");
+            logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
     } else if (n == 0) {
@@ -78,7 +79,7 @@ unsigned copy_read(struct selector_key * key) {
         }
         /* Me desuscribo de lectura del fd actual */
         if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
-            puts("failed selector\n");
+            logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
         (*cur_eof) += 1;
@@ -86,14 +87,12 @@ unsigned copy_read(struct selector_key * key) {
         if (!buffer_can_read(buff)) {
             (*other_eof) += 1;
             if (shutdown(other_fd, SHUT_WR) < 0) {
-                puts("failed shutdown in read\n");
-                printf("\n\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
+                logger_log(DEBUG, "failed shutdown in read\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
                 ret = ERROR;
             }
         }
     } else {
-        puts("recv error\n");
-        printf("\n\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
+        logger_log(DEBUG, "failed recv\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
         ret = ERROR;
     }
 
@@ -137,26 +136,25 @@ unsigned copy_write(struct selector_key * key) {
         if (!buffer_can_read(buff)) {
             /* Si tenia prendido OP_WRITE del fd actual, lo apago porque se lleno */
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) != SELECTOR_SUCCESS) {
-                puts("failed selector\n");
+                logger_log(DEBUG, "failed selector\n");
                 ret = ERROR;
             }
             /** TODO: CHECK SI ESTO VA BIEN  */
             if (*cur_eof) {
                 (*other_eof) += 1;
                 if (shutdown(key->fd, SHUT_WR) < 0) {
-                    puts("failed shutdown in write\n");
-                    printf("\n\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
+                    logger_log(DEBUG, "failed shutdown in write\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
                     ret = ERROR;
                 }
             }
         }
         /* Si no me cerraron conexion y tenia apagado OP_READ del otro fd, lo prendo */
         if (!(*cur_eof) && selector_add_interest(key->s, other_fd, OP_READ) != SELECTOR_SUCCESS) {
-            puts("failed selector\n");
+            logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
     } else {
-        puts("failed send\n");
+        logger_log(DEBUG, "failed send\n");
         ret = ERROR;
     }
 

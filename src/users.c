@@ -1,19 +1,36 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "users.h"
 
-void readUsers(){
+#define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
 
-    initUsers();
+/** TODO: PROBLEMA --> fopen, fgets, fclose --> BLOQUEANTES  */
+/** TODO: AGREGAR VALIDACION DE ERRORES */
 
-    FILE *file;
-    char * filename = "users.txt";
+static int init_users_list();
+static int add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl);
+static void print_users();
+
+static struct UserList * ulist;
+
+void read_users_file(char * filename){
+
+    init_users_list();
+
     fprintf(stdout, "Opening **%s**\n", filename);   // ** will help checking for the presence of white spaces.
-    file = fopen(filename, "r");
+    int fd = open(filename, O_NONBLOCK);
+    if (fd < 0) {
+        return;
+    }
+    FILE *file = fdopen(fd, "r");
 
     uint8_t * user, * pass, * token;
-    char line[100];
+    char line[MAX_LINE_LENGTH];
     int i = 0, level;
     while(fgets(line, sizeof(line), file) != NULL)
     {
@@ -31,7 +48,7 @@ void readUsers(){
                         i++; 
                         break;
                 case 2: level = atoi((char *)token); 
-                        addUser(user, pass, level);
+                        add_user_to_list(user, pass, level);
                         i = 0; 
                         break;
                 default: break;
@@ -40,13 +57,13 @@ void readUsers(){
         }
     }
 
-    printUsers();
+    print_users();
 
     fclose(file);
     return;
 }
 
-int initUsers(){
+static int init_users_list(){
     ulist = (struct UserList *) malloc(sizeof(struct UserList));
     if(ulist == NULL) return 0;       /** TODO: como resolver error, same para todo el manejo de la lista */
     ulist->header = NULL; 
@@ -54,13 +71,11 @@ int initUsers(){
     return 1;
 }
 
-int addUser(uint8_t * user, uint8_t * pwd, user_level lvl){
+static int add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl){
 
     struct UserNode * node = (struct UserNode *) malloc(sizeof(struct UserNode));
-    node->user.username = malloc(sizeof(user));
-    strcpy((char *)node->user.username, (char *)user);
-    node->user.password = malloc(sizeof(pwd));
-    strcpy((char *)node->user.password, (char *)pwd);    
+    node->user.username = user;
+    node->user.password = pwd;
     node->user.level = lvl;
     node->next = NULL;
 
@@ -75,12 +90,28 @@ int addUser(uint8_t * user, uint8_t * pwd, user_level lvl){
     return 1;
 }
 
-void printUsers(){
+static void print_users(){
     struct UserNode * node = ulist->header;
     while(node != NULL){
         printf("User: %s\t Pass: %s\t Level: %d\n", node->user.username, node->user.password, node->user.level);
         node = node->next;
     }
+}
+
+void free_users_list() {
+    if (ulist == NULL) {
+        return;
+    }
+    struct UserNode * node = ulist->header;
+    struct UserNode * aux;
+    while (node != NULL) {
+        aux = node;
+        node = node->next;
+        free(aux->user.username);
+        free(aux->user.password);
+        free(aux);
+    }
+    free(ulist);
 }
 
 uint8_t authenticate(uint8_t * user, uint8_t * pwd){

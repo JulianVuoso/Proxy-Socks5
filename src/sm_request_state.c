@@ -6,6 +6,8 @@
 #include <netdb.h>      // getaddrinfo
 #include <stdio.h>
 
+#include "logger.h"
+
 #include "socks5mt.h"
 #include "request.h"
 #include "socks5_handler.h"
@@ -133,11 +135,11 @@ unsigned request_process(struct selector_key * key) {
             }
             memcpy(key_param, key, sizeof(*key_param));
             if (pthread_create(&thread_pid, 0, request_solve_blocking, key_param) != 0) {
-                puts("failed thread creation\n");
+                logger_log(DEBUG, "failed thread creation\n");
                 goto error;
             }
             if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
-                puts("failed selecto\n");
+                logger_log(DEBUG, "failed selector\n");
                 goto error;
             }
             return REQUEST_SOLVE;
@@ -147,7 +149,7 @@ unsigned request_process(struct selector_key * key) {
             // memcpy(&(sock->origin_addr), &origin_addr, sizeof(origin_addr));
             // sock->origin_addr_len = sizeof(sock->origin_addr); // Si no funca, poner de origin_addr
             if (set_origin_resolution(sock, (struct sockaddr *) &origin_addr, AF_INET, sizeof(origin_addr)) < 0) {
-                puts("failed malloc\n");
+                logger_log(DEBUG, "failed malloc\n");
                 goto error;
             }
             break;
@@ -158,7 +160,7 @@ unsigned request_process(struct selector_key * key) {
             // sock->origin_addr_len = sizeof(sock->origin_addr); // Si no funca, poner de origin_addr6
             
             if (set_origin_resolution(sock, (struct sockaddr *) &origin_addr6, AF_INET6, sizeof(origin_addr6)) < 0) {
-                puts("failed malloc\n");
+                logger_log(DEBUG, "failed malloc\n");
                 goto error;
             }
             break;
@@ -180,7 +182,7 @@ error:
 unsigned request_solve_block(struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     if (sock->origin_resolution == NULL) {
-        puts("failed getaddrinfo\n");
+        logger_log(DEBUG, "failed getaddrinfo\n");
         return ERROR;
     }
     sock->client.request.current = sock->origin_resolution;
@@ -213,12 +215,12 @@ static unsigned try_jump_request_write(struct selector_key *key) {
         }
     } */
     if (selector_set_interest(key->s, sock->client_fd, OP_WRITE) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         return ERROR;
     }
     if (request_marshall(st_vars->write_buf, st_vars->reply_code, 
             (sock->origin_domain == AF_INET) ? address_ipv4 : address_ipv6) < 0) {
-        puts("failed request_marshall\n");
+        logger_log(DEBUG, "failed request_marshall\n");
         return ERROR;
     }
     return REQUEST_WRITE;
@@ -230,33 +232,33 @@ static enum connect_result
 try_connect(struct selector_key * key, struct addrinfo * node) {
     struct socks5 * sock = ATTACHMENT(key);
     if((sock->origin_fd = socket(node->ai_family, node->ai_socktype, node->ai_protocol)) < 0) {
-        puts("failed socket creation\n");
+        logger_log(DEBUG, "failed socket creation\n");
         goto errors;
     }
     /* Agrego referencia en el sock, se agrega un fd */
     sock->references += 1;
     if (selector_fd_set_nio(sock->origin_fd) < 0) {
-        puts("failed selector set nio\n");
+        logger_log(DEBUG, "failed selector_set_nio\n");
         goto errors;
     }
     /* Connecting to origin_server */
     if (connect(sock->origin_fd, node->ai_addr, node->ai_addrlen) < 0) {
         if (errno == EINPROGRESS) {
-            puts("EINPROGRESS\n");
+            logger_log(DEBUG, "EINPROGRESS\n");
             /* Espero a poder escribirle al origin_server para determinar si me pude conectar */
             if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_WRITE, key->data) != SELECTOR_SUCCESS) {
-                puts("failed selector\n");
+                logger_log(DEBUG, "failed selector\n");
                 goto errors;
             }
             return CON_INPROG;
         } else {
-            printf("\n\nError. errno message: %s\n\n", strerror(errno));
+            logger_log(DEBUG, "\n\nError. errno message: %s\n\n", strerror(errno));
             goto errors;
         }
     }
     /* Si me conecte, por ahora no necesito esperar nada de origin, voy a escribirle a client */
     if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_NOOP, key->data) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         goto errors;
     }
     return CON_OK;
@@ -276,7 +278,7 @@ unsigned request_connect(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct addrinfo * node = sock->client.request.current;
     if (node == NULL) {
-        puts("Empty current node\n");
+        logger_log(DEBUG, "empty current node\n");
         return ERROR;
     }
     enum connect_result res;
@@ -295,7 +297,7 @@ unsigned request_connect(struct selector_key * key) {
             return try_jump_request_write(key);
         case CON_ERROR:
             /* Could not connect to any ip address */
-            puts("could not connect to any ip\n");
+            logger_log(DEBUG, "could not connect to any ip address\n");
             return ERROR;
         default:
             /* Invalid result */
@@ -340,7 +342,7 @@ unsigned request_connect(struct selector_key * key) {
 // }
 
 unsigned request_connect_write(struct selector_key *key) {
-    puts("Gonna get SOL_SOCKET option");
+    logger_log(DEBUG, "Gonna get SOL_SOCKET option\n");
     struct socks5 * sock = ATTACHMENT(key);
     /* Reviso que haya sido por origin_fd, no deberia ser por otra cosa */
     if (key->fd != sock->origin_fd) {
@@ -348,15 +350,14 @@ unsigned request_connect_write(struct selector_key *key) {
     }
     /* Si me conecte o no, por ahora no necesito esperar nada de origin, voy a escribirle a client */
     if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         return ERROR;
     }
     unsigned optval = 1, optlen = sizeof(optval);
     if (getsockopt(sock->origin_fd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0
             || optval != 0) {
         /* Avanzo al siguiente nodo e intento conectarme */
-        puts("this one failed, go to next\n");
-        printf("Optval: %d\n", optval);
+        logger_log(DEBUG, "this one failed, go to next. Optval: %d\n", optval);
         sock->client.request.current = sock->client.request.current->ai_next;
         return request_connect(key);
     }
@@ -393,11 +394,11 @@ unsigned request_write(struct selector_key *key) {
                         selector_set_interest(key->s, sock->origin_fd, OP_READ) == SELECTOR_SUCCESS) {
                     ret = COPY;
                 } else {
-                    puts("failed selector\n");
+                    logger_log(DEBUG, "failed selector\n");
                     ret = ERROR;
                 }
             } else {
-                puts("reply code unsuccessfull\n");
+                logger_log(DEBUG, "reply code unsuccessfull\n");
                 ret = ERROR;
             }
         }
