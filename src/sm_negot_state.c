@@ -1,10 +1,12 @@
-//#include <string.h>
+#include <string.h>
 //#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "socks5mt.h"
 #include "negotiation.h"
 // #include "socks5_handler.h"
+
+#include "logger.h"
 
 void negot_read_init(const unsigned state, struct selector_key *key) {
     struct negot_st * st = &ATTACHMENT(key)->client.negot;
@@ -44,13 +46,20 @@ void negot_read_close(const unsigned state, struct selector_key *key) {
 }
 
 unsigned negot_process(struct selector_key *key) {
-    struct negot_st * st_vars = &ATTACHMENT(key)->client.negot;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct negot_st * st_vars = &sock->client.negot;
     // ver lista de usuarios y devolver el status
     //unsigned ret = authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd);
     //printf("Retorna %d", authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd));
     st_vars->reply_code = authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd);
     if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
         return ERROR;   /** TODO: No deberia ser NEGOT_RESPONSE_ERROR? */
+    
+    sock->username = calloc(st_vars->parser.username->ulen + 1, sizeof(*sock->username));
+    if (sock->username == NULL)
+        return ERROR;
+    memcpy(sock->username, st_vars->parser.username->uname, st_vars->parser.username->ulen);
+    sock->username_length = st_vars->parser.username->ulen;
     return NEGOT_WRITE;
 }
 
