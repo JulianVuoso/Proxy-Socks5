@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "logger.h"
+#include "sm_before_error_state.h"
 
 #include "socks5mt.h"
 #include "request.h"
@@ -44,10 +45,12 @@ unsigned request_read(struct selector_key *key) {
             } else if (selector_set_interest_key(key, OP_NOOP) == SELECTOR_SUCCESS) {
                 ret = request_process(key);
             } else {
+                do_before_error(key);
                 ret = ERROR;
             }
         }
     } else {
+        do_before_error(key);
         ret = ERROR;
     }
 
@@ -214,11 +217,13 @@ static unsigned try_jump_request_write(struct selector_key *key) {
     struct request_st * st_vars = &ATTACHMENT(key)->client.request;
     if (selector_set_interest(key->s, sock->client_fd, OP_WRITE) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
+        do_before_error(key);
         return ERROR;
     }
     if (request_marshall(st_vars->write_buf, st_vars->reply_code, 
             (sock->origin_domain == AF_INET) ? address_ipv4 : address_ipv6) < 0) {
         logger_log(DEBUG, "failed request_marshall\n");
+        do_before_error(key);
         return ERROR;
     }
     return REQUEST_WRITE;
@@ -283,6 +288,7 @@ unsigned request_connect(struct selector_key * key) {
     struct addrinfo * node = sock->client.request.current;
     if (node == NULL) {
         logger_log(DEBUG, "empty current node\n");
+        do_before_error(key);
         return ERROR;
     }
     enum connect_result res;
@@ -322,6 +328,7 @@ unsigned request_connect_write(struct selector_key *key) {
     /* Si me conecte o no, por ahora no necesito esperar nada de origin, voy a escribirle a client */
     if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
+        do_before_error(key);
         return ERROR;
     }
     unsigned optval = 1, optlen = sizeof(optval);
@@ -366,21 +373,24 @@ unsigned request_write(struct selector_key *key) {
                     ret = COPY;
                 } else {
                     logger_log(DEBUG, "failed selector\n");
+                    do_before_error(key);
                     ret = ERROR;
                 }
             } else {
                 logger_log(DEBUG, "%s\n", request_reply_code_description(sock->client.request.reply_code));
+                do_before_error(key);
                 ret = ERROR;
             }
         }
     } else {
+        do_before_error(key);
         ret = ERROR;
     }
 
     return ret;
 }
 
-void request_write_close(const unsigned state, struct selector_key *key) {
+void request_close(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st = &sock->client.request;
     if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
