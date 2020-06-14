@@ -78,6 +78,8 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 if(p->username->ulen < 1 ){
                     p->state = negot_plen;
                     p->username->uname[p->username->index]='\0';
+                    p->username->ulen = p->username->index;
+                    p->username->index = 0;
                 }
             break;
         case negot_plen:
@@ -106,6 +108,8 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 if(p->password->plen == 0){
                     p->state = negot_done;
                     p->password->passwd[p->password->index]='\0';
+                    p->password->plen = p->password->index;
+                    p->password->index = 0;
                 }
             break;
         case negot_done:
