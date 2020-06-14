@@ -37,7 +37,7 @@ enum socks5_state {
      *
      * Transiciones:
      *   - HELLO_WRITE  mientras queden bytes por enviar
-     *   - REQUEST_READ cuando se enviaron todos los bytes
+     *   - NEGOT_READ   cuando se enviaron todos los bytes
      *   - ERROR        ante cualquier error (IO/parseo)
      */
     HELLO_WRITE,

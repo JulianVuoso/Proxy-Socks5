@@ -31,7 +31,7 @@ unsigned hello_read(struct selector_key *key) {
     if (n > 0) {
         buffer_write_adv(st_vars->read_buf, n);
         const enum hello_state st = hello_consume(st_vars->read_buf, &st_vars->parser, &errored);
-        if (hello_is_done(st, 0)) { // TODO: check if errored va en la condicion
+        if (hello_is_done(st, 0)) {
             if (selector_set_interest_key(key, OP_WRITE) == SELECTOR_SUCCESS) {
                 ret = hello_process(st_vars);
             } else {
@@ -42,7 +42,8 @@ unsigned hello_read(struct selector_key *key) {
         ret = ERROR;
     }
 
-    return errored ? ERROR : ret;
+    // return errored ? ERROR : ret;
+    return ret;
 }
 
 void hello_read_close(const unsigned state, struct selector_key *key) {
@@ -56,10 +57,6 @@ unsigned hello_process(const struct hello_st * st_vars) {
     if (hello_marshall(st_vars->write_buf, method) < 0) {
         ret = ERROR;
     }
-    // Esto que sigue no va en HELLO_WRITE??
-    /* if (method == SOCKS_HELLO_NO_ACCEPTABLE_METHODS) {
-        ret = ERROR;
-    } */
     return ret;
 }
 
