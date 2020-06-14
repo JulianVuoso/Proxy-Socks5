@@ -7,7 +7,7 @@
 
 enum logger_level { DEBUG = 0, PROD};
 
-void logger_init(int logger_fd, enum logger_level level, fd_selector s);
+selector_status logger_init(int logger_fd, enum logger_level level, fd_selector s);
 
 void logger_log(enum logger_level level, char * format, ...);
 

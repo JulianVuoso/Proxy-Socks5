@@ -27,7 +27,7 @@ static const fd_handler logger_handler = {
     .handle_close = NULL,
 };
 
-void logger_init(int logger_fd, enum logger_level level, fd_selector selector) {
+selector_status logger_init(int logger_fd, enum logger_level level, fd_selector selector) {
     log.level = level;
     log.logger_fd = logger_fd;
 
