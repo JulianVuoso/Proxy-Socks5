@@ -6,6 +6,8 @@
 
 typedef enum user_level {CLIENT, ADMIN} user_level;
 
+enum file_errors { file_no_error, opening_file, reading_file, closing_file, memory_heap};
+
 struct User{
     uint8_t * username;
     uint8_t * password;
@@ -22,7 +24,7 @@ struct UserList{
     struct UserNode * tail;
 };
 
-void read_users_file();
+enum file_errors read_users_file();
 
 uint8_t authenticate(uint8_t* user, uint8_t * pwd);
 
