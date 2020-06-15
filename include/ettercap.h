@@ -48,15 +48,20 @@
  *          
  */
 
-typedef enum ettercap_state {
-    ettercap_init,
+typedef enum ettercap_state {   
     ettercap_http_get,
+    ettercap_http_path,
     ettercap_http_vers,
     ettercap_http_headers,
-    ettercap_http_auth,
-    ettercap_pop3_server_ok,
+    ettercap_http_wait_end,
+    ettercap_http_basic,
+    ettercap_http_user,
+    ettercap_http_pass,
+
+    ettercap_pop3_command,
     ettercap_pop3_user,
     ettercap_pop3_pass,
+
     ettercap_done,
     ettercap_error,
 } ettercap_state;
@@ -64,23 +69,20 @@ typedef enum ettercap_state {
 typedef enum ettercap_errors {
     ettercap_error_none,
     ettercap_error_heap_full,
+
     ettercap_error_http_invalid,
+    ettercap_error_http_no_get,
+    ettercap_error_http_no_auth,
+    ettercap_error_http_bad_auth,
+
     ettercap_error_pop3_, // TODO finish 
 } ettercap_errors;
 
-/** Usrename model */ // TODO might not be needed 
-typedef struct ettercap_username {
-    uint8_t ulen;
-    uint8_t * uname;
+typedef struct ettercap_word {
+    uint8_t * value;
     uint8_t index;
-} ettercap_username;
-
-/** Password model */ // TODO might not be needed 
-typedef struct ettercap_password {
-    uint8_t plen;
-    uint8_t * passwd;
-    uint8_t index;
-} ettercap_password;
+    uint8_t length;
+} ettercap_word;
 
 /** Parser data struct */
 typedef struct ettercap_parser {
@@ -88,9 +90,19 @@ typedef struct ettercap_parser {
     ettercap_state state;
     /** Parser errors */
     ettercap_errors error;
+    
     /** Stolen credentials */
-    ettercap_username * username;
-    ettercap_password * password;
+    uint8_t * username;
+    uint8_t * password;
+
+    /** Auxiliary vectors for POP3 */
+    ettercap_word ** usernames;
+    ettercap_word ** passwords;
+    uint8_t * validations;
+
+    /** For parser buffering words */
+    ettercap_word * client_word;
+    ettercap_word * server_word;
 } ettercap_parser;
 
 
@@ -156,5 +168,19 @@ ettercap_is_done(const ettercap_state state, bool * errored);
  */
 void
 ettercap_parser_close(ettercap_parser * p);
+
+#define WORD_BLOCK 5
+#define POP3_BLOCK 5
+
+#define HTTP_GET "get"
+#define HTTP_VERS "http/1.1"
+#define HTTP_AUTH "authorization:"
+#define HTTP_BASIC "basic"
+
+#define POP3_PORT 110
+#define POP3_USER "user"
+#define POP3_PASS "pass"
+#define POP3_S_OK "+ok"
+#define POP3_S_ERR "-err"
 
 #endif
