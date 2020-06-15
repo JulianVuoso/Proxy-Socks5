@@ -95,8 +95,6 @@ typedef enum ettercap_errors {
     ettercap_error_http_no_get,
     ettercap_error_http_no_auth,
     ettercap_error_http_bad_auth,
-
-    ettercap_error_pop3_, // TODO finish 
 } ettercap_errors;
 
 typedef struct ettercap_word {

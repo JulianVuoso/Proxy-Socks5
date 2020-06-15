@@ -187,14 +187,24 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
     }
 }
 
-
-
 const char *
 ettercap_error_desc(const ettercap_parser * p) {
     char * ret;
     switch (p->error) {
     case ettercap_error_heap_full:
         ret = "could not allocate memory";
+        break;
+    case ettercap_error_http_invalid:
+        ret = "invalid http format";
+        break;
+    case ettercap_error_http_no_get:
+        ret = "http request is not GET";
+        break;
+    case ettercap_error_http_no_auth:
+        ret = "http request does not have authorization header";
+        break;
+    case ettercap_error_http_bad_auth:
+        ret = "http bad authorization header format";
         break;
     default:
         ret = "";
@@ -231,6 +241,8 @@ ettercap_parser_close(ettercap_parser * p) {
     if (p->password != NULL) free(p->password);
 }
 
+
+/* Auxiliary private functions */
 
 void 
 ettercap_word_add_byte(ettercap_parser * p, ettercap_word * word, uint8_t byte) {
