@@ -6,6 +6,25 @@
 
 #include "buffer.h"
 
+
+#define WORD_BLOCK 5
+
+#define HTTP_GET_SIZE 3
+#define HTTP_VERS_SIZE 8
+
+#define HTTP_GET "get"
+#define HTTP_VERS "http/1.1"
+#define HTTP_AUTH "authorization:"
+#define HTTP_BASIC "basic"
+
+
+#define POP3_BLOCK 5
+#define POP3_CMD_MAX 4
+
+#define POP3_PORT 110
+#define POP3_USER "user"
+#define POP3_PASS "pass"
+
 /*
  * HTTP client GET.
  * The only header of interest is the Authorization Basic, given it has user
@@ -53,14 +72,16 @@ typedef enum ettercap_state {
     ettercap_http_path,
     ettercap_http_vers,
     ettercap_http_headers,
-    ettercap_http_wait_end,
+    ettercap_http_wait_cr,
+    ettercap_http_lf,
     ettercap_http_basic,
-    ettercap_http_user,
-    ettercap_http_pass,
+    ettercap_http_credentials,
+    ettercap_http_decode,
 
     ettercap_pop3_command,
     ettercap_pop3_user,
     ettercap_pop3_pass,
+    ettercap_pop3_wait_end,
 
     ettercap_done,
     ettercap_error,
@@ -84,25 +105,20 @@ typedef struct ettercap_word {
     uint8_t length;
 } ettercap_word;
 
+
 /** Parser data struct */
 typedef struct ettercap_parser {
     /** Current parser state */
     ettercap_state state;
     /** Parser errors */
     ettercap_errors error;
-    
+
     /** Stolen credentials */
     uint8_t * username;
     uint8_t * password;
 
-    /** Auxiliary vectors for POP3 */
-    ettercap_word ** usernames;
-    ettercap_word ** passwords;
-    uint8_t * validations;
-
     /** For parser buffering words */
-    ettercap_word * client_word;
-    ettercap_word * server_word;
+    ettercap_word * aux_word;
 } ettercap_parser;
 
 
@@ -116,14 +132,7 @@ ettercap_parser_init(ettercap_parser * p, uint64_t port);
  * Consumes one byte on the actual parser. Client side parser.
  */
 ettercap_state 
-ettercap_parser_client_feed(ettercap_parser * p, uint8_t b);
-
-
-/**
- * Consumes one byte on the actual parser. Server side parser.
- */
-ettercap_state 
-ettercap_parser_server_feed(ettercap_parser * p, uint8_t b);
+ettercap_parser_feed(ettercap_parser * p, uint8_t b);
 
 
 /**
@@ -134,18 +143,8 @@ ettercap_parser_server_feed(ettercap_parser * p, uint8_t b);
  * have an error.
  */
 ettercap_state 
-ettercap_consume_client(buffer * b, ettercap_parser * p, bool * errored);
+ettercap_consume(buffer * b, ettercap_parser * p, bool * errored);
 
-
-/**
- * For each element of buffer calls 'ettercap_parser_server_feed' until
- * parsing is done or more bytes are required.
- * 
- * @param errored out param. If different from NULL then the parser must
- * have an error.
- */
-ettercap_state
-ettercap_consume_server(buffer * b, ettercap_parser * p, bool * errored);
 
 
 /**
@@ -168,19 +167,5 @@ ettercap_is_done(const ettercap_state state, bool * errored);
  */
 void
 ettercap_parser_close(ettercap_parser * p);
-
-#define WORD_BLOCK 5
-#define POP3_BLOCK 5
-
-#define HTTP_GET "get"
-#define HTTP_VERS "http/1.1"
-#define HTTP_AUTH "authorization:"
-#define HTTP_BASIC "basic"
-
-#define POP3_PORT 110
-#define POP3_USER "user"
-#define POP3_PASS "pass"
-#define POP3_S_OK "+ok"
-#define POP3_S_ERR "-err"
 
 #endif

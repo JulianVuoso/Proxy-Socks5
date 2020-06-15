@@ -3,8 +3,16 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 #include "ettercap.h"
+
+/* Auxiliar fucntions */
+void ettercap_word_add_byte(ettercap_parser * p, ettercap_word * word, uint8_t byte);
+void ettercap_word_clear(ettercap_word * word);
+void ettercap_add_username(ettercap_parser * p, ettercap_word * word);
+void ettercap_add_password(ettercap_parser * p, ettercap_word * word);
 
 
 void
@@ -16,95 +24,166 @@ ettercap_parser_init(ettercap_parser * p, uint64_t port) {
     p->error = ettercap_error_none;
 
     /** Initialize credentials on null */
-    p->username = NULL;
-    p->password = NULL;
-    p->usernames = NULL;
-    p->passwords = NULL;
-    p->validations = NULL;
-    p->client_word = NULL;
-    p->server_word = NULL;   
+    p->aux_word = calloc(1, sizeof(ettercap_word));
+    if (p->aux_word == NULL) {
+        p->state = ettercap_error;
+        p->error = ettercap_error_heap_full;
+        return;
+    }  
 }
 
 
 ettercap_state
-ettercap_consume_client(buffer * b, ettercap_parser * p, bool * errored) {
+ettercap_consume(buffer * b, ettercap_parser * p, bool * errored) {
     ettercap_state state = p->state;
     while (buffer_can_read(b)) {
         const uint8_t c = buffer_read_not_adv(b);
-        state = ettercap_parser_client_feed(p, c);
+        state = ettercap_parser_feed(p, c);
         if (ettercap_is_done(state, errored)) break;
     }
     return state;
 }
 
 
-ettercap_state
-ettercap_consume_server(buffer * b, ettercap_parser * p, bool * errored) {
-    ettercap_state state = p->state;
-    while (buffer_can_read(b)) {
-        const uint8_t c = buffer_read_not_adv(b);
-        state = ettercap_parser_server_feed(p, c);
-        if (ettercap_is_done(state, errored)) break;
-    }
-    return state;
-}
-
 
 ettercap_state
-ettercap_parser_feed_client(ettercap_parser * p, uint8_t byte) {
+ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
     switch (p->state) {
         case ettercap_http_get:
-            /* TODO: save until ' ', on ' ' check if string === GET, then goto ettercap_http_path */
-            break;
-        case ettercap_http_path:
-            /* TODO: check first is a / then until ' ' do nothing, on ' ' goto ettercap_http_vers */
-            break;
-        case ettercap_http_vers:
-            /* TODO: save until ' ', on ' ' check if string == HTPP/1.1, then goto ettercap_http_headers */
-            break;
-        case ettercap_http_headers:
-            /* TODO: save until ' ', == authenticate?, yes goto ettercap_authenticate 
-                no goto ettercap_http_wait_end           
-            */
-            break;
-        case ettercap_http_wait_end:
-            /* TODO: wait till end of line '\r\n' if end of line and empty string -> done */
-            break;
-        case ettercap_http_basic:
-            /* TODO: now  comes Basic and then credentials, until ' ', if == Basic goto ettercap_http_credentials */
-            break;
-        case ettercap_http_user:
-            /* TODO read decoded user until : and save, on ':' goto ettercap_http_pass */
-            break;
-        case ettercap_http_pass:
-            /* TODO read and save decoded pass */
-            break;
-
-        case ettercap_pop3_command:
-            /* TODO  read until ' ', if user goto _pop3_user, if pass goto _pop3_pass*/
-            break;
-        case ettercap_pop3_user:
-            /* TODO read until '\n' and save on new index of array or the same if prev pass empty, goto command */
-            break;
-        case ettercap_pop3_pass:
-            /* TODO read until '\n' and save on current index of array goto command */
+            /* Checks the HTTP GET action */
+            if (byte == ' ') {
+                if (strcmp(p->aux_word->value, HTTP_GET) == 0) {
+                    p->state = ettercap_http_path;
+                    ettercap_word_clear(p->aux_word);
+                } else {
+                    p->state = ettercap_error;
+                    p->error = ettercap_error_http_no_get;
+                }
+            } else if (p->aux_word->index > HTTP_GET_SIZE) {
+                p->state = ettercap_error;
+                p->error = ettercap_error_http_no_get;
+            } else 
+                ettercap_word_add_byte(p, p->aux_word, tolower(byte));
             break;
         
-    }
-}
+        case ettercap_http_path:
+            /* Wait for the path to pass */
+            if (byte == ' ') {
+                p->state = ettercap_http_vers;
+            }
+            break;
 
-ettercap_state
-ettercap_parser_feed_server(ettercap_parser * p, uint8_t byte) {
-    switch (p->state) {
+        case ettercap_http_vers:
+            /* Checks the HTTP version */
+            if (byte == '\r') {
+                if (strcmp(p->aux_word->value, HTTP_VERS) == 0) {
+                    p->state = ettercap_http_lf;
+                } else {
+                    p->state = ettercap_error;
+                    p->error = ettercap_error_http_invalid;
+                }
+            } else if (p->aux_word->index > HTTP_VERS_SIZE) {
+                p->state = ettercap_error;
+                p->error = ettercap_error_http_invalid;
+            } else 
+                ettercap_word_add_byte(p, p->aux_word, tolower(byte));
+            break;
+
+        case ettercap_http_headers:
+            /* Checks for authorization header */
+            if (byte == ' ') {
+                if (strcmp(p->aux_word->value, HTTP_AUTH) == 0) {
+                    p->state = ettercap_http_basic;
+                    ettercap_word_clear(p->aux_word);
+                } else
+                    p->state = ettercap_http_wait_cr;
+            } else if (byte == '\r') {
+                p->state = ettercap_error;
+                p->error = ettercap_error_http_no_auth;
+            } else
+                ettercap_word_add_byte(p, p->aux_word, tolower(byte));
+            break;
+
+        case ettercap_http_lf:
+            /* Next has to be '\n' */
+            if (byte == '\n') {
+                p->state = ettercap_http_headers;
+                ettercap_word_clear(p->aux_word);
+            } else {
+                p->state = ettercap_error;
+                p->error = ettercap_error_http_invalid;
+            }
+            break;
+
+        case ettercap_http_basic:
+            /* Checks authorization type */
+            if (byte == ' ') {
+                if (strcmp(p->aux_word->value, HTTP_BASIC) == 0) {
+                    p->state = ettercap_http_credentials;
+                    ettercap_word_clear(p->aux_word);
+                } else {
+                    p->state = ettercap_error;
+                    p->error = ettercap_error_http_bad_auth;
+                }
+            } else 
+                ettercap_word_add_byte(p, p->aux_word, tolower(byte));
+            break;
+        
+        case ettercap_http_credentials:
+            /* Get encoded credentials */
+            if (byte == "\r") {
+                p->state = ettercap_done;
+                ettercap_add_username(p, p->aux_word);
+            } else 
+                ettercap_word_add_byte(p, p->aux_word, byte);
+            break;
+
+
+
         case ettercap_pop3_command:
+            /* Waits for word user or pass */
+            if (byte == ' ') {
+                if (strcmp(p->aux_word->value, POP3_USER) == 0)
+                    p->state = ettercap_pop3_user;
+                else if (strcmp(p->aux_word->value, POP3_PASS) == 0)
+                    p->state = ettercap_pop3_pass;
+                else 
+                    p->state = ettercap_pop3_wait_end;
+                ettercap_word_clear(p->aux_word);
+            } else if (p->aux_word->index > POP3_CMD_MAX)
+                p->state = ettercap_pop3_wait_end;
+            else
+                ettercap_word_add_byte(p, p->aux_word, tolower(byte));
+            break;
+
         case ettercap_pop3_user:
+            /* Reads username and saves */
+            if (byte == '\n') {
+                p->state = ettercap_pop3_command;
+                ettercap_add_username(p, p->aux_word);
+                ettercap_word_clear(p->aux_word);
+            } else
+                ettercap_word_add_byte(p, p->aux_word, byte);
+            break;
+
         case ettercap_pop3_pass:
-            /* TODO wait until ' ', if +OK on -ERR */
+            /* Reads password and saves */
+            if (byte == '\n') {
+                p->state = ettercap_done;
+                ettercap_add_password(p, p->aux_word);
+                ettercap_word_clear(p->aux_word);
+            } else
+                ettercap_word_add_byte(p, p->aux_word, byte);
             break;
-            
-        default:
-            /* all the HTTPs responses, do nothing */
+
+        case ettercap_pop3_wait_end:
+            /* Waits until end of line */
+            if (byte == '\n') {
+                p->state = ettercap_pop3_command;
+                ettercap_word_clear(p->aux_word);
+            }
             break;
+        
     }
 }
 
@@ -146,5 +225,52 @@ ettercap_is_done(const ettercap_state state, bool * errored) {
 void
 ettercap_parser_close(ettercap_parser * p) {
     if (p == NULL) return;
-    // TODO free
+    free(p->aux_word->value);
+    free(p->aux_word);
+    if (p->username != NULL) free(p->username);
+    if (p->password != NULL) free(p->password);
+}
+
+
+void 
+ettercap_word_add_byte(ettercap_parser * p, ettercap_word * word, uint8_t byte) {
+    if (word->index >= word->length - 1) {
+        word->length += WORD_BLOCK;
+        word->value = realloc(word->value, word->length);
+        if (word->value == NULL) {
+            p->state = ettercap_error;
+            p->error = ettercap_error_heap_full;
+            return;
+        }         
+    }
+    word->value[word->index++] =  byte;
+    word->value[word->index] = '\0';
+}
+
+void
+ettercap_word_clear(ettercap_word * word) {
+    word->index = 0;
+    word->value[0] = '\0';
+}
+
+void
+ettercap_add_username(ettercap_parser * p, ettercap_word * word) {
+    p->username = realloc(p->username, word->index + 1);
+    if (p->username == NULL) {
+        p->state = ettercap_error;
+        p->error = ettercap_error_heap_full;
+    }
+    for (uint8_t i = 0; i <= word->index; i++)
+        p->username[i] = word->value[i];
+}
+
+void
+ettercap_add_password(ettercap_parser * p, ettercap_word * word) {
+    p->password = realloc(p->password, word->index + 1);
+    if (p->password == NULL) {
+        p->state = ettercap_error;
+        p->error = ettercap_error_heap_full;
+    }
+    for (uint8_t i = 0; i <= word->index; i++)
+        p->password[i] = word->value[i];
 }
