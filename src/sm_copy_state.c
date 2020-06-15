@@ -74,7 +74,7 @@ unsigned copy_read(struct selector_key * key) {
             logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
-    } else if (n == 0) {
+    } else if (n == 0 || errno == ECONNRESET) {
         /* Chequeo que no haya cometido un error en algun lugar */
         if (nbytes == 0) {
             abort();
@@ -88,7 +88,7 @@ unsigned copy_read(struct selector_key * key) {
         /* Si consumieron todo lo que escribi en el buffer, mando EOF */
         if (!buffer_can_read(buff)) {
             (*other_eof) += 1;
-            if (shutdown(other_fd, SHUT_WR) < 0) {
+            if (shutdown(other_fd, SHUT_WR) < 0 && errno != ENOTCONN) {
                 logger_log(DEBUG, "failed shutdown in read\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
                 ret = ERROR;
             }
@@ -144,7 +144,7 @@ unsigned copy_write(struct selector_key * key) {
             /** TODO: CHECK SI ESTO VA BIEN  */
             if (*cur_eof) {
                 (*other_eof) += 1;
-                if (shutdown(key->fd, SHUT_WR) < 0) {
+                if (shutdown(key->fd, SHUT_WR) < 0 && errno != ENOTCONN) {
                     logger_log(DEBUG, "failed shutdown in write\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
                     ret = ERROR;
                 }
