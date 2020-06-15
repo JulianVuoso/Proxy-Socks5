@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <fcntl.h>
+
 #include "logger.h"
 
 #define LOGGER_BUF_SIZE     2048
@@ -36,12 +38,38 @@ selector_status logger_init(int logger_fd, enum logger_level level, fd_selector 
     selector_register(selector, logger_fd, &logger_handler, OP_NOOP, NULL);
 }
 
+void open_log_file(char * filename){
+    FILE *file = fopen("activity.txt", "w");
+    if(file == NULL)  return;
+}
+
+
+
 void logger_log(enum logger_level level, char * format, ...) {
     /* Si el logger esta en ERROR (fd < 0) o el nivel pedido es menor al del logger */
     if (log.logger_fd < 0 || !(log.level <= level)) {
         return;
     }
     
+    if(level == ACTIVITY){
+       // logger_file(format, )
+
+        // int fd = open("activity.txt", O_NONBLOCK);
+        // if (fd < 0) return; // error opening_file;
+        //logger_log(DEBUG, "AAAAAAAAA");
+        FILE *file = fopen("activity.txt", "w");
+        if(file == NULL)  return; // error writing_file;
+        
+        // uint8_t * buf_write_ptr = buffer_write_ptr(&log.logger_buf, &nbytes);
+        va_list format_args;
+        va_start(format_args, format);
+        int n = vfprintf( file, format, format_args);
+        va_end(format_args);
+
+        fclose(file);
+        return;
+    }
+
     size_t nbytes;
     uint8_t * buf_write_ptr = buffer_write_ptr(&log.logger_buf, &nbytes);
     va_list format_args;
@@ -59,6 +87,13 @@ void logger_log(enum logger_level level, char * format, ...) {
         selector_set_interest(log.selector, log.logger_fd, OP_WRITE);
     }
 }
+
+/* static int logger_file(char * format, ...){
+    FILE * file;
+    file = fopen("activity.txt", "w");
+    if(file == NULL) return -1;
+
+} */
 
 static void logger_write(struct selector_key * key) {
     if (log.logger_fd < 0) {

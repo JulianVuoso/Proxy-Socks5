@@ -4,7 +4,11 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+// #include <netinet/in.h>
+#include <netdb.h>
+
 #include "logger.h"
+#include "netutils.h"
 
 void copy_init(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
@@ -13,7 +17,7 @@ void copy_init(const unsigned state, struct selector_key *key) {
     st->or_to_cli_buf = &(sock->write_buffer);
     st->cli_to_or_eof = 0;
     st->or_to_cli_eof = 0;
-    logger_log(DEBUG, "User: %s", sock->username);
+    logger_log(DEBUG, "\n\nUser: %s", sock->username);
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
@@ -98,9 +102,12 @@ unsigned copy_read(struct selector_key * key) {
         ret = ERROR;
     }
 
+    // char * ip = malloc (sizeof(char) * sock->origin_addr_len);
+    // sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
     /* Si conte dos EOF por lado --> DONE */
     if (ret != ERROR && (*cur_eof) == 2 && (*other_eof) == 2) {
         ret = try_jump_done(key);
+        // logger_log(DEBUG, "\n\nAccess to: %s", ip);
     }
     return ret;
 }

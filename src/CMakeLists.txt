@@ -17,5 +17,6 @@ add_executable(socks5  main.c
                        sm_request_state.c
                        sm_copy_state.c
                        sm_before_error_state.c
-                       socks5mt.c)
+                       socks5mt.c
+                       netutils.c)
 target_link_libraries(socks5 pthread)
