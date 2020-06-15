@@ -121,6 +121,10 @@ void free_users_list() {
 }
 
 uint8_t authenticate(uint8_t * user, uint8_t * pwd){
+    if (user == NULL || pwd == NULL) {
+        return NEGOT_RESPONSE_ERROR;
+    }
+    
     struct UserNode * node = ulist->header;
     while (node != NULL){
         if(strcmp((char*)node->user.username, (char*)user)==0 && strcmp((char*)node->user.password, (char*)pwd)==0)

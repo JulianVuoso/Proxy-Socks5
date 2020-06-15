@@ -24,6 +24,6 @@ unsigned request_connect_write(struct selector_key *key);
 
 void request_write_init(const unsigned state, struct selector_key *key);
 unsigned request_write(struct selector_key *key);
-void request_write_close(const unsigned state, struct selector_key *key);
+void request_close(const unsigned state, struct selector_key *key);
 
 #endif

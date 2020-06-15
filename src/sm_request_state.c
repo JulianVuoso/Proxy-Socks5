@@ -7,10 +7,13 @@
 #include <stdio.h>
 
 #include "logger.h"
+#include "sm_before_error_state.h"
 
 #include "socks5mt.h"
 #include "request.h"
 #include "socks5_handler.h"
+
+static unsigned try_jump_request_write(struct selector_key *key);
 
 void request_read_init(const unsigned state, struct selector_key *key) {
     struct request_st * st = &ATTACHMENT(key)->client.request;
@@ -18,10 +21,12 @@ void request_read_init(const unsigned state, struct selector_key *key) {
     st->write_buf = &(ATTACHMENT(key)->write_buffer);
     request_parser_init(&st->parser);
     st->current = NULL;
+    st->reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
 }
 
 unsigned request_read(struct selector_key *key) {
-    struct request_st * st_vars = &ATTACHMENT(key)->client.request;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st_vars = &sock->client.request;
     unsigned ret = REQUEST_READ;
     bool errored = false;
     size_t nbytes;
@@ -31,18 +36,26 @@ unsigned request_read(struct selector_key *key) {
     if (n > 0) {
         buffer_write_adv(st_vars->read_buf, n);
         const enum request_state st = request_consume(st_vars->read_buf, &st_vars->parser, &errored);
-        if (request_is_done(st, 0) && !errored) { // TODO: check if errored va en la condicion
-            if (selector_set_interest_key(key, OP_NOOP) == SELECTOR_SUCCESS) {
+        if (request_is_done(st, 0)) {
+            if (errored) {
+                st_vars->reply_code = request_reply_code(&st_vars->parser);
+                logger_log(DEBUG, "Error in request parser. Message: %s\n", request_error_description(&st_vars->parser));
+                sock->origin_domain = (st_vars->parser.dest != NULL && st_vars->parser.dest->address_type == address_ipv6) ? AF_INET6 : AF_INET;
+                ret = try_jump_request_write(key);
+            } else if (selector_set_interest_key(key, OP_NOOP) == SELECTOR_SUCCESS) {
                 ret = request_process(key);
             } else {
+                do_before_error(key);
                 ret = ERROR;
             }
         }
     } else {
+        do_before_error(key);
         ret = ERROR;
     }
 
-    return errored ? ERROR : ret;
+    // return errored ? ERROR : ret;
+    return ret;
 }
 
 void request_read_close(const unsigned state, struct selector_key *key) {
@@ -88,11 +101,14 @@ static void * request_solve_blocking(void * args) {
     char port[7];
     // snprintf(port, sizeof(port), "%d", ntohs(dest->port));
     snprintf(port, sizeof(port), "%d", dest->port);
+    logger_log(DEBUG, "Resolviendo DNS con getaddrinfo...\n");
     if (getaddrinfo((char *) dest->address, port, &hints, &sock->origin_resolution) != 0) {
         /* If getaddrinfo fails, freeaddrinfo and set res to NULL */
         freeaddrinfo(sock->origin_resolution);
         sock->origin_resolution = NULL;
+        logger_log(DEBUG, "getaddrinfo failed. Error msg: %s\n", gai_strerror(errno));
     }
+    logger_log(DEBUG, "Finalizo la resolucion DNS con getaddrinfo...\n");
 
     selector_notify_block(key->s, key->fd);
 
@@ -123,7 +139,8 @@ static int set_origin_resolution(struct socks5 * sock, struct sockaddr * sock_ad
 
 unsigned request_process(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct destination * dest = sock->client.request.parser.dest;
+    struct request_st * st_vars = &sock->client.request;
+    struct destination * dest = st_vars->parser.dest;
     pthread_t thread_pid = 0;
 
     switch (dest->address_type)
@@ -176,14 +193,20 @@ error:
     if (thread_pid != 0) {
         pthread_cancel(thread_pid);
     }
-    return ERROR;
+    st_vars->reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+    logger_log(DEBUG, "Error in request processing.\n");
+    sock->origin_domain = (st_vars->parser.dest != NULL && st_vars->parser.dest->address_type == address_ipv6) ? AF_INET6 : AF_INET;
+    return try_jump_request_write(key);
 }
 
 unsigned request_solve_block(struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st_vars = &sock->client.request;
     if (sock->origin_resolution == NULL) {
         logger_log(DEBUG, "failed getaddrinfo\n");
-        return ERROR;
+        st_vars->reply_code = REQUEST_RESPONSE_HOST_UNREACH;
+        sock->origin_domain = AF_INET;
+        return try_jump_request_write(key);
     }
     sock->client.request.current = sock->origin_resolution;
     return request_connect(key);
@@ -192,35 +215,15 @@ unsigned request_solve_block(struct selector_key *key) {
 static unsigned try_jump_request_write(struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st_vars = &ATTACHMENT(key)->client.request;
-    /* VER SI VA ESTO, PARA EL REQUEST_MARSHALL */
-    /* struct sockaddr client_addr;
-    socklen_t client_addr_len = sizeof(client_addr);
-    if (getsockname(sock->client_fd, &client_addr, &client_addr_len) < 0) {
-        return ERROR;
-    }
-    if (client_addr.sa_family == AF_INET) {
-        struct sockaddr_in * client_addr_ipv4 = (struct sockaddr_in *) &client_addr;
-        uint8_t * ipv4 = (uint8_t *) &client_addr_ipv4->sin_addr;
-        uint16_t port = ntohs(client_addr_ipv4->sin_port);
-        if (request_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv4, ipv4, port) < 0) {
-            return ERROR;
-        }
-        
-    } else if (client_addr.sa_family == AF_INET6) {
-        struct sockaddr_in6 * client_addr_ipv6 = (struct sockaddr_in6 *) &client_addr;
-        uint8_t * ipv6 = (uint8_t *) &client_addr_ipv6->sin6_addr;
-        uint16_t port = ntohs(client_addr_ipv6->sin6_port);
-        if (request_marshall(st_vars->write_buf, st_vars->reply_code, address_ipv6, ipv6, port) < 0) {
-            return ERROR;
-        }
-    } */
     if (selector_set_interest(key->s, sock->client_fd, OP_WRITE) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
+        do_before_error(key);
         return ERROR;
     }
     if (request_marshall(st_vars->write_buf, st_vars->reply_code, 
             (sock->origin_domain == AF_INET) ? address_ipv4 : address_ipv6) < 0) {
         logger_log(DEBUG, "failed request_marshall\n");
+        do_before_error(key);
         return ERROR;
     }
     return REQUEST_WRITE;
@@ -253,6 +256,11 @@ try_connect(struct selector_key * key, struct addrinfo * node) {
             return CON_INPROG;
         } else {
             logger_log(DEBUG, "\n\nError. errno message: %s\n\n", strerror(errno));
+            if (errno == ENETUNREACH) {
+                sock->client.request.reply_code = REQUEST_RESPONSE_NET_UNREACH;
+            } else {
+                sock->client.request.reply_code = REQUEST_RESPONSE_HOST_UNREACH;
+            }
             goto errors;
         }
     }
@@ -271,6 +279,7 @@ errors:
         sock->origin_fd = -1;
         sock->references -= 1;
     }
+    sock->origin_domain = node->ai_family;
     return CON_ERROR;
 }
 
@@ -279,6 +288,7 @@ unsigned request_connect(struct selector_key * key) {
     struct addrinfo * node = sock->client.request.current;
     if (node == NULL) {
         logger_log(DEBUG, "empty current node\n");
+        do_before_error(key);
         return ERROR;
     }
     enum connect_result res;
@@ -298,48 +308,15 @@ unsigned request_connect(struct selector_key * key) {
         case CON_ERROR:
             /* Could not connect to any ip address */
             logger_log(DEBUG, "could not connect to any ip address\n");
-            return ERROR;
+            if (sock->client.request.reply_code == REQUEST_RESPONSE_SUCCESS) {
+                sock->client.request.reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+            }
+            return try_jump_request_write(key);
         default:
             /* Invalid result */
             abort();
     }
 }
-
-// unsigned request_connect(struct selector_key *key) {
-//     struct socks5 * sock = ATTACHMENT(key);
-//     if((sock->origin_fd = socket(sock->origin_domain, SOCK_STREAM, 0)) < 0) {
-//         goto errors;
-//     }
-//     /* Agrego referencia en el sock, se agrega un fd */
-//     sock->references += 1;
-//     if (selector_fd_set_nio(sock->origin_fd) < 0) {
-//         goto errors;
-//     }
-//     /* Connecting to origin_server */
-//     if (connect(sock->origin_fd, (const struct sockaddr *) &sock->origin_addr, sock->origin_addr_len) < 0) {
-//         if (errno == EINPROGRESS) {
-//             /* Espero a poder escribirle al origin_server para determinar si me pude conectar */
-//             if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_WRITE, key->data) != SELECTOR_SUCCESS) {
-//                 goto errors;
-//             }
-//             return REQUEST_CONNECT;
-//         } else {
-//             goto errors;
-//         }
-//     }
-//     /* Si me conecte, por ahora no necesito esperar nada de origin, voy a escribirle a client */
-//     if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_NOOP, key->data) != SELECTOR_SUCCESS) {
-//         goto errors;
-//     }
-//     sock->client.request.reply_code = REQUEST_RESPONSE_SUCCESS;
-//     return try_jump_request_write(key);
-
-// errors:
-//     if (sock->origin_fd >= 0) {
-//         close(sock->origin_fd);
-//     }
-//     return ERROR;
-// }
 
 unsigned request_connect_write(struct selector_key *key) {
     logger_log(DEBUG, "Gonna get SOL_SOCKET option\n");
@@ -351,6 +328,7 @@ unsigned request_connect_write(struct selector_key *key) {
     /* Si me conecte o no, por ahora no necesito esperar nada de origin, voy a escribirle a client */
     if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
+        do_before_error(key);
         return ERROR;
     }
     unsigned optval = 1, optlen = sizeof(optval);
@@ -395,27 +373,32 @@ unsigned request_write(struct selector_key *key) {
                     ret = COPY;
                 } else {
                     logger_log(DEBUG, "failed selector\n");
+                    do_before_error(key);
                     ret = ERROR;
                 }
             } else {
-                logger_log(DEBUG, "reply code unsuccessfull\n");
+                logger_log(DEBUG, "%s\n", request_reply_code_description(sock->client.request.reply_code));
+                do_before_error(key);
                 ret = ERROR;
             }
         }
     } else {
+        do_before_error(key);
         ret = ERROR;
     }
 
     return ret;
 }
 
-void request_write_close(const unsigned state, struct selector_key *key) {
+void request_close(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st = &sock->client.request;
-    if (st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
+    if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
         free(sock->origin_resolution->ai_addr);
     }
+    logger_log(DEBUG, "saliendo de req write");
     request_parser_close(&st->parser);
 }
 
 /** TODO: WHEN ERROR, call this close ^ */
+/** Agregar un previous en stm.c, cosa de saber que cosas llamar */

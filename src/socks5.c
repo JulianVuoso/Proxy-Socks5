@@ -31,7 +31,9 @@ socks5_destroy_(struct selector_key *key) {
         freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
-    free(s->username);
+    if (s->username != NULL) {
+        free(s->username);
+    }
     free(s);
 
     // Actualizar cantidad de conexiones concurrentes.

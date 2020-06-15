@@ -37,7 +37,7 @@ enum socks5_state {
      *
      * Transiciones:
      *   - HELLO_WRITE  mientras queden bytes por enviar
-     *   - REQUEST_READ cuando se enviaron todos los bytes
+     *   - NEGOT_READ   cuando se enviaron todos los bytes
      *   - ERROR        ante cualquier error (IO/parseo)
      */
     HELLO_WRITE,
@@ -189,7 +189,7 @@ static const struct state_definition client_statbl[] = {
     {
         .state            = REQUEST_WRITE,
         .on_arrival       = request_write_init,
-        .on_departure     = request_write_close,
+        .on_departure     = request_close,
         .on_write_ready   = request_write,
     },
     {
