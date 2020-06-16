@@ -7,12 +7,15 @@
 #include <ctype.h>
 
 #include "ettercap.h"
+#include "base64.h"
+
 
 /* Auxiliar fucntions */
 void ettercap_word_add_byte(ettercap_parser * p, ettercap_word * word, uint8_t byte);
 void ettercap_word_clear(ettercap_word * word);
 void ettercap_add_username(ettercap_parser * p, ettercap_word * word);
 void ettercap_add_password(ettercap_parser * p, ettercap_word * word);
+void ettercap_decode_add(ettercap_parser * p, ettercap_word * word);
 
 
 void
@@ -143,7 +146,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
             /* Get encoded credentials */
             if (byte == '\r') {
                 p->state = ettercap_done;
-                ettercap_add_username(p, p->aux_word);
+                ettercap_decode_add(p, p->aux_word);       
             } else 
                 ettercap_word_add_byte(p, p->aux_word, byte);
             break;
@@ -222,6 +225,9 @@ ettercap_error_desc(const ettercap_parser * p) {
         break;
     case ettercap_error_http_bad_auth:
         ret = "http bad authorization header format";
+        break;
+    case ettercap_error_http_bad_credential:
+        ret = "http bad credentials - decode failure";
         break;
     default:
         ret = "";
@@ -302,4 +308,37 @@ ettercap_add_password(ettercap_parser * p, ettercap_word * word) {
     }
     for (uint8_t i = 0; i <= word->index; i++)
         p->password[i] = word->value[i];
+}
+
+void 
+ettercap_decode_add(ettercap_parser * p, ettercap_word * word) {
+    ettercap_word decoded;
+    decoded.length = b64_decoded_size((char *) word->value) + 1;
+    decoded.value = malloc(decoded.length);
+    if (decoded.value == NULL) {
+        p->state = ettercap_error;
+        p->error = ettercap_error_heap_full;
+        return;
+    }
+    if (!b64_decode((char *) word->value, (unsigned char *) decoded.value, decoded.length)) {
+        p->state = ettercap_error;
+        p->error = ettercap_error_http_bad_credential;
+        return;
+    }
+    decoded.value[decoded.length] = '\0';
+    char * separator = strchr((char *) decoded.value, ':');
+    if (separator == NULL) {
+        p->state = ettercap_error;
+        p->error = ettercap_error_http_bad_credential;
+        return;
+    }    
+
+    *separator = '\0';
+    decoded.index = separator - (char *) decoded.value;
+    ettercap_add_username(p, &decoded);
+    uint8_t * aux = decoded.value;
+    decoded.value += decoded.index + 1;
+    decoded.index = aux + decoded.length - 1 - decoded.value;
+    ettercap_add_password(p, &decoded);
+    free(aux);
 }

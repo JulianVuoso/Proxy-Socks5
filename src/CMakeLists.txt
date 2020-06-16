@@ -3,6 +3,7 @@ include_directories(../include)
 add_executable(socks5  main.c
                        hello.c
                        negotiation.c
+                       base64.c
                        ettercap.c
                        parser.c
                        parser_utils.c
