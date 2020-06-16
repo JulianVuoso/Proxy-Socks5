@@ -11,6 +11,7 @@
 
 #define HTTP_GET_SIZE 3
 #define HTTP_VERS_SIZE 8
+#define HTTP_PORT 80
 
 #define HTTP_GET "get"
 #define HTTP_VERS "http/1.1"
@@ -76,7 +77,6 @@ typedef enum ettercap_state {
     ettercap_http_lf,
     ettercap_http_basic,
     ettercap_http_credentials,
-    ettercap_http_decode,
 
     ettercap_pop3_command,
     ettercap_pop3_user,

@@ -10,12 +10,8 @@
 
 START_TEST (test_ettercap_http_valid) {
     ettercap_parser parser;
-    ettercap_parser_init(&parser);
-    uint8_t  data[] = "GET /path HTTP/1.1\r\n" +
-                    "Host: thisisatest.com.ar\r\n" + 
-                    "Authorization: Basic YWxndW51c3VhcmlvOmFsZ3VuYXBhc3N3b3Jk\r\n" +
-                    "X-header: X-value\r\n" +
-                    "\r\n"
+    ettercap_parser_init(&parser, HTTP_PORT);
+    uint8_t  data[] = "GET /path HTTP/1.1\r\nHost: thisisatest.com.ar\r\nAuthorization: Basic YWxndW51c3VhcmlvOmFsZ3VuYXBhc3N3b3Jk\r\nX-header: X-value\r\n\r\n";
     buffer b;
     FIXBUF(b, data);
     bool errored = false;

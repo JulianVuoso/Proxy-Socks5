@@ -52,7 +52,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         case ettercap_http_get:
             /* Checks the HTTP GET action */
             if (byte == ' ') {
-                if (strcmp(p->aux_word->value, HTTP_GET) == 0) {
+                if (strcmp((char *) p->aux_word->value, HTTP_GET) == 0) {
                     p->state = ettercap_http_path;
                     ettercap_word_clear(p->aux_word);
                 } else {
@@ -76,7 +76,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         case ettercap_http_vers:
             /* Checks the HTTP version */
             if (byte == '\r') {
-                if (strcmp(p->aux_word->value, HTTP_VERS) == 0) {
+                if (strcmp((char *) p->aux_word->value, HTTP_VERS) == 0) {
                     p->state = ettercap_http_lf;
                 } else {
                     p->state = ettercap_error;
@@ -92,7 +92,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         case ettercap_http_headers:
             /* Checks for authorization header */
             if (byte == ' ') {
-                if (strcmp(p->aux_word->value, HTTP_AUTH) == 0) {
+                if (strcmp((char *) p->aux_word->value, HTTP_AUTH) == 0) {
                     p->state = ettercap_http_basic;
                     ettercap_word_clear(p->aux_word);
                 } else
@@ -102,6 +102,10 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
                 p->error = ettercap_error_http_no_auth;
             } else
                 ettercap_word_add_byte(p, p->aux_word, tolower(byte));
+            break;
+
+        case ettercap_http_wait_cr:
+            if (byte == '\r') p->state = ettercap_http_lf;
             break;
 
         case ettercap_http_lf:
@@ -118,7 +122,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         case ettercap_http_basic:
             /* Checks authorization type */
             if (byte == ' ') {
-                if (strcmp(p->aux_word->value, HTTP_BASIC) == 0) {
+                if (strcmp((char *) p->aux_word->value, HTTP_BASIC) == 0) {
                     p->state = ettercap_http_credentials;
                     ettercap_word_clear(p->aux_word);
                 } else {
@@ -131,7 +135,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         
         case ettercap_http_credentials:
             /* Get encoded credentials */
-            if (byte == "\r") {
+            if (byte == '\r') {
                 p->state = ettercap_done;
                 ettercap_add_username(p, p->aux_word);
             } else 
@@ -143,9 +147,9 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         case ettercap_pop3_command:
             /* Waits for word user or pass */
             if (byte == ' ') {
-                if (strcmp(p->aux_word->value, POP3_USER) == 0)
+                if (strcmp((char *) p->aux_word->value, POP3_USER) == 0)
                     p->state = ettercap_pop3_user;
-                else if (strcmp(p->aux_word->value, POP3_PASS) == 0)
+                else if (strcmp((char *) p->aux_word->value, POP3_PASS) == 0)
                     p->state = ettercap_pop3_pass;
                 else 
                     p->state = ettercap_pop3_wait_end;
@@ -183,8 +187,15 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
                 ettercap_word_clear(p->aux_word);
             }
             break;
-        
+        case ettercap_done:
+        case ettercap_error:
+            /* Nothing to do here */
+            break;        
+        default:
+            fprintf(stderr, "unknown state %d\n", p->state);
+            abort();
     }
+    return p->state;
 }
 
 const char *
