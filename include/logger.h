@@ -5,7 +5,7 @@
 #include "buffer.h"
 #include "selector.h"
 
-enum logger_level { DEBUG = 0, PROD, ACTIVITY};
+enum logger_level { DEBUG = 0, PROD};
 
 selector_status logger_init(int logger_fd, enum logger_level level, fd_selector s);
 

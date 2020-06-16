@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <stdarg.h>
-#include <fcntl.h>
-
 #include "logger.h"
 
 #define LOGGER_BUF_SIZE     2048
