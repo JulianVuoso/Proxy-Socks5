@@ -4,6 +4,7 @@ add_executable(socks5  main.c
                        users.c
                        hello.c
                        negotiation.c
+                       args.c
                        base64.c
                        ettercap.c
                        parser.c

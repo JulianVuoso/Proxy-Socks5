@@ -21,4 +21,7 @@ const char *
 sockaddr_to_human(char *buff, const size_t buffsize,
                   const struct sockaddr *addr);
 
+/* Obtiene el puerto a partir de un sockaddr */
+uint16_t get_port_from_sockaddr(const struct sockaddr *addr);
+
 #endif

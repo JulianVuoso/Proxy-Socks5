@@ -17,11 +17,13 @@
 #include "socks5.h"
 #include "users.h"
 #include "logger.h"
+#include "args.h"
 
+/** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
 #define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
 
-#define USERS_FILENAME      "users.txt"
+#define USERS_FILENAME  "users.txt"
 
 #define LOGGER_FD       1
 #define LOGGER_LEVEL    DEBUG
@@ -43,26 +45,9 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, const char **argv) {
-    unsigned port = 1080;
-
-    if(argc == 1) {
-        // utilizamos el default
-    } else if(argc == 2) {
-        char *end     = 0;
-        const long sl = strtol(argv[1], &end, 10);
-
-        if (end == argv[1]|| '\0' != *end 
-           || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
-           || sl < 0 || sl > USHRT_MAX) {
-            fprintf(stderr, "port should be an integer: %s\n", argv[1]);
-            return 1;
-        }
-        port = sl;
-    } else {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return 1;
-    }
-
+    struct socks5args args;
+    parse_args(argc, argv, &args);
+    
     const char * err_msg = NULL;
 
     enum file_errors file_state = read_users_file(USERS_FILENAME);
@@ -78,18 +63,20 @@ main(const int argc, const char **argv) {
 
     int server_ipv4, server_ipv6;
     
-    enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, port, &server_ipv4);
+    /** TODO: Reemplazar la de abajo con esta cuando arreglemos eso  */
+    // enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
+    enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, args.socks_port, &server_ipv4);
     if (error_ipv4 != socket_no_error) {
         err_msg = socket_error_description(error_ipv4);
         goto finally;
     }
-    enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, port, &server_ipv6);
+    enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, args.socks_port, &server_ipv6);
     if (error_ipv6 != socket_no_error) {
         err_msg = socket_error_description(error_ipv6);
         goto finally;
     }
 
-    fprintf(stdout, "Listening on TCP port %u\n", port);
+    fprintf(stdout, "Listening on TCP port %u\n", args.socks_port);
 
     // registrar sigterm es útil para terminar el programa normalmente.
     // esto ayuda mucho en herramientas como valgrind.
@@ -120,7 +107,11 @@ main(const int argc, const char **argv) {
     }
 
     /* Initialize logger */
+    // enum logger_level level = DEBUG; TODO: uncomment this on production
+    // if (args.disectors_enabled) level = PASS_LOG; 
+    // ss = logger_init(LOGGER_FD, level, selector);
     ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+
 
     const struct fd_handler socks5 = {
         .handle_read       = socks5_passive_accept,

@@ -53,3 +53,17 @@ sockaddr_to_human(char *buff, const size_t buffsize,
 
     return buff;
 }
+
+uint16_t get_port_from_sockaddr(const struct sockaddr *addr) {
+    if (addr == 0) {
+        return 0;
+    }
+    switch(addr->sa_family) {
+        case AF_INET:
+            return ntohs(((struct sockaddr_in *) addr)->sin_port);
+        case AF_INET6:
+            return ntohs(((struct sockaddr_in6 *) addr)->sin6_port);
+        default:
+            return 0;
+    }
+}

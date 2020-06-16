@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <netdb.h>      // getaddrinfo
 #include <stdio.h>
-#include <time.h>
 
 #include "logger.h"
 #include "sm_before_error_state.h"
@@ -13,8 +12,6 @@
 #include "socks5mt.h"
 #include "request.h"
 #include "socks5_handler.h"
-
-#include "netutils.h"
 
 static unsigned try_jump_request_write(struct selector_key *key);
 
@@ -149,7 +146,11 @@ unsigned request_process(struct selector_key * key) {
     switch (dest->address_type)
     {
         case address_fqdn: {
-            sock->address_type = address_fqdn;
+            sock->fqdn = calloc(dest->address_length + 1, sizeof(*sock->fqdn));
+            if (sock->fqdn == NULL) {
+                goto error;
+            }
+            strncpy(sock->fqdn, (char *) dest->address, dest->address_length);
             struct selector_key * key_param = malloc(sizeof(*key));
             if (key_param == NULL) {
                 goto error;
@@ -165,7 +166,6 @@ unsigned request_process(struct selector_key * key) {
             }
             return REQUEST_SOLVE;
         } case address_ipv4: {
-            sock->address_type = address_ipv4;
             // sock->origin_domain = AF_INET;
             struct sockaddr_in origin_addr = get_origin_addr_ipv4(dest);
             // memcpy(&(sock->origin_addr), &origin_addr, sizeof(origin_addr));
@@ -176,7 +176,6 @@ unsigned request_process(struct selector_key * key) {
             }
             break;
         } case address_ipv6: {
-            sock->address_type = address_ipv6;
             // sock->origin_domain = AF_INET6;
             struct sockaddr_in6 origin_addr6 = get_origin_addr_ipv6(dest);
             // memcpy(&(sock->origin_addr), &origin_addr6, sizeof(origin_addr6));
@@ -340,6 +339,11 @@ unsigned request_connect_write(struct selector_key *key) {
     unsigned optval = 1, optlen = sizeof(optval);
     if (getsockopt(sock->origin_fd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0
             || optval != 0) {
+        if (selector_unregister_fd(key->s, sock->origin_fd) != SELECTOR_SUCCESS) {
+            logger_log(DEBUG, "failed selector\n");
+            do_before_error(key);
+            return ERROR;
+        }
         /* Avanzo al siguiente nodo e intento conectarme */
         logger_log(DEBUG, "this one failed, go to next. Optval: %d\n", optval);
         sock->client.request.current = sock->client.request.current->ai_next;
@@ -399,22 +403,9 @@ unsigned request_write(struct selector_key *key) {
 void request_close(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st = &sock->client.request;
-    
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    logger_log(DEBUG, "\n[ %d-%02d-%02d | %02d:%02d:%02d ]", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    logger_log(DEBUG, " User '%s'", sock->username);
-
-    char * ip = malloc (sizeof(char) * sock->origin_addr_len);
-    sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
-    logger_log(DEBUG, " has accessed to [IP]:[PORT] -> %s\n\n", ip);
-
     // if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
     //     free(sock->origin_resolution->ai_addr);
     // }
-    logger_log(DEBUG, "saliendo de req write");
+    logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
 }
-
-/** TODO: WHEN ERROR, call this close ^ */
-/** Agregar un previous en stm.c, cosa de saber que cosas llamar */
