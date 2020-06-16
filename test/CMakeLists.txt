@@ -15,6 +15,13 @@ add_executable(negotiation_test
 target_link_libraries(negotiation_test check subunit rt m)
 add_test(NAME negotiation_test COMMAND negotiation_test)
 
+add_executable(ettercap_test 
+                ettercap_test.c 
+                ../src/ettercap.c 
+                ../src/buffer.c)
+target_link_libraries(ettercap_test check subunit rt m)
+add_test(NAME ettercap_test COMMAND ettercap_test)
+
 add_executable(buffer_test 
                 buffer_test.c 
                 ../src/buffer.c)
