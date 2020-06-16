@@ -149,6 +149,7 @@ unsigned request_process(struct selector_key * key) {
     switch (dest->address_type)
     {
         case address_fqdn: {
+            sock->address_type = address_fqdn;
             struct selector_key * key_param = malloc(sizeof(*key));
             if (key_param == NULL) {
                 goto error;
@@ -164,6 +165,7 @@ unsigned request_process(struct selector_key * key) {
             }
             return REQUEST_SOLVE;
         } case address_ipv4: {
+            sock->address_type = address_ipv4;
             // sock->origin_domain = AF_INET;
             struct sockaddr_in origin_addr = get_origin_addr_ipv4(dest);
             // memcpy(&(sock->origin_addr), &origin_addr, sizeof(origin_addr));
@@ -174,6 +176,7 @@ unsigned request_process(struct selector_key * key) {
             }
             break;
         } case address_ipv6: {
+            sock->address_type = address_ipv6;
             // sock->origin_domain = AF_INET6;
             struct sockaddr_in6 origin_addr6 = get_origin_addr_ipv6(dest);
             // memcpy(&(sock->origin_addr), &origin_addr6, sizeof(origin_addr6));
@@ -406,9 +409,9 @@ void request_close(const unsigned state, struct selector_key *key) {
     sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
     logger_log(DEBUG, " has accessed to [IP]:[PORT] -> %s\n\n", ip);
 
-    if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
-        free(sock->origin_resolution->ai_addr);
-    }
+    // if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
+    //     free(sock->origin_resolution->ai_addr);
+    // }
     logger_log(DEBUG, "saliendo de req write");
     request_parser_close(&st->parser);
 }

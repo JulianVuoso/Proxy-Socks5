@@ -4,6 +4,8 @@ add_executable(socks5  main.c
                        users.c
                        hello.c
                        negotiation.c
+                       base64.c
+                       ettercap.c
                        parser.c
                        parser_utils.c
                        request.c
@@ -12,6 +14,7 @@ add_executable(socks5  main.c
                        stm.c
                        socks5.c
                        logger.c
+                       netutils.c
                        sm_hello_state.c
                        sm_negot_state.c
                        sm_request_state.c
