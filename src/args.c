@@ -69,7 +69,7 @@ usage(const char *progname) {
 }
 
 void 
-parse_args(const int argc, char **argv, struct socks5args *args) {
+parse_args(const int argc, const char **argv, struct socks5args *args) {
     memset(args, 0, sizeof(*args)); // sobre todo para setear en null los punteros de users
 
     args->socks_addr = "0.0.0.0";
@@ -100,7 +100,7 @@ parse_args(const int argc, char **argv, struct socks5args *args) {
             { 0,           0,                 0, 0 }
         };
 
-        c = getopt_long(argc, argv, "hl:L:Np:P:u:v", long_options, &option_index);
+        c = getopt_long(argc, (char * const *) argv, "hl:L:Np:P:u:v", long_options, &option_index);
         if (c == -1)
             break;
 

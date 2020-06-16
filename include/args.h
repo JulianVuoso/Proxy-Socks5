@@ -37,7 +37,7 @@ struct socks5args {
  * la ejecución.
  */
 void 
-parse_args(const int argc, char **argv, struct socks5args *args);
+parse_args(const int argc, const char **argv, struct socks5args *args);
 
 #endif
 

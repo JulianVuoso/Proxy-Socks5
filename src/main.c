@@ -19,9 +19,11 @@
 #include "logger.h"
 #include "args.h"
 
+/** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
+#define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
 
-#define USERS_FILENAME      "users.txt"
+#define USERS_FILENAME  "users.txt"
 
 #define LOGGER_FD       1
 #define LOGGER_LEVEL    DEBUG
@@ -61,7 +63,9 @@ main(const int argc, const char **argv) {
 
     int server_ipv4, server_ipv6;
     
-    enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
+    /** TODO: Reemplazar la de abajo con esta cuando arreglemos eso  */
+    // enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
+    enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, args.socks_port, &server_ipv4);
     if (error_ipv4 != socket_no_error) {
         err_msg = socket_error_description(error_ipv4);
         goto finally;
