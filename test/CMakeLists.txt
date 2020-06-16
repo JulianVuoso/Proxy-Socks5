@@ -61,3 +61,9 @@ add_executable(request_test
 target_link_libraries(request_test check subunit rt m)
 add_test(NAME request_test COMMAND request_test)
 
+add_executable(netutils_test 
+                netutils_test.c
+                ../src/netutils.c 
+                ../src/buffer.c)
+target_link_libraries(netutils_test check subunit rt m)
+add_test(NAME netutils_test COMMAND netutils_test)
