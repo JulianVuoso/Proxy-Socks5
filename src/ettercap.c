@@ -321,19 +321,22 @@ ettercap_decode_add(ettercap_parser * p, ettercap_word * word) {
         return;
     }
     if (!b64_decode((char *) word->value, (unsigned char *) decoded.value, decoded.length)) {
+        free(decoded.value);
         p->state = ettercap_error;
         p->error = ettercap_error_http_bad_credential;
         return;
     }
-    decoded.value[decoded.length] = '\0';
+    decoded.value[decoded.length - 1] = '\0';
+
     char * separator = strchr((char *) decoded.value, ':');
     if (separator == NULL) {
+        free(decoded.value);
         p->state = ettercap_error;
         p->error = ettercap_error_http_bad_credential;
         return;
     }    
-
     *separator = '\0';
+
     decoded.index = separator - (char *) decoded.value;
     ettercap_add_username(p, &decoded);
     uint8_t * aux = decoded.value;
