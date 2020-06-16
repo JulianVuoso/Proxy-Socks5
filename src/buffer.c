@@ -102,9 +102,14 @@ buffer_compact(buffer *b) {
     }
 }
 
+inline bool
+buffer_can_read_not_adv(buffer *b, uint8_t index) {
+    return b->write - (b->read + index) > 0;
+}
+
 uint8_t
-buffer_read_not_adv(buffer *b) {
-    if (buffer_can_read(b))
-        return  *b->read;
+buffer_read_not_adv(buffer *b, uint8_t index) {
+    if (buffer_can_read_not_adv(b, index))
+        return  b->read[index];
     return 0;    
 }

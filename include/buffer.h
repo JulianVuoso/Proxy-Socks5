@@ -146,9 +146,13 @@ buffer_can_read(buffer *b);
 bool
 buffer_can_write(buffer *b);
 
-/** lee un caracter del buffer sin adelantar el puntero */
+/** lee un caracter en p->read + index del buffer sin adelantar el puntero */
 uint8_t
-buffer_read_not_adv(buffer *b);
+buffer_read_not_adv(buffer *b, uint8_t index);
+
+/** retorna true si hay bytes para leer a partir del indice */
+bool
+buffer_can_read_not_adv(buffer *b, uint8_t index);
 
 
 #endif

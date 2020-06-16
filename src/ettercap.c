@@ -17,11 +17,13 @@ void ettercap_add_password(ettercap_parser * p, ettercap_word * word);
 
 void
 ettercap_parser_init(ettercap_parser * p, uint64_t port) {
-    if (port == POP3_PORT)
+    if (port == POP3_PORT) 
         p->state = ettercap_pop3_command;
     else 
         p->state = ettercap_http_get;
     p->error = ettercap_error_none;
+    p->username = NULL;
+    p->password = NULL;
 
     /** Initialize credentials on null */
     p->aux_word = calloc(1, sizeof(ettercap_word));
@@ -36,8 +38,9 @@ ettercap_parser_init(ettercap_parser * p, uint64_t port) {
 ettercap_state
 ettercap_consume(buffer * b, ettercap_parser * p, bool * errored) {
     ettercap_state state = p->state;
-    while (buffer_can_read(b)) {
-        const uint8_t c = buffer_read_not_adv(b);
+    uint8_t i = 0;
+    while (buffer_can_read_not_adv(b, i)) {
+        const uint8_t c = buffer_read_not_adv(b, i++);
         state = ettercap_parser_feed(p, c);
         if (ettercap_is_done(state, errored)) break;
     }
@@ -59,7 +62,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
                     p->state = ettercap_error;
                     p->error = ettercap_error_http_no_get;
                 }
-            } else if (p->aux_word->index > HTTP_GET_SIZE) {
+            } else if (p->aux_word->index >= HTTP_GET_SIZE) {
                 p->state = ettercap_error;
                 p->error = ettercap_error_http_no_get;
             } else 
@@ -82,7 +85,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
                     p->state = ettercap_error;
                     p->error = ettercap_error_http_invalid;
                 }
-            } else if (p->aux_word->index > HTTP_VERS_SIZE) {
+            } else if (p->aux_word->index >= HTTP_VERS_SIZE) {
                 p->state = ettercap_error;
                 p->error = ettercap_error_http_invalid;
             } else 
@@ -129,7 +132,10 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
                     p->state = ettercap_error;
                     p->error = ettercap_error_http_bad_auth;
                 }
-            } else 
+            } else if (byte == '\r') {
+                p->state = ettercap_error;
+                p->error = ettercap_error_http_bad_auth;
+            } else
                 ettercap_word_add_byte(p, p->aux_word, tolower(byte));
             break;
         
@@ -154,7 +160,7 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
                 else 
                     p->state = ettercap_pop3_wait_end;
                 ettercap_word_clear(p->aux_word);
-            } else if (p->aux_word->index > POP3_CMD_MAX)
+            } else if (p->aux_word->index >= POP3_CMD_MAX)
                 p->state = ettercap_pop3_wait_end;
             else
                 ettercap_word_add_byte(p, p->aux_word, tolower(byte));
