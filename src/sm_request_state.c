@@ -146,6 +146,11 @@ unsigned request_process(struct selector_key * key) {
     switch (dest->address_type)
     {
         case address_fqdn: {
+            sock->fqdn = calloc(dest->address_length + 1, sizeof(*sock->fqdn));
+            if (sock->fqdn == NULL) {
+                goto error;
+            }
+            strncpy(sock->fqdn, (char *) dest->address, dest->address_length);
             struct selector_key * key_param = malloc(sizeof(*key));
             if (key_param == NULL) {
                 goto error;
@@ -393,12 +398,9 @@ unsigned request_write(struct selector_key *key) {
 void request_close(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st = &sock->client.request;
-    if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
-        free(sock->origin_resolution->ai_addr);
-    }
-    logger_log(DEBUG, "saliendo de req write");
+    // if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
+    //     free(sock->origin_resolution->ai_addr);
+    // }
+    logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
 }
-
-/** TODO: WHEN ERROR, call this close ^ */
-/** Agregar un previous en stm.c, cosa de saber que cosas llamar */

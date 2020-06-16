@@ -28,11 +28,18 @@ static void
 socks5_destroy_(struct selector_key *key) {
     struct socks5 * s = ATTACHMENT(key);
     if(s->origin_resolution != NULL) {
+        /* Si lo llené a mano, libero ai_addr (no lo libera freeaddrinfo) */
+        if (s->fqdn == NULL) {
+            free(s->origin_resolution->ai_addr);
+        }
         freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
     if (s->username != NULL) {
         free(s->username);
+    }
+    if (s->fqdn != NULL) {
+        free(s->fqdn);
     }
     free(s);
 
@@ -80,6 +87,7 @@ static struct socks5 * socks5_new(int client_fd) {
     }
     ret->origin_fd = -1;
     ret->client_fd = client_fd;
+    ret->fqdn = NULL;
     ret->origin_resolution = NULL;
 
     ret->stm.initial = HELLO_READ;

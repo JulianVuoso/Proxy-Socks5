@@ -236,6 +236,7 @@ struct socks5 {
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
     int origin_fd, origin_domain;
+    char * fqdn;
     struct addrinfo * origin_resolution;
 
     /* Buffers */

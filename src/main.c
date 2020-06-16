@@ -102,6 +102,7 @@ main(const int argc, const char **argv) {
         goto finally;
     }
 
+    /** TODO: SI mandan -N, mandar LEVEL=ACCESS_LOG. Sino, mandar LEVEL=PASS_LOG */
     /* Initialize logger */
     ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
 
