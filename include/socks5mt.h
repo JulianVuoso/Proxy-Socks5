@@ -235,7 +235,7 @@ struct socks5 {
     /* Resolucion de la direc del origin server */
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
-    int origin_fd, origin_domain;
+    int origin_fd, origin_domain, address_type;
     struct addrinfo * origin_resolution;
 
     /* Buffers */

@@ -33,7 +33,7 @@ selector_status logger_init(int logger_fd, enum logger_level level, fd_selector 
 
     buffer_init(&log.logger_buf, N(log.buffer_mem), log.buffer_mem);
     log.selector = selector;
-    selector_register(selector, logger_fd, &logger_handler, OP_NOOP, NULL);
+    return selector_register(selector, logger_fd, &logger_handler, OP_NOOP, NULL);
 }
 
 void logger_log(enum logger_level level, char * format, ...) {
