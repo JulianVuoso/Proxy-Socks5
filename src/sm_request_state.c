@@ -397,15 +397,14 @@ void request_close(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st = &sock->client.request;
     
-    logger_log(ACTIVITY, "\nUser: %s", sock->username);
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    logger_log(DEBUG, "\n[ %d-%02d-%02d | %02d:%02d:%02d ]", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    logger_log(DEBUG, " User '%s'", sock->username);
 
     char * ip = malloc (sizeof(char) * sock->origin_addr_len);
     sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
-    logger_log(ACTIVITY, "\nAccess to IP: %s\n", ip);
-
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-    logger_log(ACTIVITY, "Date: %d-%02d-%02d   Time: %02d:%02d:%02d\n\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    logger_log(DEBUG, " has accessed to [IP]:[PORT] -> %s\n\n", ip);
 
     if (st->parser.dest != NULL && st->parser.dest->address_type != address_fqdn && sock->origin_resolution != NULL) {
         free(sock->origin_resolution->ai_addr);
