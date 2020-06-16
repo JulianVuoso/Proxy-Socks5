@@ -308,8 +308,8 @@ unsigned request_connect(struct selector_key * key) {
         case CON_INPROG:
             return REQUEST_CONNECT;
         case CON_OK:
-            memcpy(&(sock->origin_addr), node, sizeof(*node));
-            sock->origin_addr_len = sizeof(*node);
+            memcpy(&(sock->origin_addr), node->ai_addr, node->ai_addrlen);
+            sock->origin_addr_len = node->ai_addrlen;
             sock->origin_domain = node->ai_family;
             sock->client.request.reply_code = REQUEST_RESPONSE_SUCCESS;
             return try_jump_request_write(key);
@@ -353,8 +353,8 @@ unsigned request_connect_write(struct selector_key *key) {
         return request_connect(key);
     }
     struct addrinfo * node = sock->client.request.current;
-    memcpy(&(sock->origin_addr), node, sizeof(*node));
-    sock->origin_addr_len = sizeof(*node);
+    memcpy(&(sock->origin_addr), node->ai_addr, node->ai_addrlen);
+    sock->origin_addr_len = node->ai_addrlen;
     sock->origin_domain = node->ai_family;
     sock->client.request.reply_code = REQUEST_RESPONSE_SUCCESS;
     return try_jump_request_write(key);
@@ -414,6 +414,8 @@ void request_close(const unsigned state, struct selector_key *key) {
     request_parser_close(&st->parser);
 }
 
+#define MAX_ADDRESS_LENGTH  45
+
 static void access_log(struct socks5 * sock) {
     time_t t = time(NULL);
     if (t == ((time_t) -1))
@@ -422,28 +424,54 @@ static void access_log(struct socks5 * sock) {
     if (tm_st == NULL)
         return;
 
-    char * ip;
+    struct destination * dest = sock->client.request.parser.dest;
+    char * ip_server;
     uint16_t port;
-    if (sock->fqdn == NULL) {
-        ip = malloc (sizeof(char) * sock->origin_addr_len);
-        if (ip == NULL) return;
-        sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
+    struct sockaddr * addr_ptr;
+    if (dest != NULL && dest->address != NULL) {
+        struct sockaddr_in address;
+        struct sockaddr_in6 address6;
+        switch (dest->address_type)
+        {
+            case address_ipv4:
+                address = get_origin_addr_ipv4(dest);
+                addr_ptr = (struct sockaddr *) &address;
+                break;
+            case address_ipv6:
+                address6 = get_origin_addr_ipv6(dest);
+                addr_ptr = (struct sockaddr *) &address6;
+                break;
+            case address_fqdn:
+                break;
+            default:
+                return;
+        }
+        if (dest->address_type != address_fqdn) {
+            ip_server = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
+            if (ip_server == NULL) return;
+            sockaddr_to_human(ip_server, MAX_ADDRESS_LENGTH, addr_ptr);
+            port = dest->port;
+        } else {
+            ip_server = (char *) dest->address;
+            port = dest->port;
+        }
     } else {
-        ip = sock->fqdn;
+        ip_server = "????";
+        port = 0;
     }
-    port = get_port_from_sockaddr(((struct addrinfo *) &sock->origin_addr)->ai_addr);
 
-    char * ip_client;
-    uint16_t port_client;
-    const struct sockaddr * clientaddr = ((struct addrinfo *) &sock->client_addr)->ai_addr;
-    ip_client = malloc(sizeof(char) * sock->client_addr_len);
+    const struct sockaddr * clientaddr = (struct sockaddr *) &sock->client_addr;
+    char * ip_client = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
     if(ip_client == NULL) return;
-    sockaddr_to_human(ip_client, sock->client_addr_len, clientaddr);
-    port_client = get_port_from_sockaddr(((struct addrinfo *) &sock->client_addr)->ai_addr);
+    sockaddr_to_human(ip_client, MAX_ADDRESS_LENGTH, clientaddr);
+    uint16_t port_client = get_port_from_sockaddr((struct sockaddr *) &sock->client_addr);
 
     logger_log(ACCESS_LOG, "\n%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%d\t%s\t%d\t%d\n\n", 
         tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec, 
-            sock->username, ACCESS_CHAR,  ip_client, port_client, ip, port, sock->client.request.reply_code);
+            sock->username, ACCESS_CHAR,  ip_client, port_client, ip_server, port, sock->client.request.reply_code);
 
-    if (ip != sock->fqdn) free(ip);
+    if (dest != NULL && dest->address != NULL && dest->address_type != address_fqdn){
+        free(ip_server);
+    }
+    free(ip_client);
 }
