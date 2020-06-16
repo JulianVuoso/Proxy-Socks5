@@ -1,0 +1,302 @@
+Protocolo para configurar y monitorear el servidor proxy sobre SCTP
+
+El siguiente protocolo establece cómo DEBE ser la comunicación entre un cliente y un servidor proxy para que el primero pueda configurar y monitorear el funcionamiento del segundo. Este protocolo viaja sobre el protocolo de transporte SCTP.
+
+Autenticación del cliente
+
+El cliente se conecta al servidor y envía un REQUEST con la versión del protocolo, su nombre de usuario y contraseña para acceder a las opciones de configuración y monitoreo del servidor.
+
+		+-----+------+----------+------+----------+
+		| VER | ULEN |  UNAME   | PLEN |  PASSWD  |
+		+-----+------+----------+------+----------+
+		|  1  |  1   | 1 to 255 |  1   | 1 to 255 |
+		+-----+------+----------+------+----------+
+
+	Donde: 
+		- VER		-> versión actual del protocolo, que es X'01'. 
+		- ULEN		-> largo del campo UNAME que sigue
+		- UNAME 	-> nombre de usuario
+		- PLEN		-> largo del campo PASSWD que sigue
+		- PASSWD	-> contraseña asociada al UNAME dado
+
+El servidor verifica el nombre de usuario y contraseña suministrados y envía la siguiente respuesta
+
+					+-----+--------+
+					| VER | STATUS |
+					+-----+--------+
+					|  1  |   1    |
+					+-----+--------+
+
+	Donde: 
+		- VER		-> versión actual del protocolo, que es X'01'. 
+		- STATUS	-> estado de respuesta
+
+Un campo STATUS con X'00' indica éxito. Si el servidor retorna falla (cualquier valor distinto de X'00') el cliente DEBE cerrar la conexión.
+
+REQUESTS
+
+Una vez completado el proceso de autenticación, el cliente procede a enviar los comandos que desee de los que se listan a continuación.
+A cada comando le corresponde un formato de REPLY particular, especificado a continuación de la explicación del comando. Todo número que ocupe más de 1 byte debe ser interpretado como un número en "network octet order"
+El cliente PUEDE enviar un comando seguido de otro, a lo cual el servidor DEBE responder en orden.
+
+Los códigos de CMD existentes son 
+	~ ADD USER			X'01'	
+	~ DELETE USER		X'02'	
+	~ LIST USERS		X'03'	
+	~ GET METRIC		X'04'	
+	~ GET CONFIG		X'05'	
+	~ SET CONFIG		X'06'
+
+Los códigos de STATUS existentes son
+	~ SUCCESS			X'00' 
+	~ INV CMD			X'01'	
+	~ INV UTYPE			X'02'	
+	~ INV METRIC		X'03'	
+	~ INV CONFIG		X'04'	
+	~ INV VALUE			X'05'	
+	~ GEN SERV FAIL		X'FF'
+
+En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
+Si el servidor envía en su respuesta un STATUS de GEN SERVER FAIL, éste DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
+
+Agregar Usuario
+
+	+-----+------+----------+------+------------+-------+
+	| CMD | ULEN |   UNAME  | PLEN |   PASSWD   | UTYPE |
+	+-----+------+----------+------+------------+-------+
+	|  1  |  1   | 1 to 255 |   1  |  1 to 255  |   1   |
+	+-----+------+----------+------+------------+-------+
+
+	Donde:
+		- CMD		X'01'
+		- ULEN		-> largo del campo UNAME que sigue
+		- UNAME 	-> nombre de usuario
+		- PLEN		-> largo del campo PASSWD que sigue
+		- PASSWD	-> contraseña asociada al UNAME dado
+		- UTYPE		-> tipo de usuario
+			~ CLIENT	X'00'
+			~ ADMIN		X'01'
+
+El servidor verifica que el tipo de usuario sea correcto, y si lo es, intenta agregar al usuario a la lista. Si el nombre de usuario ya existía, se actualiza su contraseña y su tipo de usuario. 
+Luego envía la siguiente REPLY
+
+					+-----+--------+
+					| CMD | STATUS |
+					+-----+--------+
+					|  1  |   1    |
+					+-----+--------+
+
+	Donde: 
+		- CMD		X'01'
+		- STATUS	-> estado de respuesta
+			~ SUCCESS			X'00'
+			~ INV UTYPE			X'02'
+			~ GEN SERVER FAIL	X'FF'
+
+En caso de recibir INV UTYPE, el cliente PUEDE volver a enviar un nuevo REQUEST.
+
+Eliminar usuario
+
+				+-----+------+----------+
+				| CMD | ULEN |   UNAME  |
+				+-----+------+----------+
+				|  1  |  1   | 1 to 255 |
+				+-----+------+----------+
+
+	Donde:
+		- CMD		X'02'
+		- ULEN		-> largo del campo UNAME que sigue
+		- UNAME 	-> nombre de usuario a remover
+
+El servidor intenta eliminar al usuario a la lista. Si el nombre de usuario no existe, no hace nada y responde SUCCESS (es idempotente). 
+Luego envía la siguiente REPLY
+
+					+-----+--------+
+					| CMD | STATUS |
+					+-----+--------+
+					|  1  |   1    |
+					+-----+--------+
+
+	Donde: 
+		- CMD		X'02'
+		- STATUS	-> estado de respuesta
+			~ SUCCESS			X'00'
+			~ GEN SERVER FAIL	X'FF'
+
+Listar nombres de usuario
+
+						+-----+
+						| CMD |
+						+-----+
+						|  1  |
+						+-----+
+	
+	Donde:
+		- CMD		X'03'
+
+El servidor intenta listar todos los nombres de usuario existentes junto con su tipo. 
+Luego envía la siguiente REPLY
+
++-----+--------+-------+--------+------+----------+-------+
+| CMD | STATUS | NULEN | NUSERS | ULEN |   UNAME  | UTYPE |
++-----+--------+-------+--------+------+----------+-------+
+|  1  |   1    |   1   |1 to 255|  1   | 1 to 255 |   1   |
++-----+--------+-------+--------+------+----------+-------+
+								[------------|------------]
+										NUSERS veces
+
+	Donde: 
+		- CMD		X'03'
+		- STATUS	-> estado de respuesta
+			~ SUCCESS			X'00'
+			~ GEN SERVER FAIL	X'FF'
+		- NULEN		-> (largo - 1) del campo NUSERS que sigue
+		- NUSERS	-> cantidad de usuarios a continuación
+		- ULEN		-> largo del campo UNAME que sigue
+		- UNAME		-> nombre del usuario
+		- UTYPE 	-> tipo de usuario
+			~ CLIENT	X'00'
+			~ ADMIN		X'01'
+
+Obtener métrica
+
+					+-----+--------+
+					| CMD | METRIC |
+					+-----+--------+
+					|  1  |   1    |
+					+-----+--------+
+	
+	Donde:
+		- CMD		X'04'
+		- METRIC 	-> métrica solicitada
+			~ HISTORIC CONNECTIONS		X'00'
+			~ CONCURRENT CONNECTIONS	X'01'
+			~ HISTORIC BYTES TRANSF		X'02'
+	
+El servidor intenta obtener la métrica solicitada. Luego envía la siguiente REPLY
+
+		+-----+--------+--------+------+----------+
+		| CMD | STATUS | METRIC | VLEN |   VALUE  |
+		+-----+--------+--------+------+----------+
+		|  1  |   1    |   1    |  1   | 0 to 255 |
+		+-----+--------+--------+------+----------+
+
+	Donde: 
+		- CMD		X'04'
+		- STATUS	-> estado de respuesta
+			~ SUCCESS			X'00'
+			~ INV METRIC		X'03'
+			~ GEN SERVER FAIL	X'FF'
+		- METRIC 	-> métrica solicitada
+			~ HISTORIC CONNECTIONS		X'00'
+			~ CONCURRENT CONNECTIONS	X'01'
+			~ HISTORIC BYTES TRANSF		X'02'
+		- VLEN 		-> largo del campo VALUE que sigue
+		- VALUE 	-> valor de la métrica solicitada
+
+El valor obtenido debe ser interpretado como un número, que estará en la unidad Bytes en caso de que la configuración solicitada sea X'02'.
+
+En caso de recibir INV METRIC, el cliente DEBE leer los tres campos siguientes según el valor de VLEN. Luego PUEDE volver a enviar un nuevo REQUEST.
+
+Obtener configuración
+
+					+-----+--------+
+					| CMD | CONFIG |
+					+-----+--------+
+					|  1  |   1    |
+					+-----+--------+
+	
+	Donde:
+		- CMD		X'05'
+		- CONFIG 	-> configuración solicitada
+			~ BUFFER SIZE BOTH  X'00'		
+			~ BUFFER READ		X'01'
+			~ BUFFER WRITE		X'02'
+			~ SELECT TIMEOUT	X'03'
+	
+El servidor intenta obtener la configuración solicitada. Luego envía la siguiente REPLY
+
+		+-----+--------+--------+------+----------+
+		| CMD | STATUS | CONFIG | VLEN |   VALUE  |
+		+-----+--------+--------+------+----------+
+		|  1  |   1    |   1    |  1   | 0 to 255 |
+		+-----+--------+--------+------+----------+
+
+	Donde: 
+		- CMD		X'05'
+		- STATUS	-> estado de respuesta
+			~ SUCCESS			X'00'
+			~ INV CONFIG		X'04'
+			~ GEN SERVER FAIL	X'FF'
+		- CONFIG 	-> configuración solicitada
+			~ BUFFER SIZE BOTH  X'00'		
+			~ BUFFER READ		X'01'
+			~ BUFFER WRITE		X'02'
+			~ SELECT TIMEOUT	X'03'
+		- VLEN 		-> largo del campo VALUE que sigue
+		- VALUE 	-> valor de la configuración solicitada
+
+En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el valor obtenido debe ser interpretado como un número en unidad bytes. Mientras que si la configuración solicitada es de un timeout (configuración X'03'), el valor obtenido debe ser interpretado como un número en unidad nanosegundos.
+
+En caso de recibir INV CONFIG, el cliente DEBE leer los tres campos siguientes según el valor de VLEN. Luego PUEDE volver a enviar un nuevo REQUEST.
+
+Cambiar configuración
+
+			+-----+--------+------+----------+
+			| CMD | CONFIG | VLEN |   VALUE  |
+			+-----+--------+------+----------+
+			|  1  |   1    |  1   | 0 to 255 |
+			+-----+--------+------+----------+
+	
+	Donde:
+		- CMD		X'06'
+		- CONFIG 	-> configuración solicitada
+			~ BUFFER SIZE BOTH  X'00'		
+			~ BUFFER READ		X'01'
+			~ BUFFER WRITE		X'02'
+			~ SELECT TIMEOUT	X'03'
+		- VLEN		-> largo del campo VALUE que sigue
+		- VALUE 	-> valor de la configuración solicitada
+
+En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el valor dado será interpretado como un número en unidad bytes. Mientras que si la configuración solicitada es de un timeout (configuración X'03'), el valor dado será interpretado como un número en unidad nanosegundos.
+
+El servidor valida el valor dado y, de ser correcto, intenta aplicar el cambio de configuración. Luego envía la siguiente REPLY
+
+				+-----+--------+--------+
+				| CMD | STATUS | CONFIG |
+				+-----+--------+--------+
+				|  1  |   1    |   1    |
+				+-----+--------+--------+
+
+	Donde: 
+		- CMD		X'06'
+		- STATUS	-> estado de respuesta
+			~ SUCCESS			X'00'
+			~ INV CONFIG		X'04'
+			~ INV VALUE 		X'05'
+			~ GEN SERVER FAIL	X'FF'
+		- CONFIG 	-> configuración solicitada
+			~ BUFFER SIZE BOTH  X'00'		
+			~ BUFFER READ		X'01'
+			~ BUFFER WRITE		X'02'
+			~ SELECT TIMEOUT	X'03'
+
+En caso de recibir INV CONFIG o INV VALUE, el cliente DEBE leer el campo CONFIG siguiente. Luego PUEDE volver a enviar un nuevo REQUEST.
+
+Comando inválido
+
+En caso de que el comando ingresado no corresponda con los valores listados anteriormente, el servidor envía la siguiente REPLY
+
+					+-----+--------+
+					| CMD | STATUS |
+					+-----+--------+
+					|  1  |   1    |
+					+-----+--------+
+
+	Donde: 
+		- CMD		-> el comando solicitado
+		- STATUS	-> estado de respuesta
+			~ INV CMD			X'01'
+			~ GEN SERVER FAIL	X'FF'
+
+En caso de recibir INV CMD, el cliente luego PUEDE volver a enviar un nuevo REQUEST.

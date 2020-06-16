@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "buffer.h"
+#include "users.h"
+
+static const uint8_t NEGOT_RESPONSE_SUCCESS = 0x00;
+static const uint8_t NEGOT_RESPONSE_ERROR = 0x01;
 
 /*
     The SOCKS negotiation is formed as follows:
@@ -96,5 +100,8 @@ negot_is_done(const enum negot_state state, bool *errored);
 /** libera recursos internos del parser */
 void 
 negot_parser_close(struct negot_parser *p);
+
+extern int 
+negot_marshall(buffer *b, uint8_t status);
 
 #endif

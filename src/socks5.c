@@ -31,6 +31,9 @@ socks5_destroy_(struct selector_key *key) {
         freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
+    if (s->username != NULL) {
+        free(s->username);
+    }
     free(s);
 
     // Actualizar cantidad de conexiones concurrentes.
@@ -77,6 +80,7 @@ static struct socks5 * socks5_new(int client_fd) {
     }
     ret->origin_fd = -1;
     ret->client_fd = client_fd;
+    ret->origin_resolution = NULL;
 
     ret->stm.initial = HELLO_READ;
     ret->stm.max_state = ERROR;
@@ -85,6 +89,9 @@ static struct socks5 * socks5_new(int client_fd) {
 
     buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
     buffer_init(&ret->write_buffer, N(ret->write_buffer_mem), ret->write_buffer_mem);
+
+    ret->username = NULL;
+    ret->username_length = 0;
 
     ret->references = 1;
     return ret;
