@@ -146,7 +146,11 @@ unsigned request_process(struct selector_key * key) {
     switch (dest->address_type)
     {
         case address_fqdn: {
-            sock->address_type = address_fqdn;
+            sock->fqdn = calloc(dest->address_length + 1, sizeof(*sock->fqdn));
+            if (sock->fqdn == NULL) {
+                goto error;
+            }
+            strncpy(sock->fqdn, (char *) dest->address, dest->address_length);
             struct selector_key * key_param = malloc(sizeof(*key));
             if (key_param == NULL) {
                 goto error;
@@ -162,7 +166,6 @@ unsigned request_process(struct selector_key * key) {
             }
             return REQUEST_SOLVE;
         } case address_ipv4: {
-            sock->address_type = address_ipv4;
             // sock->origin_domain = AF_INET;
             struct sockaddr_in origin_addr = get_origin_addr_ipv4(dest);
             // memcpy(&(sock->origin_addr), &origin_addr, sizeof(origin_addr));
@@ -173,7 +176,6 @@ unsigned request_process(struct selector_key * key) {
             }
             break;
         } case address_ipv6: {
-            sock->address_type = address_ipv6;
             // sock->origin_domain = AF_INET6;
             struct sockaddr_in6 origin_addr6 = get_origin_addr_ipv6(dest);
             // memcpy(&(sock->origin_addr), &origin_addr6, sizeof(origin_addr6));

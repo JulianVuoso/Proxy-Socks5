@@ -185,15 +185,22 @@ static void access_log(struct socks5 * sock) {
     if (tm_st == NULL) {
         return;
     }
-    char * ip = malloc (sizeof(char) * sock->origin_addr_len);
-    if (ip == NULL) {
-        return;
+    char * ip;
+    uint16_t port;
+    if (sock->fqdn == NULL) {
+        ip = malloc (sizeof(char) * sock->origin_addr_len);
+        if (ip == NULL) {
+            return;
+        }
+        sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
+    } else {
+        ip = sock->fqdn;
     }
-    sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
+    port = get_port_from_sockaddr(((struct addrinfo *) &sock->origin_addr)->ai_addr);
 
-    logger_log(PROD, "\n[ %d-%02d-%02d | %02d:%02d:%02d ] User '%s' has accessed to [IP]:[PORT] -> %s\n\n", 
+    logger_log(ACCESS_LOG, "\n[ %d-%02d-%02d | %02d:%02d:%02d ] User '%s' has accessed to [IP]:[PORT] -> %s\t%d\n\n", 
         tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec, 
-            sock->username, ip);
+            sock->username, ip, port);
 
-    free(ip);
+    if (ip != sock->fqdn) free(ip);
 }
