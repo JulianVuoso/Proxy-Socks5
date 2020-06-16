@@ -8,9 +8,6 @@
 #include <time.h>
 
 #include "logger.h"
-#include "netutils.h"
-
-static void access_log(struct socks5 * sock);
 
 void copy_init(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
@@ -19,7 +16,6 @@ void copy_init(const unsigned state, struct selector_key *key) {
     st->or_to_cli_buf = &(sock->write_buffer);
     st->cli_to_or_eof = 0;
     st->or_to_cli_eof = 0;
-    access_log(sock);
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
@@ -174,33 +170,4 @@ unsigned copy_write(struct selector_key * key) {
         ret = try_jump_done(key);
     }
     return ret;
-}
-
-static void access_log(struct socks5 * sock) {
-    time_t t = time(NULL);
-    if (t == ((time_t) -1)) {
-        return;
-    }
-    struct tm * tm_st = localtime(&t);
-    if (tm_st == NULL) {
-        return;
-    }
-    char * ip;
-    uint16_t port;
-    if (sock->fqdn == NULL) {
-        ip = malloc (sizeof(char) * sock->origin_addr_len);
-        if (ip == NULL) {
-            return;
-        }
-        sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
-    } else {
-        ip = sock->fqdn;
-    }
-    port = get_port_from_sockaddr(((struct addrinfo *) &sock->origin_addr)->ai_addr);
-
-    logger_log(ACCESS_LOG, "\n[ %d-%02d-%02d | %02d:%02d:%02d ] User '%s' has accessed to [IP]:[PORT] -> %s\t%d\n\n", 
-        tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec, 
-            sock->username, ip, port);
-
-    if (ip != sock->fqdn) free(ip);
 }

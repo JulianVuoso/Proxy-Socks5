@@ -7,6 +7,7 @@
 #include <stdio.h>
 
 #include "logger.h"
+#include "netutils.h"
 #include "sm_before_error_state.h"
 
 #include "socks5mt.h"
@@ -14,6 +15,8 @@
 #include "socks5_handler.h"
 
 static unsigned try_jump_request_write(struct selector_key *key);
+static void access_log(struct socks5 * sock);
+
 
 void request_read_init(const unsigned state, struct selector_key *key) {
     struct request_st * st = &ATTACHMENT(key)->client.request;
@@ -359,6 +362,7 @@ unsigned request_connect_write(struct selector_key *key) {
 
 void request_write_init(const unsigned state, struct selector_key *key) {
     /* Do nothing */
+    access_log(ATTACHMENT(key));
 }
 
 unsigned request_write(struct selector_key *key) {
@@ -408,4 +412,38 @@ void request_close(const unsigned state, struct selector_key *key) {
     // }
     logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
+}
+
+static void access_log(struct socks5 * sock) {
+    time_t t = time(NULL);
+    if (t == ((time_t) -1))
+        return;
+    struct tm * tm_st = localtime(&t);
+    if (tm_st == NULL)
+        return;
+
+    char * ip;
+    uint16_t port;
+    if (sock->fqdn == NULL) {
+        ip = malloc (sizeof(char) * sock->origin_addr_len);
+        if (ip == NULL) return;
+        sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
+    } else {
+        ip = sock->fqdn;
+    }
+    port = get_port_from_sockaddr(((struct addrinfo *) &sock->origin_addr)->ai_addr);
+
+    char * ip_client;
+    uint16_t port_client;
+    const struct sockaddr * clientaddr = ((struct addrinfo *) &sock->client_addr)->ai_addr;
+    ip_client = malloc(sizeof(char) * sock->client_addr_len);
+    if(ip_client == NULL) return;
+    sockaddr_to_human(ip_client, sock->client_addr_len, clientaddr);
+    port_client = get_port_from_sockaddr(((struct addrinfo *) &sock->client_addr)->ai_addr);
+
+    logger_log(ACCESS_LOG, "\n%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%d\t%s\t%d\t%d\n\n", 
+        tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec, 
+            sock->username, ACCESS_CHAR,  ip_client, port_client, ip, port, sock->client.request.reply_code);
+
+    if (ip != sock->fqdn) free(ip);
 }
