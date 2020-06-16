@@ -106,9 +106,12 @@ main(const int argc, const char **argv) {
         goto finally;
     }
 
-    /** TODO: SI mandan -N, mandar LEVEL=ACCESS_LOG. Sino, mandar LEVEL=PASS_LOG */
     /* Initialize logger */
+    // enum logger_level level = DEBUG; TODO: uncomment this on production
+    // if (args.disectors_enabled) level = PASS_LOG; 
+    // ss = logger_init(LOGGER_FD, level, selector);
     ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+
 
     const struct fd_handler socks5 = {
         .handle_read       = socks5_passive_accept,

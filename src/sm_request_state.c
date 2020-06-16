@@ -339,6 +339,11 @@ unsigned request_connect_write(struct selector_key *key) {
     unsigned optval = 1, optlen = sizeof(optval);
     if (getsockopt(sock->origin_fd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0
             || optval != 0) {
+        if (selector_unregister_fd(key->s, sock->origin_fd) != SELECTOR_SUCCESS) {
+            logger_log(DEBUG, "failed selector\n");
+            do_before_error(key);
+            return ERROR;
+        }
         /* Avanzo al siguiente nodo e intento conectarme */
         logger_log(DEBUG, "this one failed, go to next. Optval: %d\n", optval);
         sock->client.request.current = sock->client.request.current->ai_next;
