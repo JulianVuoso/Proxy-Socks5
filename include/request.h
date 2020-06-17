@@ -21,8 +21,6 @@ static const uint8_t REQUEST_COMMAND_CONNECT = 0x01;
 // static const uint8_t REQUEST_RESPONSE_TTL_EXPIRED = 0x06;
 // static const uint8_t REQUEST_RESPONSE_CMD_NOT_SUP = 0x07;
 // static const uint8_t REQUEST_RESPONSE_ADD_TYPE_NOT_SUP = 0x08;
-// /** TODO: ver que devolver aca abajo  */
-// static const uint8_t REQUEST_RESPONSE_GEN_CLIENT_FAIL = 0x09;
 
 enum request_response_code {
     REQUEST_RESPONSE_SUCCESS = 0x00,
@@ -34,8 +32,6 @@ enum request_response_code {
     REQUEST_RESPONSE_TTL_EXPIRED = 0x06,
     REQUEST_RESPONSE_CMD_NOT_SUP = 0x07,
     REQUEST_RESPONSE_ADD_TYPE_NOT_SUP = 0x08,
-    /** TODO: ver que devolver aca abajo */
-    REQUEST_RESPONSE_GEN_CLIENT_FAIL = 0x09,
 };
 
 /*
