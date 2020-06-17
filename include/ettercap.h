@@ -17,6 +17,7 @@
 #define HTTP_VERS "http/1.1"
 #define HTTP_AUTH "authorization:"
 #define HTTP_BASIC "basic"
+#define HTTP_PROT "HTTP"
 
 
 #define POP3_BLOCK 5
@@ -25,6 +26,7 @@
 #define POP3_PORT 110
 #define POP3_USER "user"
 #define POP3_PASS "pass"
+#define POP3_PROT "POP3"
 
 /*
  * HTTP client GET.

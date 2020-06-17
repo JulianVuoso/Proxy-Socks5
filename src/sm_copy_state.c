@@ -8,6 +8,9 @@
 #include <time.h>
 
 #include "logger.h"
+#include "netutils.h"
+
+static void print_credentials(struct selector_key *key);
 
 void copy_init(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
@@ -16,6 +19,8 @@ void copy_init(const unsigned state, struct selector_key *key) {
     st->or_to_cli_buf = &(sock->write_buffer);
     st->cli_to_or_eof = 0;
     st->or_to_cli_eof = 0;
+    st->sniffed = false;
+    ettercap_parser_init(&st->ett_parser, get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr));
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
@@ -37,6 +42,7 @@ static unsigned try_jump_done(struct selector_key * key) {
 unsigned copy_read(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct copy_st * st_vars = &ATTACHMENT(key)->client.copy;
+    bool ett_error;
     unsigned ret = COPY;
     size_t nbytes;
     uint8_t * buf_write_ptr;
@@ -64,6 +70,19 @@ unsigned copy_read(struct selector_key * key) {
     n = recv(key->fd, buf_write_ptr, nbytes, 0);
     if (n > 0) {
         buffer_write_adv(buff, n);
+        
+        if (!st_vars->sniffed) {
+            /* Ettercap sniffeo de credenciales */
+            if (ettercap_is_done(st_vars->ett_parser.state, &ett_error)) {
+                st_vars->sniffed = true;
+                if (!ett_error)
+                    print_credentials(key);
+                else 
+                    logger_log(DEBUG, "failed ettercap, %s\n", ettercap_error_desc(&st_vars->ett_parser));
+            } else ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
+        }
+
+
         if (!buffer_can_write(buff)) {
             /* Si tenia prendido OP_READ del fd actual, lo apago porque se lleno */
             if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
@@ -170,4 +189,20 @@ unsigned copy_write(struct selector_key * key) {
         ret = try_jump_done(key);
     }
     return ret;
+}
+
+void copy_close(const unsigned state, struct selector_key *key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    ettercap_parser_close(&st->ett_parser);
+}
+
+static void print_credentials(struct selector_key *key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    char * protocol;
+    if (get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr) == POP3_PORT)
+        protocol = POP3_PROT;
+    else protocol = HTTP_PROT;
+    logger_log(PASS_LOG, "%s: IP -> USER: %s \tPASS: %s\n\n", protocol, st->ett_parser.username, st->ett_parser.password);
 }
