@@ -20,7 +20,6 @@
 #include "args.h"
 
 /** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
-#define IPV4_ADDRESS     "0.0.0.0" //INADDR_ANY
 #define IPV6_ADDRESS    "::"
 
 #define USERS_FILENAME  "users.txt"
@@ -106,10 +105,10 @@ main(const int argc, const char **argv) {
     }
 
     /* Initialize logger */
-    // enum logger_level level = DEBUG; TODO: uncomment this on production
+    // enum logger_level level = DEBUG;
     // if (args.disectors_enabled) level = PASS_LOG; 
     // ss = logger_init(LOGGER_FD, level, selector);
-    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector); // TODO: uncomment prev on production
 
 
     const struct fd_handler socks5 = {
