@@ -137,7 +137,7 @@ unsigned copy_write(struct selector_key * key) {
         abort();
     }
     buf_read_ptr = buffer_read_ptr(buff, &nbytes);
-    n = send(key->fd, buf_read_ptr, nbytes, 0);
+    n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
     if (n > 0) {
         buffer_read_adv(buff, n);
         if (!buffer_can_read(buff)) {
