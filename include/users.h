@@ -22,6 +22,7 @@ struct UserNode{
 struct UserList{
     struct UserNode * header;
     struct UserNode * tail;
+    uint32_t size;
 };
 
 enum file_errors read_users_file();

@@ -457,7 +457,7 @@ static void access_log(struct socks5 * sock) {
         if (dest->address_type != address_fqdn) {
             ip_server = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
             if (ip_server == NULL) return;
-            sockaddr_to_human(ip_server, MAX_ADDRESS_LENGTH, addr_ptr);
+            sockaddr_to_human_no_port(ip_server, MAX_ADDRESS_LENGTH, addr_ptr);
             port = dest->port;
         } else {
             ip_server = (char *) dest->address;
@@ -471,7 +471,7 @@ static void access_log(struct socks5 * sock) {
     const struct sockaddr * clientaddr = (struct sockaddr *) &sock->client_addr;
     char * ip_client = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
     if(ip_client == NULL) return;
-    sockaddr_to_human(ip_client, MAX_ADDRESS_LENGTH, clientaddr);
+    sockaddr_to_human_no_port(ip_client, MAX_ADDRESS_LENGTH, clientaddr);
     uint16_t port_client = get_port_from_sockaddr((struct sockaddr *) &sock->client_addr);
 
     logger_log(ACCESS_LOG, "\n%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%d\t%s\t%d\t%d\n\n", 

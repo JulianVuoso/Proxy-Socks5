@@ -15,6 +15,8 @@
 static enum file_errors init_users_list();
 static enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl);
 static void print_users();
+static struct UserNode * search_user(uint8_t * user, uint8_t * pwd);
+static void delete_user_from_list(uint8_t * user);
 
 static struct UserList * ulist;
 
@@ -63,6 +65,30 @@ enum file_errors read_users_file(char * filename){
 
     print_users();
 
+    /*************** TESTEO DE USER CONFIG **************/
+    
+    /* printf("#users: %d\n",ulist->size);
+    puts("\n---- cambio pass a peter por parker ----");
+    uint8_t * useraux = malloc(sizeof("peter"));        // SIN MANEJO DE ERRORES PORQUE ERA PARA TESTEAR
+    uint8_t * passaux = malloc(sizeof("parker"));
+    strcpy((char*)useraux, "peter");
+    strcpy((char*)passaux, "parker");
+    add_user_to_list(useraux, passaux, 0);
+    print_users();
+    printf("#users: %d\n",ulist->size);
+
+    puts("\n---- borro a peter ----");
+    delete_user_from_list(useraux);
+    print_users();
+    printf("#users: %d\n",ulist->size);
+
+    puts("\n---- borro a beto_ ----");
+    uint8_t * useraux2 = malloc(sizeof("beto_"));        // SIN MANEJO DE ERRORES PORQUE ERA PARA TESTEAR
+    strcpy((char*)useraux2, "beto_");
+    delete_user_from_list(useraux2);
+    print_users();
+    printf("#users: %d\n",ulist->size); */
+
     state = fclose(file);
     if(state != 0) return closing_file;
 
@@ -74,27 +100,56 @@ static enum file_errors init_users_list(){
     if(ulist == NULL) return memory_heap;       /** TODO: como resolver error, same para todo el manejo de la lista */
     ulist->header = NULL; 
     ulist->tail = NULL;
+    ulist->size = 0;
     return file_no_error;
 }
 
 static enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl){
 
-    struct UserNode * node = (struct UserNode *) malloc(sizeof(struct UserNode));
-    if(node == NULL) return memory_heap;
-    node->user.username = user;
-    node->user.password = pwd;
-    node->user.level = lvl;
-    node->next = NULL;
+    struct UserNode * result = search_user(user, pwd);
+    if(result == NULL){
+        ulist->size++;
+        struct UserNode * node = (struct UserNode *) malloc(sizeof(struct UserNode));
+        if(node == NULL) return memory_heap;
+        node->user.username = user;
+        node->user.password = pwd;
+        node->user.level = lvl;
+        node->next = NULL;
 
-    if(ulist->header == NULL){
-        ulist->header = node;
-        ulist->tail = node;
+        if(ulist->header == NULL){
+            ulist->header = node;
+            ulist->tail = node;
+            return file_no_error;
+        }
+
+        ulist->tail->next = node;
+        ulist->tail = node; 
         return file_no_error;
+    }else{
+        strcpy((char*)result->user.password, (char*)pwd);
+        result->user.level = lvl;
     }
+}
 
-    ulist->tail->next = node;
-    ulist->tail = node; 
-    return file_no_error;
+static void delete_user_from_list(uint8_t * user){
+    struct UserNode * node = ulist->header;
+    if(strcmp((char*)node->user.username,(char*)user)==0){
+        ulist->header = node->next;
+        free(node);
+        ulist->size--;
+        return;
+    }    
+    while (node->next != NULL){
+        if(strcmp((char*)node->next->user.username,(char*)user)==0){
+            struct UserNode * aux = node->next;
+            node->next = node->next->next;
+            ulist->size--;
+            free(aux);
+            return;
+        }
+        node = node->next;
+    }
+    return;
 }
 
 static void print_users(){
@@ -132,4 +187,14 @@ uint8_t authenticate(uint8_t * user, uint8_t * pwd){
         node = node->next;
     }
     return NEGOT_RESPONSE_ERROR;    
+}
+
+static struct UserNode * search_user(uint8_t * user, uint8_t * pwd){
+    struct UserNode * node = ulist->header;
+    while (node != NULL){
+        if(strcmp((char*)node->user.username, (char*)user)==0)
+            return node;
+        node = node->next;
+    }
+    return NULL;
 }
