@@ -6,6 +6,7 @@
 #include "selector.h"
 
 #define ACCESS_CHAR 'A'
+#define PASS_CHAR 'P'
 
 enum logger_level { DEBUG = 0, PASS_LOG, ACCESS_LOG};
 

@@ -200,18 +200,33 @@ void copy_close(const unsigned state, struct selector_key *key) {
 }
 
 static void print_credentials(struct selector_key *key) {
+    time_t t = time(NULL);
+    if (t == ((time_t) -1))
+        return;
+    struct tm * tm_st = localtime(&t);
+    if (tm_st == NULL)
+        return;
+
     struct socks5 * sock = ATTACHMENT(key);
     struct copy_st * st = &sock->client.copy;
     char * protocol;
 
-    const struct sockaddr * originaddr = (struct sockaddr *) &sock->origin_addr;
-    char * ip = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
-    if(ip == NULL) return;
-    sockaddr_to_human_no_port(ip, MAX_ADDRESS_LENGTH, originaddr);
+    char * ip;
+    if (sock->fqdn == NULL) {
+        const struct sockaddr * originaddr = (struct sockaddr *) &sock->origin_addr;
+        ip = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
+        if(ip == NULL) return;
+        sockaddr_to_human_no_port(ip, MAX_ADDRESS_LENGTH, originaddr);
+    } else ip = sock->fqdn;   
+
+    uint16_t port = get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr);
 
     if (get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr) == POP3_PORT)
         protocol = POP3_PROT;
     else protocol = HTTP_PROT;
-    logger_log(PASS_LOG, "%s: %s -> USER: %s \tPASS: %s\n\n", protocol, ip, st->ett_parser.username, st->ett_parser.password);
+
+    logger_log(PASS_LOG, "%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n\n", 
+            tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec,
+            sock->username, PASS_CHAR, protocol, ip, port, st->ett_parser.username, st->ett_parser.password);
     if (ip != sock->fqdn) free(ip);
 }
