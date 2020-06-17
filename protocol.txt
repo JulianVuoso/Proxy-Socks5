@@ -49,15 +49,17 @@ Los códigos de CMD existentes son
 
 Los códigos de STATUS existentes son
 	~ SUCCESS			X'00' 
-	~ INV CMD			X'01'	
-	~ INV UTYPE			X'02'	
-	~ INV METRIC		X'03'	
-	~ INV CONFIG		X'04'	
-	~ INV VALUE			X'05'	
+	~ INV CMD			X'01'
+	~ INV ULEN			X'02'	
+	~ INV UTYPE			X'03'	
+	~ INV METRIC		X'04'	
+	~ INV CONFIG		X'05'	
+	~ INV VALUE			X'06'	
 	~ GEN SERV FAIL		X'FF'
 
 En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
 Si el servidor envía en su respuesta un STATUS de GEN SERVER FAIL, éste DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
+Si el servidor envía cualquier otro STATUS de respuesta, el cliente puede volver a enviar un nuevo REQUEST.
 
 Agregar Usuario
 
@@ -77,7 +79,7 @@ Agregar Usuario
 			~ CLIENT	X'00'
 			~ ADMIN		X'01'
 
-El servidor verifica que el tipo de usuario sea correcto, y si lo es, intenta agregar al usuario a la lista. Si el nombre de usuario ya existía, se actualiza su contraseña y su tipo de usuario. 
+El servidor verifica que el largo sea válido (mayor a 0) y que el tipo de usuario sea correcto, y si lo es, intenta agregar al usuario a la lista. Si el nombre de usuario ya existía, se actualiza su contraseña y su tipo de usuario. 
 Luego envía la siguiente REPLY
 
 					+-----+--------+
@@ -90,10 +92,11 @@ Luego envía la siguiente REPLY
 		- CMD		X'01'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV UTYPE			X'02'
+			~ INV ULEN			X'02'
+			~ INV UTYPE			X'03'
 			~ GEN SERVER FAIL	X'FF'
 
-En caso de recibir INV UTYPE, el cliente PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV ULEN o INV UTYPE, el cliente PUEDE volver a enviar un nuevo REQUEST.
 
 Eliminar usuario
 
@@ -185,7 +188,7 @@ El servidor intenta obtener la métrica solicitada. Luego envía la siguiente RE
 		- CMD		X'04'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV METRIC		X'03'
+			~ INV METRIC		X'04'
 			~ GEN SERVER FAIL	X'FF'
 		- METRIC 	-> métrica solicitada
 			~ HISTORIC CONNECTIONS		X'00'
@@ -226,7 +229,7 @@ El servidor intenta obtener la configuración solicitada. Luego envía la siguie
 		- CMD		X'05'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV CONFIG		X'04'
+			~ INV CONFIG		X'05'
 			~ GEN SERVER FAIL	X'FF'
 		- CONFIG 	-> configuración solicitada
 			~ BUFFER SIZE BOTH  X'00'		
@@ -243,7 +246,7 @@ En caso de recibir INV CONFIG, el cliente DEBE leer los tres campos siguientes s
 Cambiar configuración
 
 			+-----+--------+------+----------+
-			| CMD | CONFIG | VLEN |   VALUE  |
+			| CMD | CONFIG | VLEN |  VALUE   |
 			+-----+--------+------+----------+
 			|  1  |   1    |  1   | 0 to 255 |
 			+-----+--------+------+----------+
@@ -262,26 +265,29 @@ En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el va
 
 El servidor valida el valor dado y, de ser correcto, intenta aplicar el cambio de configuración. Luego envía la siguiente REPLY
 
-				+-----+--------+--------+
-				| CMD | STATUS | CONFIG |
-				+-----+--------+--------+
-				|  1  |   1    |   1    |
-				+-----+--------+--------+
+		+-----+--------+--------+------+----------+
+		| CMD | STATUS | CONFIG | MLEN |  MESSAGE |
+		+-----+--------+--------+------+----------+
+		|  1  |   1    |   1    |  1   | 0 to 255 |
+		+-----+--------+--------+------+----------+
 
 	Donde: 
 		- CMD		X'06'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV CONFIG		X'04'
-			~ INV VALUE 		X'05'
+			~ INV CONFIG		X'05'
+			~ INV VALUE			X'06'
 			~ GEN SERVER FAIL	X'FF'
 		- CONFIG 	-> configuración solicitada
 			~ BUFFER SIZE BOTH  X'00'		
 			~ BUFFER READ		X'01'
 			~ BUFFER WRITE		X'02'
 			~ SELECT TIMEOUT	X'03'
+		- MLEN		-> largo del campo MESSAGE que sigue
+		- MESSAGE	-> mensaje que explica el error (de ser necesario)
 
-En caso de recibir INV CONFIG o INV VALUE, el cliente DEBE leer el campo CONFIG siguiente. Luego PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV CONFIG o INV VALUE, el cliente DEBE leer los campos que siguen. Luego PUEDE volver a enviar un nuevo REQUEST.
+En el caso de recibir INV VALUE, el servidor PUEDE enviar una cadena de caracteres en MESSAGE, indicando su largo en MLEN, explicando por qué el valor es inválido.
 
 Comando inválido
 
