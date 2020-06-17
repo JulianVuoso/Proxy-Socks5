@@ -265,6 +265,9 @@ static const char * file_error_description(enum file_errors error) {
         case memory_heap:
             ret = "not enough memory heap";
             break;
+        case wrong_arg:
+            ret = "wrong argument/s";
+            break;
         default:
             ret = "";
             break;
