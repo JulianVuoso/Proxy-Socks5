@@ -128,6 +128,7 @@ enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl)
     }else{
         strcpy((char*)result->user.password, (char*)pwd);
         result->user.level = lvl;
+        return file_no_error;
     }
 }
 

@@ -61,7 +61,6 @@ sockaddr_to_human_no_port(char *buff, const size_t buffsize,
         strncpy(buff, "null", buffsize);
         return buff;
     }
-    in_port_t port;
     void *p = 0x00;
     bool handled = false;
 
