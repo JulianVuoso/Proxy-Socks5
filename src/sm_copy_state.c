@@ -10,6 +10,8 @@
 #include "logger.h"
 #include "netutils.h"
 
+#define MAX_ADDRESS_LENGTH  45
+
 static void print_credentials(struct selector_key *key);
 
 void copy_init(const unsigned state, struct selector_key *key) {
@@ -201,8 +203,15 @@ static void print_credentials(struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct copy_st * st = &sock->client.copy;
     char * protocol;
+
+    const struct sockaddr * originaddr = (struct sockaddr *) &sock->origin_addr;
+    char * ip = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
+    if(ip == NULL) return;
+    sockaddr_to_human_no_port(ip, MAX_ADDRESS_LENGTH, originaddr);
+
     if (get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr) == POP3_PORT)
         protocol = POP3_PROT;
     else protocol = HTTP_PROT;
-    logger_log(PASS_LOG, "%s: IP -> USER: %s \tPASS: %s\n\n", protocol, st->ett_parser.username, st->ett_parser.password);
+    logger_log(PASS_LOG, "%s: %s -> USER: %s \tPASS: %s\n\n", protocol, ip, st->ett_parser.username, st->ett_parser.password);
+    if (ip != sock->fqdn) free(ip);
 }
