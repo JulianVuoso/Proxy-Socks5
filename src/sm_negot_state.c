@@ -79,7 +79,7 @@ unsigned negot_write(struct selector_key *key) {
     unsigned ret = NEGOT_WRITE;
     size_t nbytes;
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
-    ssize_t n = send(key->fd, buf_read_ptr, nbytes, 0);
+    ssize_t n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
 
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);

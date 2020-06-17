@@ -198,22 +198,16 @@ request_reply_code(const struct request_parser * p) {
     switch (p->error)
     {
         case error_request_unsupported_version:
-            ret = REQUEST_RESPONSE_GEN_CLIENT_FAIL;
+        case error_request_invalid_reserved_byte:
+        case error_request_invalid_fqdn_length:
+        case error_request_no_more_heap:
+            ret = REQUEST_RESPONSE_GEN_SOCK_FAIL;
             break;
         case error_request_unsupported_command:
             ret = REQUEST_RESPONSE_CMD_NOT_SUP;
             break;
-        case error_request_invalid_reserved_byte:
-            ret = REQUEST_RESPONSE_GEN_CLIENT_FAIL;
-            break;
         case error_request_invalid_address_type:
             ret = REQUEST_RESPONSE_ADD_TYPE_NOT_SUP;
-            break;
-        case error_request_invalid_fqdn_length:
-            ret = REQUEST_RESPONSE_GEN_CLIENT_FAIL;
-            break;
-        case error_request_no_more_heap:
-            ret = REQUEST_RESPONSE_GEN_SOCK_FAIL;
             break;
         default:
             ret = REQUEST_RESPONSE_SUCCESS;
@@ -253,9 +247,6 @@ request_reply_code_description(uint8_t reply_code) {
             break;
         case REQUEST_RESPONSE_ADD_TYPE_NOT_SUP:
             ret = "address type not supported";
-            break;
-        case REQUEST_RESPONSE_GEN_CLIENT_FAIL:
-            ret = "general client failure";
             break;
         default:
             ret = "unknown reply code";
