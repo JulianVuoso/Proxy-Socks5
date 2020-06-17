@@ -295,9 +295,12 @@ unsigned request_connect(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct addrinfo * node = sock->client.request.current;
     if (node == NULL) {
-        logger_log(DEBUG, "empty current node\n");
-        do_before_error(key);
-        return ERROR;
+        /* Could not connect to any ip address */
+        logger_log(DEBUG, "could not connect to any ip address\n");
+        if (sock->client.request.reply_code == REQUEST_RESPONSE_SUCCESS) {
+            sock->client.request.reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+        }
+        return try_jump_request_write(key);
     }
     enum connect_result res;
     do {
@@ -342,11 +345,15 @@ unsigned request_connect_write(struct selector_key *key) {
     unsigned optval = 1, optlen = sizeof(optval);
     if (getsockopt(sock->origin_fd, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0
             || optval != 0) {
+        /* Desregistro el fd y lo cierro */
         if (selector_unregister_fd(key->s, sock->origin_fd) != SELECTOR_SUCCESS) {
             logger_log(DEBUG, "failed selector\n");
             do_before_error(key);
             return ERROR;
         }
+        close(sock->origin_fd);
+        sock->origin_fd = -1;
+        sock->client.request.reply_code = REQUEST_RESPONSE_HOST_UNREACH;
         /* Avanzo al siguiente nodo e intento conectarme */
         logger_log(DEBUG, "this one failed, go to next. Optval: %d\n", optval);
         sock->client.request.current = sock->client.request.current->ai_next;
@@ -397,6 +404,7 @@ unsigned request_write(struct selector_key *key) {
             }
         }
     } else {
+        logger_log(DEBUG, "request write send failed\n");
         do_before_error(key);
         ret = ERROR;
     }
