@@ -15,6 +15,9 @@
 #include "negotiation.h"
 #include "request.h"
 
+#include "logger.h"
+#include "netutils.h"
+
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
 
@@ -114,6 +117,7 @@ socks5_passive_accept(struct selector_key *key) {
 
     const int client = accept(key->fd, (struct sockaddr*) &client_addr,
                                                           &client_addr_len);
+
     if(client == -1) {
         goto fail;
     }
