@@ -1,11 +1,12 @@
 #include "socks5mt.h"
 #include "hello.h"
+#include "logger.h"
 
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t * selected = p->data;
     // TODO: Change to SOCKS_HELLO_AUTHENTICATION_REQUIRED
-    if (method == SOCKS_HELLO_NOAUTHENTICATION_REQUIRED) {
+    if (method == SOCKS_HELLO_AUTHENTICATION_REQUIRED) {
         *selected = method;
     }
 }
@@ -31,7 +32,7 @@ unsigned hello_read(struct selector_key *key) {
     if (n > 0) {
         buffer_write_adv(st_vars->read_buf, n);
         const enum hello_state st = hello_consume(st_vars->read_buf, &st_vars->parser, &errored);
-        if (hello_is_done(st, 0)) { // TODO: check if errored va en la condicion
+        if (hello_is_done(st, 0)) {
             if (selector_set_interest_key(key, OP_WRITE) == SELECTOR_SUCCESS) {
                 ret = hello_process(st_vars);
             } else {
@@ -42,7 +43,8 @@ unsigned hello_read(struct selector_key *key) {
         ret = ERROR;
     }
 
-    return errored ? ERROR : ret;
+    // return errored ? ERROR : ret;
+    return ret;
 }
 
 void hello_read_close(const unsigned state, struct selector_key *key) {
@@ -56,10 +58,6 @@ unsigned hello_process(const struct hello_st * st_vars) {
     if (hello_marshall(st_vars->write_buf, method) < 0) {
         ret = ERROR;
     }
-    // Esto que sigue no va en HELLO_WRITE??
-    /* if (method == SOCKS_HELLO_NO_ACCEPTABLE_METHODS) {
-        ret = ERROR;
-    } */
     return ret;
 }
 
@@ -72,18 +70,20 @@ unsigned hello_write(struct selector_key *key) {
     unsigned ret = HELLO_WRITE;
     size_t nbytes;
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
-    ssize_t n = send(key->fd, buf_read_ptr, nbytes, 0);
+    ssize_t n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
 
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (st_vars->method != SOCKS_HELLO_NO_ACCEPTABLE_METHODS) {
+                logger_log(DEBUG, "Hello OK\n");
                 if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
-                    ret = REQUEST_READ; // TODO: Change to NEGOT_READ
+                    ret = NEGOT_READ; 
                 } else {
                     ret = ERROR;
                 }
             } else {
+                logger_log(DEBUG, "Hello Failed\n");
                 ret = ERROR;
             }
         }

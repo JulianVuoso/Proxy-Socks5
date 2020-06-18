@@ -15,15 +15,24 @@
 
 #include "selector.h"
 #include "socks5.h"
+#include "users.h"
+#include "logger.h"
+#include "args.h"
 
-#define IPV4_ADDRESS    INADDR_ANY
+/** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
 #define IPV6_ADDRESS    "::"
+
+#define USERS_FILENAME  "users.txt"
+
+#define LOGGER_FD       1
+#define LOGGER_LEVEL    DEBUG
 
 enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
 
-static unsigned create_socket_ipv4(uint32_t address, unsigned port, int * server_fd);
+static unsigned create_socket_ipv4(const char *  address, unsigned port, int * server_fd);
 static unsigned create_socket_ipv6(const char * address, unsigned port, int * server_fd);
 static const char * socket_error_description(enum socket_errors error);
+static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
 
@@ -35,47 +44,37 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, const char **argv) {
-    unsigned port = 1080;
+    struct socks5args args;
+    parse_args(argc, argv, &args);
+    
+    const char * err_msg = NULL;
 
-    if(argc == 1) {
-        // utilizamos el default
-    } else if(argc == 2) {
-        char *end     = 0;
-        const long sl = strtol(argv[1], &end, 10);
-
-        if (end == argv[1]|| '\0' != *end 
-           || ((LONG_MIN == sl || LONG_MAX == sl) && ERANGE == errno)
-           || sl < 0 || sl > USHRT_MAX) {
-            fprintf(stderr, "port should be an integer: %s\n", argv[1]);
-            return 1;
-        }
-        port = sl;
-    } else {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return 1;
+    enum file_errors file_state = read_users_file(USERS_FILENAME);
+    if(file_state != file_no_error){
+        err_msg = file_error_description(file_state);
+        goto finally;
     }
 
-    // no tenemos nada que leer de stdin
     close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    const char * err_msg = NULL;
     int server_ipv4, server_ipv6;
     
-    enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, port, &server_ipv4);
+    enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
     if (error_ipv4 != socket_no_error) {
         err_msg = socket_error_description(error_ipv4);
         goto finally;
     }
-    enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, port, &server_ipv6);
+    // TODO check ipv6 address handling by args
+    enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, args.socks_port, &server_ipv6);
     if (error_ipv6 != socket_no_error) {
         err_msg = socket_error_description(error_ipv6);
         goto finally;
     }
 
-    fprintf(stdout, "Listening on TCP port %u\n", port);
+    fprintf(stdout, "Listening on TCP port %u\n", args.socks_port);
 
     // registrar sigterm es útil para terminar el programa normalmente.
     // esto ayuda mucho en herramientas como valgrind.
@@ -104,13 +103,23 @@ main(const int argc, const char **argv) {
         err_msg = "unable to create selector";
         goto finally;
     }
+
+    /* Initialize logger */
+    // enum logger_level level = DEBUG;
+    // if (args.disectors_enabled) level = PASS_LOG; 
+    // ss = logger_init(LOGGER_FD, level, selector);
+    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector); // TODO: uncomment prev on production
+
+
     const struct fd_handler socks5 = {
         .handle_read       = socks5_passive_accept,
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    ss = selector_register(selector, server_ipv4, &socks5,
+    if (ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, server_ipv4, &socks5,
                                               OP_READ, NULL);
+    }
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv6, &socks5,
                                               OP_READ, NULL);
@@ -156,16 +165,21 @@ finally:
     if(server_ipv6 >= 0) {
         close(server_ipv6);
     }
+
+    free_users_list();
+    
     return ret;
 }
 
 static unsigned 
-create_socket_ipv4(uint32_t address, unsigned port, int * server_fd) {
+create_socket_ipv4(const char * address, unsigned port, int * server_fd) {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = htonl(address);
     addr.sin_port        = htons(port);
+    if (inet_pton(AF_INET, address, &addr.sin_addr) == 0) {
+        return error_invalid_address;
+    }
 
     *server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (*server_fd < 0) {
@@ -227,6 +241,32 @@ static const char * socket_error_description(enum socket_errors error) {
             break;
         case error_socket_listen:
             ret = "unable to listen socket";
+            break;
+        default:
+            ret = "";
+            break;
+    }
+    return ret;
+}
+
+static const char * file_error_description(enum file_errors error) {
+    char * ret;
+    switch (error)
+    {
+        case opening_file:
+            ret = "unable to open file";
+            break;
+        case reading_file:
+            ret = "unable to read file";
+            break;
+        case closing_file:
+            ret = "unable to close file";
+            break;
+        case memory_heap:
+            ret = "not enough memory heap";
+            break;
+        case wrong_arg:
+            ret = "wrong argument/s";
             break;
         default:
             ret = "";

@@ -15,6 +15,9 @@
 #include "negotiation.h"
 #include "request.h"
 
+#include "logger.h"
+#include "netutils.h"
+
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
 
@@ -28,8 +31,18 @@ static void
 socks5_destroy_(struct selector_key *key) {
     struct socks5 * s = ATTACHMENT(key);
     if(s->origin_resolution != NULL) {
+        /* Si lo llené a mano, libero ai_addr (no lo libera freeaddrinfo) */
+        if (s->fqdn == NULL) {
+            free(s->origin_resolution->ai_addr);
+        }
         freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
+    }
+    if (s->username != NULL) {
+        free(s->username);
+    }
+    if (s->fqdn != NULL) {
+        free(s->fqdn);
     }
     free(s);
 
@@ -77,6 +90,7 @@ static struct socks5 * socks5_new(int client_fd) {
     }
     ret->origin_fd = -1;
     ret->client_fd = client_fd;
+    ret->fqdn = NULL;
     ret->origin_resolution = NULL;
 
     ret->stm.initial = HELLO_READ;
@@ -86,6 +100,9 @@ static struct socks5 * socks5_new(int client_fd) {
 
     buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
     buffer_init(&ret->write_buffer, N(ret->write_buffer_mem), ret->write_buffer_mem);
+
+    ret->username = NULL;
+    ret->username_length = 0;
 
     ret->references = 1;
     return ret;
@@ -100,6 +117,7 @@ socks5_passive_accept(struct selector_key *key) {
 
     const int client = accept(key->fd, (struct sockaddr*) &client_addr,
                                                           &client_addr_len);
+
     if(client == -1) {
         goto fail;
     }

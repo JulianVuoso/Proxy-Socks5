@@ -12,13 +12,27 @@
 
 static const uint8_t REQUEST_COMMAND_CONNECT = 0x01;
 
-static const uint8_t REQUEST_RESPONSE_SUCCESS = 0x00;
-static const uint8_t REQUEST_RESPONSE_NET_UNREACH = 0x03;
-static const uint8_t REQUEST_RESPONSE_HOST_UNREACH = 0x04;
-static const uint8_t REQUEST_RESPONSE_CON_REFUSED = 0x05;
-static const uint8_t REQUEST_RESPONSE_TTL_EXPIRED = 0x06;
-static const uint8_t REQUEST_RESPONSE_CMD_NOT_SUP = 0x07;
-static const uint8_t REQUEST_RESPONSE_ADD_TYPE_NOT_SUP = 0x08;
+// static const uint8_t REQUEST_RESPONSE_SUCCESS = 0x00;
+// static const uint8_t REQUEST_RESPONSE_GEN_SOCK_FAIL = 0x01;
+// static const uint8_t REQUEST_RESPONSE_CON_NOT_ALL_RULESET = 0x02;
+// static const uint8_t REQUEST_RESPONSE_NET_UNREACH = 0x03;
+// static const uint8_t REQUEST_RESPONSE_HOST_UNREACH = 0x04;
+// static const uint8_t REQUEST_RESPONSE_CON_REFUSED = 0x05;
+// static const uint8_t REQUEST_RESPONSE_TTL_EXPIRED = 0x06;
+// static const uint8_t REQUEST_RESPONSE_CMD_NOT_SUP = 0x07;
+// static const uint8_t REQUEST_RESPONSE_ADD_TYPE_NOT_SUP = 0x08;
+
+enum request_response_code {
+    REQUEST_RESPONSE_SUCCESS = 0x00,
+    REQUEST_RESPONSE_GEN_SOCK_FAIL = 0x01,
+    REQUEST_RESPONSE_CON_NOT_ALL_RULESET = 0x02,
+    REQUEST_RESPONSE_NET_UNREACH = 0x03,
+    REQUEST_RESPONSE_HOST_UNREACH = 0x04,
+    REQUEST_RESPONSE_CON_REFUSED = 0x05,
+    REQUEST_RESPONSE_TTL_EXPIRED = 0x06,
+    REQUEST_RESPONSE_CMD_NOT_SUP = 0x07,
+    REQUEST_RESPONSE_ADD_TYPE_NOT_SUP = 0x08,
+};
 
 /*
     The SOCKS request is formed as follows:
@@ -119,6 +133,17 @@ request_is_done(const enum request_state state, bool *errored);
    textual que describe el problema */
 const char *
 request_error_description(const struct request_parser *p);
+
+/* Permite obtener el reply code para el estado actual. 
+ * Si el estado es de finalización exitosa o está en un estado no terminal, 
+ * devuelve REQUEST_RESPONSE_SUCCESS. 
+ * Si el estado es de error, devuelve el response code correspondiente al error */
+uint8_t
+request_reply_code(const struct request_parser * p);
+
+/* Permite obtener la representacion textual que describe al reply code */
+const char *
+request_reply_code_description(uint8_t reply_code);
 
 /** libera recursos internos del parser */
 void request_parser_close(struct request_parser *p);

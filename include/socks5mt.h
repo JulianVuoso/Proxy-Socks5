@@ -9,9 +9,10 @@
 #include "sm_hello_state.h"
 #include "sm_request_state.h"
 #include "sm_copy_state.h"
+#include "sm_negot_state.h"
 
 // Borrar cuando tenga su sm_state
-#include "negotiation.h"
+// #include "negotiation.h"
 
 /* Maquina de estados general */
 enum socks5_state {
@@ -36,7 +37,7 @@ enum socks5_state {
      *
      * Transiciones:
      *   - HELLO_WRITE  mientras queden bytes por enviar
-     *   - REQUEST_READ cuando se enviaron todos los bytes
+     *   - NEGOT_READ   cuando se enviaron todos los bytes
      *   - ERROR        ante cualquier error (IO/parseo)
      */
     HELLO_WRITE,
@@ -161,11 +162,15 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = NEGOT_READ,
-        .on_arrival       = error_arrival,
+        .on_arrival       = negot_read_init,
+        .on_departure     = negot_read_close,
+        .on_read_ready    = negot_read,
     },
     {
         .state            = NEGOT_WRITE,
-        .on_arrival       = error_arrival,
+        .on_arrival       = negot_write_init,
+        .on_departure     = negot_write_close,
+        .on_write_ready   = negot_write,
     },
     {
         .state            = REQUEST_READ,
@@ -184,7 +189,7 @@ static const struct state_definition client_statbl[] = {
     {
         .state            = REQUEST_WRITE,
         .on_arrival       = request_write_init,
-        .on_departure     = request_write_close,
+        .on_departure     = request_close,
         .on_write_ready   = request_write,
     },
     {
@@ -192,6 +197,7 @@ static const struct state_definition client_statbl[] = {
         .on_arrival       = copy_init,
         .on_read_ready    = copy_read,
         .on_write_ready   = copy_write,
+        .on_departure     = copy_close,
     },
     {
         .state            = DONE,
@@ -206,14 +212,6 @@ static const struct state_definition client_statbl[] = {
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
 #define INITIAL_BUF_SIZE 4096
-
-/* Definicion de variables para cada estado */
-
-// NEGOT_READ y NEGOT_WRITE
-typedef struct negot_st {
-    buffer * read_buf, * write_buf;
-    struct negot_parser parser;
-} negot_st;
 
 struct socks5 {
     /** maquinas de estados */
@@ -232,10 +230,14 @@ struct socks5 {
     socklen_t client_addr_len;
     int client_fd;
 
+    uint8_t * username;
+    uint8_t username_length;
+
     /* Resolucion de la direc del origin server */
     struct sockaddr_storage origin_addr;
     socklen_t origin_addr_len;
     int origin_fd, origin_domain;
+    char * fqdn;
     struct addrinfo * origin_resolution;
 
     /* Buffers */

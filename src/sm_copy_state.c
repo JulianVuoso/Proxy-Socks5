@@ -4,13 +4,25 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <netdb.h>
+#include <time.h>
+
+#include "logger.h"
+#include "netutils.h"
+
+#define MAX_ADDRESS_LENGTH  45
+
+static void print_credentials(struct selector_key *key);
 
 void copy_init(const unsigned state, struct selector_key *key) {
-    struct copy_st * st = &ATTACHMENT(key)->client.copy;
-    st->cli_to_or_buf = &(ATTACHMENT(key)->read_buffer);
-    st->or_to_cli_buf = &(ATTACHMENT(key)->write_buffer);
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    st->cli_to_or_buf = &(sock->read_buffer);
+    st->or_to_cli_buf = &(sock->write_buffer);
     st->cli_to_or_eof = 0;
     st->or_to_cli_eof = 0;
+    st->sniffed = false;
+    ettercap_parser_init(&st->ett_parser, get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr));
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
@@ -18,20 +30,21 @@ static unsigned try_jump_done(struct selector_key * key) {
     unsigned ret = DONE;
 
     if (selector_set_interest(key->s, sock->client_fd, OP_NOOP) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         ret = ERROR;
     }
     if (selector_set_interest(key->s, sock->origin_fd, OP_NOOP) != SELECTOR_SUCCESS) {
-        puts("failed selector\n");
+        logger_log(DEBUG, "failed selector\n");
         ret = ERROR;
     }
-    puts("\nRequest resuelto correctamente");
+    logger_log(DEBUG, "Request resuelto correctamente\n");
     return ret;
 }
 
 unsigned copy_read(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct copy_st * st_vars = &ATTACHMENT(key)->client.copy;
+    bool ett_error;
     unsigned ret = COPY;
     size_t nbytes;
     uint8_t * buf_write_ptr;
@@ -59,47 +72,61 @@ unsigned copy_read(struct selector_key * key) {
     n = recv(key->fd, buf_write_ptr, nbytes, 0);
     if (n > 0) {
         buffer_write_adv(buff, n);
+        
+        if (!st_vars->sniffed) {
+            /* Ettercap sniffeo de credenciales */
+            if (ettercap_is_done(st_vars->ett_parser.state, &ett_error)) {
+                st_vars->sniffed = true;
+                if (!ett_error)
+                    print_credentials(key);
+                else 
+                    logger_log(DEBUG, "failed ettercap, %s\n", ettercap_error_desc(&st_vars->ett_parser));
+            } else ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
+        }
+
+
         if (!buffer_can_write(buff)) {
             /* Si tenia prendido OP_READ del fd actual, lo apago porque se lleno */
             if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
-                puts("failed selector\n");
+                logger_log(DEBUG, "failed selector\n");
                 ret = ERROR;
             }
         }
         /* Si tenia apagado OP_WRITE del otro fd, lo prendo */
         if (selector_add_interest(key->s, other_fd, OP_WRITE) != SELECTOR_SUCCESS) {
-            puts("failed selector\n");
+            logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
-    } else if (n == 0) {
+    } else if (n == 0 || errno == ECONNRESET) {
         /* Chequeo que no haya cometido un error en algun lugar */
         if (nbytes == 0) {
             abort();
         }
         /* Me desuscribo de lectura del fd actual */
         if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
-            puts("failed selector\n");
+            logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
         (*cur_eof) += 1;
         /* Si consumieron todo lo que escribi en el buffer, mando EOF */
         if (!buffer_can_read(buff)) {
             (*other_eof) += 1;
-            if (shutdown(other_fd, SHUT_WR) < 0) {
-                puts("failed shutdown in read\n");
-                printf("\n\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
+            if (shutdown(other_fd, SHUT_WR) < 0 && errno != ENOTCONN) {
+                logger_log(DEBUG, "failed shutdown in read\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
                 ret = ERROR;
             }
         }
     } else {
-        puts("recv error\n");
-        printf("\n\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
+        logger_log(DEBUG, "failed recv\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
         ret = ERROR;
     }
 
+    // char * ip = malloc (sizeof(char) * sock->origin_addr_len);
+    // sockaddr_to_human(ip, sock->origin_addr_len, ((struct addrinfo *) &sock->origin_addr)->ai_addr);
     /* Si conte dos EOF por lado --> DONE */
     if (ret != ERROR && (*cur_eof) == 2 && (*other_eof) == 2) {
         ret = try_jump_done(key);
+        // logger_log(DEBUG, "\n\nAccess to: %s", ip);
     }
     return ret;
 }
@@ -131,32 +158,31 @@ unsigned copy_write(struct selector_key * key) {
         abort();
     }
     buf_read_ptr = buffer_read_ptr(buff, &nbytes);
-    n = send(key->fd, buf_read_ptr, nbytes, 0);
+    n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
     if (n > 0) {
         buffer_read_adv(buff, n);
         if (!buffer_can_read(buff)) {
             /* Si tenia prendido OP_WRITE del fd actual, lo apago porque se lleno */
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) != SELECTOR_SUCCESS) {
-                puts("failed selector\n");
+                logger_log(DEBUG, "failed selector\n");
                 ret = ERROR;
             }
             /** TODO: CHECK SI ESTO VA BIEN  */
             if (*cur_eof) {
                 (*other_eof) += 1;
-                if (shutdown(key->fd, SHUT_WR) < 0) {
-                    puts("failed shutdown in write\n");
-                    printf("\n\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
+                if (shutdown(key->fd, SHUT_WR) < 0 && errno != ENOTCONN) {
+                    logger_log(DEBUG, "failed shutdown in write\nEOF curr: %d, EOF other: %d. \nError. errno %d message: %s\n\n", *cur_eof, *other_eof, errno, strerror(errno));
                     ret = ERROR;
                 }
             }
         }
         /* Si no me cerraron conexion y tenia apagado OP_READ del otro fd, lo prendo */
         if (!(*cur_eof) && selector_add_interest(key->s, other_fd, OP_READ) != SELECTOR_SUCCESS) {
-            puts("failed selector\n");
+            logger_log(DEBUG, "failed selector\n");
             ret = ERROR;
         }
     } else {
-        puts("failed send\n");
+        logger_log(DEBUG, "failed send\n");
         ret = ERROR;
     }
 
@@ -167,3 +193,40 @@ unsigned copy_write(struct selector_key * key) {
     return ret;
 }
 
+void copy_close(const unsigned state, struct selector_key *key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    ettercap_parser_close(&st->ett_parser);
+}
+
+static void print_credentials(struct selector_key *key) {
+    time_t t = time(NULL);
+    if (t == ((time_t) -1))
+        return;
+    struct tm * tm_st = localtime(&t);
+    if (tm_st == NULL)
+        return;
+
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    char * protocol;
+
+    char * ip;
+    if (sock->fqdn == NULL) {
+        const struct sockaddr * originaddr = (struct sockaddr *) &sock->origin_addr;
+        ip = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
+        if(ip == NULL) return;
+        sockaddr_to_human_no_port(ip, MAX_ADDRESS_LENGTH, originaddr);
+    } else ip = sock->fqdn;   
+
+    uint16_t port = get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr);
+
+    if (get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr) == POP3_PORT)
+        protocol = POP3_PROT;
+    else protocol = HTTP_PROT;
+
+    logger_log(PASS_LOG, "%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n\n", 
+            tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec,
+            sock->username, PASS_CHAR, protocol, ip, port, st->ett_parser.username, st->ett_parser.password);
+    if (ip != sock->fqdn) free(ip);
+}
