@@ -93,5 +93,103 @@
 
 */
 
+/* Possible commands */
+typedef enum admin_commands {
+    admin_command_add_user = 0x01,
+    admin_command_del_user = 0x02,
+    admin_command_list_user = 0x03,
+    admin_command_get_metric = 0x04,
+    admin_command_get_config = 0x05,
+    admin_command_set_config = 0x06,
+
+    admin_command_none = 0xFF,
+} admin_commands;
+
+/* Possible metrics */
+typedef enum admin_metrics {
+    admin_metric_hist_conn = 0x00,
+    admin_metric_conc_conn = 0x01,
+    admin_metric_hist_btransf = 0x02,
+
+    amdin_metric_none = 0xFF,
+} admin_metrics;
+
+/* Possible configurations */
+typedef enum admin_configs {
+    admin_config_buff_both_size = 0x00,
+    admin_config_buff_read_size = 0x01,
+    admin_config_buff_write_size = 0x03,
+    admin_config_sel_tout = 0x04,
+
+    admin_config_none = 0xFF,
+} admin_configs;
+
+/* Admin parser states */
+typedef enum admin_state {
+    admin_command,
+
+    admin_get_config,
+    admin_set_config,
+
+    admin_done,
+    admin_error,
+
+} admin_state;
+
+/* Admin parser errors */
+typedef enum admin_errors { // TODO no son todos estos
+    admin_error_inv_command,
+    admin_error_inv_utype, // TODO especifico de add user
+    admin_error_inv_metric,
+    admin_error_inv_config,
+    admin_error_inv_value, // TODO s
+    admin_error_server_fail,
+} admin_errors;
+
+/* Admin parser struct */
+typedef struct admin_parser {
+
+    admin_state state;
+    admin_errors error;
+    /* The selected command */
+    admin_commands command;
+
+    admin_metrics metric;
+    admin_configs config;
+
+    uint8_t * value;
+} admin_parser;
+
+/** Initializes the admin parser */
+void
+admin_parser_init(admin_parser * p);
+
+/**
+ * For each buffer element calls admin_parser_feed until empty,  
+ * completed parsing or more bytes required.
+ * 
+ * @param errored output param. If != NULL that value is not modified.
+ */
+admin_state
+admin_consume(buffer * b, admin_parser * p, bool * errored);
+
+/** Delivers a byte to the parser, when finish returns current state */
+admin_state
+admin_parser_feed(admin_parser * p, uint8_t byte);
+
+/** If got to a state of error, gets error representation */
+const char *
+admin_error_description(const admin_parser * p);
+
+/**
+ * Allows to know to the admin_parser_feed if should keep sending bytes or not.
+ * If finished fills errored whith true or false depending if error or not.
+ */
+bool
+admin_is_done(const admin_state state, bool * errored);
+
+/** Frees resources used by the parser */
+void
+admin_parser_close(admin_parser * p);
 
 #endif

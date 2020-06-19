@@ -12,7 +12,7 @@ add_executable(socks5d main.c
                        parsers/negotiation.c
                        utils/args.c
                        utils/base64.c
-                       parser/command.c
+                       parsers/admin.c
                        parsers/ettercap.c
                        utils/parser.c
                        utils/parser_utils.c
