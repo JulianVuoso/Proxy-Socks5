@@ -5,6 +5,11 @@ void do_before_error(struct selector_key * key) {
     switch (state)
     {
     case REQUEST_READ:
+    case DNS_CONNECT:
+    case DNS_WRITE:
+    case DNS_READ:
+    case DNS_SOLVE_BLK:
+    case REQUEST_CONNECT:
         request_close(state, key);
         break;
     default:

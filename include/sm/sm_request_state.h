@@ -4,7 +4,7 @@
 #include "request.h"
 #include "selector.h"
 
-// REQUEST_READ, REQUEST_SOLVE, REQUEST_CONNECT y REQUEST_WRITE
+// REQUEST_READ, DNS_SOLVE_BLK, REQUEST_CONNECT y REQUEST_WRITE
 typedef struct request_st {
     buffer * read_buf, * write_buf;
     struct request_parser parser;

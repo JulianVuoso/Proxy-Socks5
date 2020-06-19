@@ -18,6 +18,7 @@
 #include "users.h"
 #include "logger.h"
 #include "args.h"
+#include "doh_server_struct.h"
 
 /** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
 #define IPV6_ADDRESS    "::"
@@ -46,6 +47,7 @@ int
 main(const int argc, const char **argv) {
     struct socks5args args;
     parse_args(argc, argv, &args);
+    set_doh_info(args.doh);
     
     const char * err_msg = NULL;
 

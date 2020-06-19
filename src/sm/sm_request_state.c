@@ -13,6 +13,7 @@
 #include "socks5mt.h"
 #include "request.h"
 #include "socks5_handler.h"
+#include "dohParser.h"
 
 static unsigned try_jump_request_write(struct selector_key *key);
 static void access_log(struct socks5 * sock);
@@ -154,7 +155,13 @@ unsigned request_process(struct selector_key * key) {
                 goto error;
             }
             strncpy(sock->fqdn, (char *) dest->address, dest->address_length);
-            struct selector_key * key_param = malloc(sizeof(*key));
+            if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
+                logger_log(DEBUG, "failed selector\n");
+                goto error;
+            }
+            return start_doh_connect(key);
+
+            /* struct selector_key * key_param = malloc(sizeof(*key));
             if (key_param == NULL) {
                 goto error;
             }
@@ -163,11 +170,7 @@ unsigned request_process(struct selector_key * key) {
                 logger_log(DEBUG, "failed thread creation\n");
                 goto error;
             }
-            if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
-                logger_log(DEBUG, "failed selector\n");
-                goto error;
-            }
-            return REQUEST_SOLVE;
+            return DNS_SOLVE_BLK; */
         } case address_ipv4: {
             // sock->origin_domain = AF_INET;
             struct sockaddr_in origin_addr = get_origin_addr_ipv4(dest);
@@ -236,8 +239,6 @@ static unsigned try_jump_request_write(struct selector_key *key) {
     }
     return REQUEST_WRITE;
 }
-
-enum connect_result {CON_OK, CON_ERROR, CON_INPROG};
 
 static enum connect_result 
 try_connect(struct selector_key * key, struct addrinfo * node) {
@@ -420,6 +421,8 @@ void request_close(const unsigned state, struct selector_key *key) {
     // }
     logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
+    /** TODO: check next line  */
+    freeDohParser(&sock->client.connect.parser);
 }
 
 #define MAX_ADDRESS_LENGTH  45
