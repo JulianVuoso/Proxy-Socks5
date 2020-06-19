@@ -8,6 +8,11 @@
 #include <time.h>
 
 #include "logger.h"
+#include "netutils.h"
+
+#define MAX_ADDRESS_LENGTH  45
+
+static void print_credentials(struct selector_key *key);
 
 void copy_init(const unsigned state, struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
@@ -16,6 +21,8 @@ void copy_init(const unsigned state, struct selector_key *key) {
     st->or_to_cli_buf = &(sock->write_buffer);
     st->cli_to_or_eof = 0;
     st->or_to_cli_eof = 0;
+    st->sniffed = false;
+    ettercap_parser_init(&st->ett_parser, get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr));
 }
 
 static unsigned try_jump_done(struct selector_key * key) {
@@ -37,6 +44,7 @@ static unsigned try_jump_done(struct selector_key * key) {
 unsigned copy_read(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct copy_st * st_vars = &ATTACHMENT(key)->client.copy;
+    bool ett_error;
     unsigned ret = COPY;
     size_t nbytes;
     uint8_t * buf_write_ptr;
@@ -64,6 +72,19 @@ unsigned copy_read(struct selector_key * key) {
     n = recv(key->fd, buf_write_ptr, nbytes, 0);
     if (n > 0) {
         buffer_write_adv(buff, n);
+        
+        if (!st_vars->sniffed) {
+            /* Ettercap sniffeo de credenciales */
+            if (ettercap_is_done(st_vars->ett_parser.state, &ett_error)) {
+                st_vars->sniffed = true;
+                if (!ett_error)
+                    print_credentials(key);
+                else 
+                    logger_log(DEBUG, "failed ettercap, %s\n", ettercap_error_desc(&st_vars->ett_parser));
+            } else ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
+        }
+
+
         if (!buffer_can_write(buff)) {
             /* Si tenia prendido OP_READ del fd actual, lo apago porque se lleno */
             if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) {
@@ -137,7 +158,7 @@ unsigned copy_write(struct selector_key * key) {
         abort();
     }
     buf_read_ptr = buffer_read_ptr(buff, &nbytes);
-    n = send(key->fd, buf_read_ptr, nbytes, 0);
+    n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
     if (n > 0) {
         buffer_read_adv(buff, n);
         if (!buffer_can_read(buff)) {
@@ -170,4 +191,42 @@ unsigned copy_write(struct selector_key * key) {
         ret = try_jump_done(key);
     }
     return ret;
+}
+
+void copy_close(const unsigned state, struct selector_key *key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    ettercap_parser_close(&st->ett_parser);
+}
+
+static void print_credentials(struct selector_key *key) {
+    time_t t = time(NULL);
+    if (t == ((time_t) -1))
+        return;
+    struct tm * tm_st = localtime(&t);
+    if (tm_st == NULL)
+        return;
+
+    struct socks5 * sock = ATTACHMENT(key);
+    struct copy_st * st = &sock->client.copy;
+    char * protocol;
+
+    char * ip;
+    if (sock->fqdn == NULL) {
+        const struct sockaddr * originaddr = (struct sockaddr *) &sock->origin_addr;
+        ip = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
+        if(ip == NULL) return;
+        sockaddr_to_human_no_port(ip, MAX_ADDRESS_LENGTH, originaddr);
+    } else ip = sock->fqdn;   
+
+    uint16_t port = get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr);
+
+    if (get_port_from_sockaddr((struct sockaddr *) &sock->origin_addr) == POP3_PORT)
+        protocol = POP3_PROT;
+    else protocol = HTTP_PROT;
+
+    logger_log(PASS_LOG, "%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n\n", 
+            tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec,
+            sock->username, PASS_CHAR, protocol, ip, port, st->ett_parser.username, st->ett_parser.password);
+    if (ip != sock->fqdn) free(ip);
 }

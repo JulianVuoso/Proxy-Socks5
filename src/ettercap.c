@@ -218,7 +218,7 @@ ettercap_error_desc(const ettercap_parser * p) {
         ret = "invalid http format";
         break;
     case ettercap_error_http_no_get:
-        ret = "http request is not GET";
+        ret = "request is not http or is not http get";
         break;
     case ettercap_error_http_no_auth:
         ret = "http request does not have authorization header";

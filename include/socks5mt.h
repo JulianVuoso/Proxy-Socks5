@@ -197,6 +197,7 @@ static const struct state_definition client_statbl[] = {
         .on_arrival       = copy_init,
         .on_read_ready    = copy_read,
         .on_write_ready   = copy_write,
+        .on_departure     = copy_close,
     },
     {
         .state            = DONE,

@@ -383,7 +383,7 @@ unsigned request_write(struct selector_key *key) {
     unsigned ret = REQUEST_WRITE;
     size_t nbytes;
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
-    ssize_t n = send(key->fd, buf_read_ptr, nbytes, 0);
+    ssize_t n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
 
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);
@@ -457,7 +457,7 @@ static void access_log(struct socks5 * sock) {
         if (dest->address_type != address_fqdn) {
             ip_server = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
             if (ip_server == NULL) return;
-            sockaddr_to_human(ip_server, MAX_ADDRESS_LENGTH, addr_ptr);
+            sockaddr_to_human_no_port(ip_server, MAX_ADDRESS_LENGTH, addr_ptr);
             port = dest->port;
         } else {
             ip_server = (char *) dest->address;
@@ -471,7 +471,7 @@ static void access_log(struct socks5 * sock) {
     const struct sockaddr * clientaddr = (struct sockaddr *) &sock->client_addr;
     char * ip_client = calloc(MAX_ADDRESS_LENGTH + 1, sizeof(char));
     if(ip_client == NULL) return;
-    sockaddr_to_human(ip_client, MAX_ADDRESS_LENGTH, clientaddr);
+    sockaddr_to_human_no_port(ip_client, MAX_ADDRESS_LENGTH, clientaddr);
     uint16_t port_client = get_port_from_sockaddr((struct sockaddr *) &sock->client_addr);
 
     logger_log(ACCESS_LOG, "\n%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%d\t%s\t%d\t%d\n\n", 

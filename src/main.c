@@ -20,7 +20,6 @@
 #include "args.h"
 
 /** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
-#define IPV4_ADDRESS    INADDR_ANY
 #define IPV6_ADDRESS    "::"
 
 #define USERS_FILENAME  "users.txt"
@@ -30,7 +29,7 @@
 
 enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
 
-static unsigned create_socket_ipv4(uint32_t address, unsigned port, int * server_fd);
+static unsigned create_socket_ipv4(const char *  address, unsigned port, int * server_fd);
 static unsigned create_socket_ipv6(const char * address, unsigned port, int * server_fd);
 static const char * socket_error_description(enum socket_errors error);
 static const char * file_error_description(enum file_errors error);
@@ -63,13 +62,12 @@ main(const int argc, const char **argv) {
 
     int server_ipv4, server_ipv6;
     
-    /** TODO: Reemplazar la de abajo con esta cuando arreglemos eso  */
-    // enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
-    enum socket_errors error_ipv4 = create_socket_ipv4(IPV4_ADDRESS, args.socks_port, &server_ipv4);
+    enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
     if (error_ipv4 != socket_no_error) {
         err_msg = socket_error_description(error_ipv4);
         goto finally;
     }
+    // TODO check ipv6 address handling by args
     enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, args.socks_port, &server_ipv6);
     if (error_ipv6 != socket_no_error) {
         err_msg = socket_error_description(error_ipv6);
@@ -107,10 +105,10 @@ main(const int argc, const char **argv) {
     }
 
     /* Initialize logger */
-    // enum logger_level level = DEBUG; TODO: uncomment this on production
+    // enum logger_level level = DEBUG;
     // if (args.disectors_enabled) level = PASS_LOG; 
     // ss = logger_init(LOGGER_FD, level, selector);
-    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector);
+    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector); // TODO: uncomment prev on production
 
 
     const struct fd_handler socks5 = {
@@ -174,12 +172,14 @@ finally:
 }
 
 static unsigned 
-create_socket_ipv4(uint32_t address, unsigned port, int * server_fd) {
+create_socket_ipv4(const char * address, unsigned port, int * server_fd) {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
-    addr.sin_addr.s_addr = htonl(address);
     addr.sin_port        = htons(port);
+    if (inet_pton(AF_INET, address, &addr.sin_addr) == 0) {
+        return error_invalid_address;
+    }
 
     *server_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (*server_fd < 0) {
@@ -264,6 +264,9 @@ static const char * file_error_description(enum file_errors error) {
             break;
         case memory_heap:
             ret = "not enough memory heap";
+            break;
+        case wrong_arg:
+            ret = "wrong argument/s";
             break;
         default:
             ret = "";
