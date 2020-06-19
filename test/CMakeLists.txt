@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 2.8)
 include_directories(../include)
+include_directories(../include/admin)
+include_directories(../include/doh)
+include_directories(../include/parsers)
+include_directories(../include/sm)
+include_directories(../include/utils)
 
 add_executable(hello_test 
                 hello_test.c 
