@@ -1,24 +1,24 @@
 #ifndef __PROTOS_DOH_PARSER__
 #define __PROTOS_DOH_PARSER__
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <string.h>
-#include <ctype.h>
+#include <stdbool.h>
+// #include <sys/socket.h>
+// #include <arpa/inet.h>
+// #include <unistd.h>
+// #include <string.h>
 
 #include "doh_answer_struct.h"
+#include "buffer.h"
 
 //type of dns we are looking for
 // 1 = A
-#define SHOULD_BE_DNSTYPE 1
+#define DNSTYPE_IPV4        0x01
+#define DNSTYPE_IPV6        0x1C
 //class of dns we are looking for
 // 1 = A
-#define SHOULD_BE_DNSCLASS 1
+#define SHOULD_BE_DNSCLASS  1
 
 
-void doh_parser_init(DOHQueryResSM *qrsm);
+void doh_parser_init(DOHQueryResSM *qrsm, enum connect_options option);
 // void statusLineParser(const char c, DOHQueryResSM *qrsm);
 // void headerParser(const char c, DOHQueryResSM *qrsm);
 // void bodyParser(const char c, DOHQueryResSM *qrsm);

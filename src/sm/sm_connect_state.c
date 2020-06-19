@@ -1,5 +1,7 @@
 #include <errno.h>
 #include <arpa/inet.h>
+#include <netdb.h>      // getaddrinfo
+#include <pthread.h>
 
 #include "socks5mt.h"
 #include "logger.h"
@@ -27,30 +29,30 @@ try_connect_doh(struct selector_key * key) {
     socklen_t addr_len;
     switch (doh_info.ip_family)
     {
-    case AF_INET:
-        if (inet_pton(AF_INET, doh_info.ip, &address.sin_addr) <= 0) {
-            logger_log(DEBUG, "failed inet pton in doh\n");
-            goto errors;
-        }
-        address.sin_family = AF_INET;
-        address.sin_port = htons(doh_info.port);
-        addr_len = sizeof(address);
-        addr_ptr = (struct sockaddr *) &address;
-        break;
-    case AF_INET6:
-        if (inet_pton(AF_INET6, doh_info.ip, &address6.sin6_addr) <= 0) {
-            logger_log(DEBUG, "failed inet pton in doh\n");
-            goto errors;
-        }
-        address6.sin6_family = AF_INET6;
-        address6.sin6_port = htons(doh_info.port);
-        addr_len = sizeof(address6);
-        addr_ptr = (struct sockaddr *) &address6;
-        break;
-    default:
-        /* Invalid address family */
-        abort();
-        break;
+        case AF_INET:
+            if (inet_pton(AF_INET, doh_info.ip, &address.sin_addr) <= 0) {
+                logger_log(DEBUG, "failed inet pton in doh\n");
+                goto errors;
+            }
+            address.sin_family = AF_INET;
+            address.sin_port = htons(doh_info.port);
+            addr_len = sizeof(address);
+            addr_ptr = (struct sockaddr *) &address;
+            break;
+        case AF_INET6:
+            if (inet_pton(AF_INET6, doh_info.ip, &address6.sin6_addr) <= 0) {
+                logger_log(DEBUG, "failed inet pton in doh\n");
+                goto errors;
+            }
+            address6.sin6_family = AF_INET6;
+            address6.sin6_port = htons(doh_info.port);
+            addr_len = sizeof(address6);
+            addr_ptr = (struct sockaddr *) &address6;
+            break;
+        default:
+            /* Invalid address family */
+            abort();
+            break;
     }
 
     if((st->doh_fd = socket(doh_info.ip_family, SOCK_STREAM, IPPROTO_TCP)) < 0) {
@@ -104,21 +106,20 @@ unsigned start_doh_connect(struct selector_key * key) {
 }
 
 unsigned connect_doh_server(struct selector_key * key) {
-    struct socks5 * sock = ATTACHMENT(key);
-    // init_connect_st(key); // Ver donde va esto
-
     enum connect_result res = try_connect_doh(key);
     switch (res)
     {
-    case CON_INPROG:
-        return DNS_CONNECT;
-    case CON_OK:
-        return build_doh_query(key);
-    case CON_ERROR:
-        /* Default to getaddrinfo */
-        return prepare_blocking_doh(key);
-    default:
-        break;
+        case CON_INPROG:
+            return DNS_CONNECT;
+        case CON_OK:
+            return build_doh_query(key);
+        case CON_ERROR:
+            /* Default to getaddrinfo */
+            return prepare_blocking_doh(key);
+        default:
+            /* Invalid connect_result */
+            abort();
+            break;
     }
 }
 
@@ -185,7 +186,7 @@ unsigned dns_write(struct selector_key *key) {
 
 void dns_read_init(const unsigned state, struct selector_key *key) {
     struct connect_st * st = &ATTACHMENT(key)->client.connect;
-    doh_parser_init(&st->parser);
+    doh_parser_init(&st->parser, st->option);
 }
 
 unsigned dns_read(struct selector_key *key) {
@@ -200,9 +201,11 @@ unsigned dns_read(struct selector_key *key) {
         buffer_write_adv(st_vars->read_buf, n);
         const DOHQRSM_STATE st = doh_parser_consume(st_vars->read_buf, &st_vars->parser, &errored);
         if (doh_parser_is_done(st, 0)) {
-            ret = dns_answer_process(st_vars, errored);
+            ret = dns_answer_process(key, errored);
         }
     } else {
+        /** TODO: VER SI ACA ES ERROR O NO */
+        logger_log(DEBUG, "failed recv in dns read\n");
         ret = ERROR;
     }
 
@@ -233,6 +236,7 @@ unsigned dns_answer_process(struct selector_key *key, bool errored) {
         }
     } else {
         /* Si fue exitoso, intento conectarme */
+        /** TODO: PASAR LA LISTA A ORIGIN RESOLUTION */
         return request_connect(key);
     }
 }
@@ -255,18 +259,85 @@ unsigned try_next_option(struct selector_key * key) {
         freeDohParser(&st_vars->parser);
         st_vars->option = doh_ipv6;
         return connect_doh_server(key);
-    } else if (st_vars->option == doh_ipv6) {
+    } else {
         /* Defaulteo a getaddrinfo */
         return prepare_blocking_doh(key);
     }
 }
 
+static void * request_solve_blocking(void * args) {
+    struct selector_key * key = (struct selector_key *) args;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct destination * dest = sock->client.request.parser.dest;
+
+    pthread_detach(pthread_self());
+    const struct addrinfo hints = {
+        .ai_flags       = AI_PASSIVE,   /* For wildcarp IP address */
+        .ai_family      = AF_UNSPEC,    /* IPv4 o IPv6 */
+        .ai_socktype    = SOCK_STREAM,  /* Datagram socket */
+        .ai_protocol    = 0,            /* Any protocol */
+        .ai_addr        = NULL,
+        .ai_canonname   = NULL,
+        .ai_next        = NULL,
+    };
+    
+    char port[7];
+    // snprintf(port, sizeof(port), "%d", ntohs(dest->port));
+    snprintf(port, sizeof(port), "%d", dest->port);
+    logger_log(DEBUG, "Resolviendo DNS con getaddrinfo...\n");
+    if (getaddrinfo((char *) dest->address, port, &hints, &sock->origin_resolution) != 0) {
+        /* If getaddrinfo fails, freeaddrinfo and set res to NULL */
+        freeaddrinfo(sock->origin_resolution);
+        sock->origin_resolution = NULL;
+        logger_log(DEBUG, "getaddrinfo failed. Error msg: %s\n", gai_strerror(errno));
+    }
+    logger_log(DEBUG, "Finalizo la resolucion DNS con getaddrinfo...\n");
+
+    selector_notify_block(key->s, key->fd);
+
+    free(args);
+    return 0;
+}
+
 static unsigned prepare_blocking_doh(struct selector_key * key) {
-    struct connect_st * st_vars = &ATTACHMENT(key)->client.connect;
-    st_vars->option = default_function;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct connect_st * conn_st_vars = &sock->client.connect;
+    conn_st_vars->option = default_function;
 
-
+    struct request_st * req_st_vars = &sock->client.request;
+    pthread_t thread_pid = 0;
+    struct selector_key * key_param = malloc(sizeof(*key));
+    if (key_param == NULL) {
+        goto error;
+    }
+    memcpy(key_param, key, sizeof(*key_param));
+    if (pthread_create(&thread_pid, 0, request_solve_blocking, key_param) != 0) {
+        logger_log(DEBUG, "failed thread creation\n");
+        goto error;
+    }
     return DNS_SOLVE_BLK;
+
+error:
+    if (thread_pid != 0) {
+        pthread_cancel(thread_pid);
+    }
+    req_st_vars->reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+    logger_log(DEBUG, "Error in request processing.\n");
+    sock->origin_domain = (req_st_vars->parser.dest != NULL && req_st_vars->parser.dest->address_type == address_ipv6) ? AF_INET6 : AF_INET;
+    return try_jump_request_write(key);
+}
+
+unsigned request_solve_block(struct selector_key *key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st_vars = &sock->client.request;
+    if (sock->origin_resolution == NULL) {
+        logger_log(DEBUG, "failed getaddrinfo\n");
+        st_vars->reply_code = REQUEST_RESPONSE_HOST_UNREACH;
+        sock->origin_domain = AF_INET;
+        return try_jump_request_write(key);
+    }
+    sock->client.request.current = sock->origin_resolution;
+    return request_connect(key);
 }
 
 /** TODO: REVISAR DE CERRAR SIEMPRE EL FD  */

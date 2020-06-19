@@ -2,6 +2,7 @@
 #define DOH_ANSWER_STRUCT_H_21a750ff3332497f063ce7e94e6f829cfcb1216a
 
 #include <stdint.h>
+#include "doh_server_struct.h"
 
 typedef enum{
     //general purpose
@@ -75,6 +76,7 @@ typedef struct DOHQueryResSM{
     //used in body
     int aux2;
     int rCount;
+    enum connect_options option;
 }DOHQueryResSM;
 
 #endif

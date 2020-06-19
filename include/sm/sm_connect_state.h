@@ -32,4 +32,6 @@ unsigned dns_answer_process(struct selector_key *key, bool errored);
 
 unsigned try_next_option(struct selector_key * key);
 
+unsigned request_solve_block(struct selector_key *key);
+
 #endif

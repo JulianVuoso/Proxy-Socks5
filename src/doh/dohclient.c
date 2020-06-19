@@ -1,4 +1,5 @@
 #include "dohclient.h"
+
 #define DNS_HEADER_LENGTH 12
 #define DNS_QUERY_LENGTH(fqdnLength) ((fqdnLength) + 1 + 1 + 4)
 #define DNS_HEADER_BASE64 "AAABAAABAAAAAAAA"
@@ -6,9 +7,13 @@
 //without null termination
 #define BASE64URL_LENGTH(len) ((((len) + 2) / 3) * 4)
 
-#define HTTP_QUERY_START "GET /dns-query?dns="
-#define HTTP_QUERY_END " HTTP/1.1\r\nhost:localhost\r\naccept:application/dns-message\r\n\r\n"
+#define HTTP_QUERY_START    "GET /%s?%s="
+#define HTTP_QUERY_END      " HTTP/1.1\r\nhost:%s\r\naccept:application/dns-message\r\n\r\n"
 
+#define HTTP_FULL_QUERY     "GET /%s?%s=%s HTTP/1.1\r\nhost:%s\r\naccept:application/dns-message\r\n\r\n"
+
+#define IPV4_BYTE   0x01
+#define IPV6_BYTE   0x1C
 
 // BASE64URL
 // Value Encoding  Value Encoding  Value Encoding  Value Encoding
@@ -86,8 +91,11 @@ char *base64encoder = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234
 // https://tools.ietf.org/html/rfc1035 section 4.1.3
 
 //create query string
-int getQuery(const char *fqdn, BASE64DNSQuery *query)
-{
+static int 
+getQuery(const char *fqdn, BASE64DNSQuery *query, enum connect_options option) {
+    if (option == default_function) {
+        return -1;
+    }
     //create de qname for dns query
     int fqdnLen = strlen(fqdn);
     uint8_t queryBod[DNS_QUERY_LENGTH(fqdnLen)];
@@ -117,7 +125,7 @@ int getQuery(const char *fqdn, BASE64DNSQuery *query)
         queryBod[i-1]=0;
     }
     queryBod[i] = 0x00;i++;
-    queryBod[i] = 0x01;i++;
+    queryBod[i] = (option == doh_ipv4) ? IPV4_BYTE : IPV6_BYTE;i++;
     queryBod[i] = 0x00;i++;
     queryBod[i] = 0x01;i++;
 
@@ -166,7 +174,7 @@ int getQuery(const char *fqdn, BASE64DNSQuery *query)
 
 
 
-int dnsLookUp(const char *fqdn,DOHQueryResSM *qrsm)
+/* int dnsLookUp(const char *fqdn,DOHQueryResSM *qrsm)
 {
     //variables
     int sockfd = -1;
@@ -178,7 +186,7 @@ int dnsLookUp(const char *fqdn,DOHQueryResSM *qrsm)
     query.length = -1;
     
     //create the query
-    if(getQuery(fqdn,&query)){
+    if(getQuery(fqdn,&query, doh_ipv4)){
         perror("failed to create query");
         goto error;
     }
@@ -213,7 +221,7 @@ int dnsLookUp(const char *fqdn,DOHQueryResSM *qrsm)
 
     //parse response
     int readed;
-    initParser(qrsm);
+    doh_parser_init(qrsm, doh_ipv4);
     while (qrsm->state != DOHQRSM_ERROR && qrsm->state != DOHQRSM_EXIT && (readed = read(sockfd,buffer,buffdim))!=0)
     {
         for (int i = 0; i < readed; i++)
@@ -236,4 +244,33 @@ error:
         free(query.query);
     }
     return -1;
+} */
+
+int doh_query_marshall(buffer * b, const char * fqdn, const struct doh doh_info, enum connect_options option) {
+    if (option == default_function) {
+        return -1;
+    }
+    size_t n;
+    char * buff = (char *) buffer_write_ptr(b, &n);
+
+    size_t query_len = strlen(HTTP_QUERY_START) + strlen(doh_info.path) + strlen(doh_info.query)
+                        + BASE64URL_LENGTH(DNS_QUERY_LENGTH(strlen(fqdn)) + DNS_HEADER_LENGTH)
+                        + strlen(HTTP_QUERY_END) + strlen(doh_info.host);
+    
+    if (n < query_len) {
+        return -1;
+    }
+
+    BASE64DNSQuery query_storage;
+    if(getQuery(fqdn,&query_storage, option)){
+        return -1;
+    }
+    int buff_len = snprintf(buff, n, HTTP_FULL_QUERY, doh_info.path, doh_info.query, query_storage.query, doh_info.host);
+    free(query_storage.query);
+    if (buff_len < 0 || (unsigned) buff_len >= n) {
+        return -1;
+    }
+    buffer_write_adv(b, (unsigned) buff_len);
+    
+    return buff_len;
 }

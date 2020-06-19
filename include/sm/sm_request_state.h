@@ -18,12 +18,13 @@ void request_read_close(const unsigned state, struct selector_key *key);
 
 unsigned request_process(struct selector_key *key);
 unsigned request_connect(struct selector_key *key);
-unsigned request_solve_block(struct selector_key *key);
 
 unsigned request_connect_write(struct selector_key *key);
 
 void request_write_init(const unsigned state, struct selector_key *key);
 unsigned request_write(struct selector_key *key);
 void request_close(const unsigned state, struct selector_key *key);
+
+unsigned try_jump_request_write(struct selector_key *key);
 
 #endif

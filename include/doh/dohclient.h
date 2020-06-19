@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "doh_answer_struct.h"
-#include "doh_server_struct.h"
 #include "buffer.h"
 
 #define PORT 80
