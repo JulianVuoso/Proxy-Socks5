@@ -94,7 +94,7 @@ finally:
 selector_status
 selector_close(void) {
     // Nada para liberar.
-    // TODO(juan): podriamos reestablecer el handler de la señal.
+    /** TODO (juan): podriamos reestablecer el handler de la señal. **/
     return SELECTOR_SUCCESS;
 }
 
@@ -328,7 +328,7 @@ selector_destroy(fd_selector s) {
 #define INVALID_FD(fd)  ((fd) < 0 || (fd) >= ITEMS_MAX_SIZE)
 
 selector_status
-selector_register(fd_selector        s,
+selector_register(   fd_selector        s,
                      const int          fd,
                      const fd_handler  *handler,
                      const fd_interest  interest,
@@ -469,6 +469,28 @@ selector_get_interest_key(struct selector_key *key, fd_interest *i) {
     return ret;
 }
 
+selector_status
+selector_add_interest(fd_selector s, int fd, fd_interest i) {
+    selector_status ret;
+    fd_interest cur_int;
+    ret = selector_get_interest(s, fd, &cur_int);
+    if (ret == SELECTOR_SUCCESS && (cur_int & i) == 0) {
+        ret = selector_set_interest(s, fd, cur_int | i);
+    }
+    return ret;
+}
+
+selector_status
+selector_remove_interest(fd_selector s, int fd, fd_interest i) {
+    selector_status ret;
+    fd_interest cur_int;
+    ret = selector_get_interest(s, fd, &cur_int);
+    if (ret == SELECTOR_SUCCESS && (cur_int & i) != 0) {
+        ret = selector_set_interest(s, fd, cur_int - i);
+    }
+    return ret;
+}
+
 /**
  * se encarga de manejar los resultados del select.
  * se encuentra separado para facilitar el testing
@@ -513,7 +535,20 @@ handle_block_notifications(fd_selector s) {
         .s = s,
     };
     pthread_mutex_lock(&s->resolution_mutex);
-    for(struct blocking_job *j = s->resolution_jobs;
+    struct blocking_job *j = s->resolution_jobs;
+    while (j != NULL) {
+        struct item *item = s->fds + j->fd;
+        if(ITEM_USED(item)) {
+            key.fd   = item->fd;
+            key.data = item->data;
+            item->handler->handle_block(&key);
+        }
+
+        struct blocking_job * aux = j;
+        j = j->next;
+        free(aux);
+    }
+    /* for(struct blocking_job *j = s->resolution_jobs;
         j != NULL ;
         j  = j->next) {
 
@@ -525,7 +560,7 @@ handle_block_notifications(fd_selector s) {
         }
 
         free(j);
-    }
+    } */
     s->resolution_jobs = 0;
     pthread_mutex_unlock(&s->resolution_mutex);
 }

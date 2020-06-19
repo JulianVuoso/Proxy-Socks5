@@ -15,6 +15,7 @@ void request_parser_init (request_parser * p) {
     p->dest->address = NULL;
     p->dest->address_length = 0;
     p->dest->address_index = 0;
+    p->dest->address_type = address_ipv4;
     p->dest->port = INITIAL_PORT;
 }
 
@@ -191,6 +192,69 @@ request_error_description(const struct request_parser *p) {
     return ret;
 }
 
+uint8_t
+request_reply_code(const struct request_parser * p) {
+    uint8_t ret;
+    switch (p->error)
+    {
+        case error_request_unsupported_version:
+        case error_request_invalid_reserved_byte:
+        case error_request_invalid_fqdn_length:
+        case error_request_no_more_heap:
+            ret = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+            break;
+        case error_request_unsupported_command:
+            ret = REQUEST_RESPONSE_CMD_NOT_SUP;
+            break;
+        case error_request_invalid_address_type:
+            ret = REQUEST_RESPONSE_ADD_TYPE_NOT_SUP;
+            break;
+        default:
+            ret = REQUEST_RESPONSE_SUCCESS;
+            break;
+    }
+    return ret;
+}
+
+const char *
+request_reply_code_description(uint8_t reply_code) {
+    char * ret;
+    switch (reply_code)
+    {
+        case REQUEST_RESPONSE_SUCCESS:
+            ret = "successfull request";
+            break;
+        case REQUEST_RESPONSE_GEN_SOCK_FAIL:
+            ret = "general SOCKS server failure";
+            break;
+        case REQUEST_RESPONSE_CON_NOT_ALL_RULESET:
+            ret = "connection not allowed by ruleset";
+            break;
+        case REQUEST_RESPONSE_NET_UNREACH:
+            ret = "network unreachable";
+            break;
+        case REQUEST_RESPONSE_HOST_UNREACH:
+            ret = "host unreachable";
+            break;
+        case REQUEST_RESPONSE_CON_REFUSED:
+            ret = "connection refused";
+            break;
+        case REQUEST_RESPONSE_TTL_EXPIRED:
+            ret = "TTL expired";
+            break;
+        case REQUEST_RESPONSE_CMD_NOT_SUP:
+            ret = "command not supported";
+            break;
+        case REQUEST_RESPONSE_ADD_TYPE_NOT_SUP:
+            ret = "address type not supported";
+            break;
+        default:
+            ret = "unknown reply code";
+            break;
+    }
+    return ret;
+}
+
 void request_parser_close(struct request_parser *p) {
     if (p != NULL) {
         free(p->dest->address);
@@ -199,23 +263,19 @@ void request_parser_close(struct request_parser *p) {
 }
 
 int
-request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * addr, uint16_t port) {
+request_marshall(buffer *b, uint8_t status, enum address_types type) {
     size_t n;
     uint8_t * buff = buffer_write_ptr(b, &n);
     size_t addr_size, addr_type;
     switch (type)
     {
-        case address_ipv4:
-            addr_size = 4;
-            addr_type = REQUEST_ADDRESS_TYPE_IPV4;
-            break;
         case address_ipv6:
             addr_size = 16;
             addr_type = REQUEST_ADDRESS_TYPE_IPV6;
             break;
-        default:
-            fprintf(stderr, "unknown address type %d\n", type);
-            abort();
+        default: // address_ipv4 or other
+            addr_size = 4;
+            addr_type = REQUEST_ADDRESS_TYPE_IPV4;
             break;
     }
     if (n < (6 + addr_size)) {
@@ -227,10 +287,9 @@ request_marshall(buffer *b, uint8_t status, enum address_types type, uint8_t * a
     buff[index++] = 0x00;
     buff[index++] = addr_type;
     for (uint8_t j = 0; j < addr_size; j++) {
-        buff[index++] = addr[j];
+        buff[index++] = 0; // Bind address
     }
-    buff[index++] = (port & 0xFF00) >> 8;
-    buff[index++] = port & 0x00FF;
+    buff[index++] = 0; buff[index++] = 0; // Bind port
     buffer_write_adv(b, 6 + addr_size);
     return 6 + addr_size;
 }

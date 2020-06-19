@@ -29,10 +29,10 @@
  * concurrencia.
  *
  * Dicha señalización se realiza mediante señales, y es por eso que al
- * iniciar la librería `selector_init' se debe configurar una señal a utilizar.
+ * iniciar la librería 'selector_init' se debe configurar una señal a utilizar.
  *
  * Todos métodos retornan su estado (éxito / error) de forma uniforme.
- * Puede utilizar `selector_error' para obtener una representación human
+ * Puede utilizar 'selector_error' para obtener una representación human
  * del estado. Si el valor es `SELECTOR_IO' puede obtener información adicional
  * en errno(3).
  *
@@ -51,9 +51,9 @@ typedef enum {
     SELECTOR_SUCCESS  = 0,
     /** no pudimos alocar memoria */
     SELECTOR_ENOMEM   = 1,
-    /** llegamos al límite de descriptores que la plataforma puede manejar */
+    /** llegamos al límite de fds que la plataforma puede manejar */
     SELECTOR_MAXFD    = 2,
-    /** argumento ilegal */
+    /** argumento invalido */
     SELECTOR_IARGS    = 3,
     /** descriptor ya está en uso */
     SELECTOR_FDINUSE  = 4,
@@ -70,7 +70,7 @@ struct selector_init {
     /** señal a utilizar para notificaciones internas */
     const int signal;
 
-    /** tiempo máximo de bloqueo durante `selector_iteratate' */
+    /** tiempo máximo de bloqueo durante 'selector_iteratate' */
     struct timespec select_timeout;
 };
 
@@ -138,10 +138,10 @@ typedef struct fd_handler {
 } fd_handler;
 
 /**
- * registra en el selector `s' un nuevo file descriptor `fd'.
+ * registra en el selector 's' un nuevo file descriptor `fd'.
  *
- * Se especifica un `interest' inicial, y se pasa handler que manejará
- * los diferentes eventos. `data' es un adjunto que se pasa a todos
+ * Se especifica un 'interest' inicial, y se pasa handler que manejará
+ * los diferentes eventos. 'data' es un adjunto que se pasa a todos
  * los manejadores de eventos.
  *
  * No se puede registrar dos veces un mismo fd.
@@ -177,6 +177,14 @@ selector_get_interest(fd_selector s, int fd, fd_interest *i);
 /** permite obtener los intereses de un file descriptor */
 selector_status
 selector_get_interest_key(struct selector_key *key, fd_interest *i);
+
+/** permite agregar un interes a un file descriptor */
+selector_status
+selector_add_interest(fd_selector s, int fd, fd_interest i);
+
+/** permite eliminar un interes de un file descriptor */
+selector_status
+selector_remove_interest(fd_selector s, int fd, fd_interest i);
 
 /**
  * se bloquea hasta que hay eventos disponible y los despacha.

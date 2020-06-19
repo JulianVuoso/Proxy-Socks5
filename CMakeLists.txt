@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set(CMAKE_BUILD_TYPE Debug)
 #set(CMAKE_C_STANDARD 11)
 
-set(CMAKE_C_FLAGS    "-pthread -g  -ggdb --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L ")
+set(CMAKE_C_FLAGS    "-pthread -g  -ggdb --std=c11 -pedantic -pedantic-errors -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L -fsanitize=address")
 
 #include(FindCheck.cmake)
 include(CTest)
@@ -40,8 +40,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang")
                        -fix)
     endif()
 endif()
-set(CMAKE_C_FLAGS, "${CMAKE_C_FLAGS} -pedantic -pedantic-errors -Wall -Wextra 
--Wno-unused-parameter -D_POSIX_C_SOURCE=200112L")
+set(CMAKE_C_FLAGS, "${CMAKE_C_FLAGS} -pthread -g  -ggdb --std=c11 -pedantic -pedantic-errors 
+  -Wall -Wextra -Wno-unused-parameter -Wno-implicit-fallthrough -D_POSIX_C_SOURCE=200112L -fsanitize=address")
 
 add_subdirectory(src)
 add_subdirectory(test)

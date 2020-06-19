@@ -54,6 +54,33 @@ START_TEST (test_request_normal_ipv6) {
 }
 END_TEST
 
+START_TEST (test_request_normal_ipv6_v2) {
+    request_parser parser;
+    request_parser_init(&parser);
+    uint8_t data[] = {
+        0x05, 0x01, 0x00, 0x04, 
+        0x00, 0x40, 0x0d, 0xe3, 
+        0xfc, 0x7f, 0x00, 0x00, 
+        0x00, 0x00, 0x00, 0x00, 
+        0x00, 0x00, 0x00, 0x00, 
+        0x00, 0x50,
+    };
+    buffer b; FIXBUF(b, data);
+    bool errored = false;
+    enum request_state state = request_consume(&b, &parser, &errored);
+    ck_assert_uint_eq(false, errored);
+    ck_assert_uint_eq(request_done, state);
+    ck_assert_uint_eq(address_ipv6, parser.dest->address_type);
+    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
+    for (int i = 0; i < parser.dest->address_length; i++) {
+        printf("%d ", parser.dest->address[i]);
+        ck_assert_uint_eq(data[i + 4], parser.dest->address[i]);
+    }
+    ck_assert_uint_eq(0x50, parser.dest->port);
+    request_parser_close(&parser);
+}
+END_TEST
+
 START_TEST (test_request_normal_fqdn) {
     request_parser parser;
     request_parser_init(&parser);
@@ -222,6 +249,7 @@ request_suite(void) {
 
     tcase_add_test(tc, test_request_normal_ipv4);
     tcase_add_test(tc, test_request_normal_ipv6);
+    tcase_add_test(tc, test_request_normal_ipv6_v2);
     tcase_add_test(tc, test_request_normal_fqdn);
     tcase_add_test(tc, test_request_multiple_request);
     
