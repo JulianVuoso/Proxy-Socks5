@@ -21,6 +21,7 @@
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
 static unsigned concurrent_connections = 0;
+static unsigned long historical_connections = 0;
 
 /* Destruye realmente el struct socks5 */
 static void
@@ -143,6 +144,7 @@ socks5_passive_accept(struct selector_key *key) {
     // Actualizar cantidad de conexiones concurrentes.
     // Deshabilitar OP_READ si alcanzamos el maximo.
     concurrent_connections++;
+    historical_connections++;
     if (concurrent_connections == MAX_CONCURRENT_CON) {
         // Deshabilito OP_READ del socket pasivo (server solo usa OP_READ)
         selector_set_interest_key(key, OP_NOOP);
@@ -215,4 +217,12 @@ socks5_done(struct selector_key* key) {
             close(fds[i]);
         }
     }
+}
+
+static unsigned get_concurrent_conn(){
+    return concurrent_connections;
+}
+
+static unsigned long get_historical_conn(){
+    return historical_connections;
 }

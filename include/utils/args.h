@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include "doh_server_struct.h"
+#include "users.h"
 
 #define MAX_USERS 10
 

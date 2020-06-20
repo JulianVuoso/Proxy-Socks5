@@ -12,6 +12,8 @@
 
 #define MAX_ADDRESS_LENGTH  45
 
+static unsigned long transf_bytes = 0;     /** TODO: Check if long is appropiate or too much */
+
 static void print_credentials(struct selector_key *key);
 
 void copy_init(const unsigned state, struct selector_key *key) {
@@ -160,6 +162,7 @@ unsigned copy_write(struct selector_key * key) {
     buf_read_ptr = buffer_read_ptr(buff, &nbytes);
     n = send(key->fd, buf_read_ptr, nbytes, MSG_NOSIGNAL);
     if (n > 0) {
+        transf_bytes+=n;;
         buffer_read_adv(buff, n);
         if (!buffer_can_read(buff)) {
             /* Si tenia prendido OP_WRITE del fd actual, lo apago porque se lleno */
@@ -229,4 +232,8 @@ static void print_credentials(struct selector_key *key) {
             tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec,
             sock->username, PASS_CHAR, protocol, ip, port, st->ett_parser.username, st->ett_parser.password);
     if (ip != sock->fqdn) free(ip);
+}
+
+unsigned long get_transf_bytes(){
+    return transf_bytes;
 }
