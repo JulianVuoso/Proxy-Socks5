@@ -17,6 +17,7 @@
 
 #include "logger.h"
 #include "netutils.h"
+#include "sm_before_error_state.h"
 
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
@@ -32,10 +33,17 @@ socks5_destroy_(struct selector_key *key) {
     struct socks5 * s = ATTACHMENT(key);
     if(s->origin_resolution != NULL) {
         /* Si lo llené a mano, libero ai_addr (no lo libera freeaddrinfo) */
-        if (s->fqdn == NULL) {
-            free(s->origin_resolution->ai_addr);
+        if (s->fqdn == NULL || s->option != default_function) {
+            /*  */
+            while (s->origin_resolution != NULL) {
+                free(s->origin_resolution->ai_addr);
+                struct addrinfo * aux = s->origin_resolution;
+                s->origin_resolution = s->origin_resolution->ai_next;
+                free(aux);
+            }
+        } else {
+            freeaddrinfo(s->origin_resolution);
         }
-        freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
     if (s->username != NULL) {
@@ -92,6 +100,7 @@ static struct socks5 * socks5_new(int client_fd) {
     ret->client_fd = client_fd;
     ret->fqdn = NULL;
     ret->origin_resolution = NULL;
+    ret->option = doh_ipv4;
 
     ret->stm.initial = HELLO_READ;
     ret->stm.max_state = ERROR;

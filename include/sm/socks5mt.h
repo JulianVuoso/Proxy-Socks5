@@ -7,9 +7,11 @@
 #include "buffer.h"
 
 #include "sm_hello_state.h"
-#include "sm_request_state.h"
-#include "sm_copy_state.h"
 #include "sm_negot_state.h"
+#include "sm_request_state.h"
+#include "sm_connect_state.h"
+#include "sm_copy_state.h"
+#include "doh_server_struct.h"
 
 // Borrar cuando tenga su sm_state
 // #include "negotiation.h"
@@ -76,13 +78,59 @@ enum socks5_state {
      *
      * Transiciones:
      *   - REQUEST_READ     mientras el request no esta completo
-     *   - REQUEST_SOLVE    si esta completo y es un fqdn
+     *   - DNS_CONNECT      si esta completo, es un fqdn y estoy conectandome al doh_server
+     *   - DNS_WRITE        si esta completo, es un fqdn y logre conectarmo al doh_server
+     *   - DNS_SOLVE_BLK    si esta completo, es un fqdn y la conexion al doh_server fallo
      *   - REQUEST_CONNECT  si esta completo, NO es un fqdn y se puede 
      *                      establecer la conexion al origin server
      *   - REQUEST_WRITE    si hay un error de soporte de comando o similar
      *   - ERROR            ante cualquier error (IO/parseo)
      */
     REQUEST_READ,
+
+    /**
+     * Se espera a que la conexion con el doh server este establecida
+     *
+     * Intereses:
+     *     - OP_NOOP sobre client_fd
+     *     - OP_WRITE sobre doh_fd
+     *
+     * Transiciones:
+     *   - DNS_WRITE        si la conexion es exitosa
+     *   - DNS_SOLVE_BLK    si falla la conexion con el doh server
+     */
+    DNS_CONNECT,
+
+    /**
+     * Envia el request DNS al servidor DOH
+     *
+     * Intereses:
+     *     - OP_NOOP sobre client_fd
+     *     - OP_WRITE sobre doh_fd
+     *
+     * Transiciones:
+     *   - DNS_WRITE    mientras queden bytes por enviar
+     *   - DNS_READ     cuando el envio esta completo
+     */
+    DNS_WRITE,
+
+    /**
+     * Recibe la respuesta DNS del servidor DOH
+     *
+     * Intereses:
+     *     - OP_NOOP sobre client_fd
+     *     - OP_READ sobre doh_fd
+     *
+     * Transiciones:
+     *   - DNS_READ         mientras queden bytes por leer
+     *   - REQUEST_CONNECT  cuando el envio esta completo, intento establecer
+     *                      la conexion con alguna de las direcciones
+     *   - DNS_CONNECT      si no logro conectarme a ninguna direccion y
+     *                      estoy en IPv4, intento con IPv6
+     *   - DNS_SOLVE_BLK    si no logro conectarme a ninguna direccion y
+     *                      estoy en IPv6, intento con getaddrinfo
+     */
+    DNS_READ,
 
     /**
      * resuelve un fqdn a una lista de direcciones IP (v4 o v6).
@@ -95,10 +143,10 @@ enum socks5_state {
      *                      establecer la conexion al origin server
      *   - REQUEST_WRITE    si no puede resolver el fqdn, responde != 00
      */
-    REQUEST_SOLVE,
+    DNS_SOLVE_BLK,
 
     /**
-     * Se espera a que la conexion este establecida // TODO: PUEDE NO ESTABLECERSE?
+     * Se espera a que la conexion este establecida
      *
      * Intereses:
      *     - OP_WRITE sobre origin_fd
@@ -179,7 +227,20 @@ static const struct state_definition client_statbl[] = {
         .on_read_ready    = request_read,
     },
     {
-        .state            = REQUEST_SOLVE,
+        .state            = DNS_CONNECT,
+        .on_write_ready   = dns_connect_write,
+    },
+    {
+        .state            = DNS_WRITE,
+        .on_write_ready   = dns_write,
+    },
+    {
+        .state            = DNS_READ,
+        .on_arrival       = dns_read_init,
+        .on_read_ready    = dns_read,
+    },
+    {
+        .state            = DNS_SOLVE_BLK,
         .on_block_ready   = request_solve_block,
     },
     {
@@ -213,6 +274,8 @@ static const struct state_definition client_statbl[] = {
 
 #define INITIAL_BUF_SIZE 4096
 
+enum connect_result {CON_OK, CON_ERROR, CON_INPROG};
+
 struct socks5 {
     /** maquinas de estados */
     struct state_machine          stm;
@@ -239,6 +302,7 @@ struct socks5 {
     int origin_fd, origin_domain;
     char * fqdn;
     struct addrinfo * origin_resolution;
+    enum connect_options option;
 
     /* Buffers */
     uint8_t read_buffer_mem[INITIAL_BUF_SIZE], write_buffer_mem[INITIAL_BUF_SIZE];

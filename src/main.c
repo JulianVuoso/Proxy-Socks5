@@ -18,6 +18,7 @@
 #include "users.h"
 #include "logger.h"
 #include "args.h"
+#include "doh_server_struct.h"
 
 /** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
 #define IPV6_ADDRESS    "::"
@@ -36,6 +37,7 @@ static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
 
+/** TODO: Ver como libero recursos en este caso  */
 static void
 sigterm_handler(const int signal) {
     printf("signal %d, cleaning up and exiting\n",signal);
@@ -46,6 +48,7 @@ int
 main(const int argc, const char **argv) {
     struct socks5args args;
     parse_args(argc, argv, &args);
+    set_doh_info(args.doh);
     
     const char * err_msg = NULL;
 
@@ -135,6 +138,7 @@ main(const int argc, const char **argv) {
             err_msg = "serving";
             goto finally;
         }
+        /** TODO: Agregar timeout */
     }
     if(err_msg == NULL) {
         err_msg = "closing";

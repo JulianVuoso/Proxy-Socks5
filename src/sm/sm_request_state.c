@@ -2,9 +2,9 @@
 #include <netinet/in.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <pthread.h>
 #include <netdb.h>      // getaddrinfo
 #include <stdio.h>
+#include <time.h>
 
 #include "logger.h"
 #include "netutils.h"
@@ -13,8 +13,8 @@
 #include "socks5mt.h"
 #include "request.h"
 #include "socks5_handler.h"
+#include "dohParser.h"
 
-static unsigned try_jump_request_write(struct selector_key *key);
 static void access_log(struct socks5 * sock);
 
 
@@ -85,40 +85,6 @@ get_origin_addr_ipv6(const struct destination * dest) {
     return origin_addr6;
 }
 
-static void * request_solve_blocking(void * args) {
-    struct selector_key * key = (struct selector_key *) args;
-    struct socks5 * sock = ATTACHMENT(key);
-    struct destination * dest = sock->client.request.parser.dest;
-
-    pthread_detach(pthread_self());
-    const struct addrinfo hints = {
-        .ai_flags       = AI_PASSIVE,   /* For wildcarp IP address */
-        .ai_family      = AF_UNSPEC,    /* IPv4 o IPv6 */
-        .ai_socktype    = SOCK_STREAM,  /* Datagram socket */
-        .ai_protocol    = 0,            /* Any protocol */
-        .ai_addr        = NULL,
-        .ai_canonname   = NULL,
-        .ai_next        = NULL,
-    };
-    
-    char port[7];
-    // snprintf(port, sizeof(port), "%d", ntohs(dest->port));
-    snprintf(port, sizeof(port), "%d", dest->port);
-    logger_log(DEBUG, "Resolviendo DNS con getaddrinfo...\n");
-    if (getaddrinfo((char *) dest->address, port, &hints, &sock->origin_resolution) != 0) {
-        /* If getaddrinfo fails, freeaddrinfo and set res to NULL */
-        freeaddrinfo(sock->origin_resolution);
-        sock->origin_resolution = NULL;
-        logger_log(DEBUG, "getaddrinfo failed. Error msg: %s\n", gai_strerror(errno));
-    }
-    logger_log(DEBUG, "Finalizo la resolucion DNS con getaddrinfo...\n");
-
-    selector_notify_block(key->s, key->fd);
-
-    free(args);
-    return 0;
-}
-
 static int set_origin_resolution(struct socks5 * sock, struct sockaddr * sock_address, int family, uint8_t length) {
     sock->origin_resolution = calloc(1, sizeof(*sock->origin_resolution));
     if (sock->origin_resolution == NULL) {
@@ -144,7 +110,7 @@ unsigned request_process(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st_vars = &sock->client.request;
     struct destination * dest = st_vars->parser.dest;
-    pthread_t thread_pid = 0;
+    // pthread_t thread_pid = 0;
 
     switch (dest->address_type)
     {
@@ -154,7 +120,13 @@ unsigned request_process(struct selector_key * key) {
                 goto error;
             }
             strncpy(sock->fqdn, (char *) dest->address, dest->address_length);
-            struct selector_key * key_param = malloc(sizeof(*key));
+            if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
+                logger_log(DEBUG, "failed selector\n");
+                goto error;
+            }
+            return start_doh_connect(key);
+
+            /* struct selector_key * key_param = malloc(sizeof(*key));
             if (key_param == NULL) {
                 goto error;
             }
@@ -163,11 +135,7 @@ unsigned request_process(struct selector_key * key) {
                 logger_log(DEBUG, "failed thread creation\n");
                 goto error;
             }
-            if (selector_set_interest_key(key, OP_NOOP) != SELECTOR_SUCCESS) {
-                logger_log(DEBUG, "failed selector\n");
-                goto error;
-            }
-            return REQUEST_SOLVE;
+            return DNS_SOLVE_BLK; */
         } case address_ipv4: {
             // sock->origin_domain = AF_INET;
             struct sockaddr_in origin_addr = get_origin_addr_ipv4(dest);
@@ -198,29 +166,16 @@ unsigned request_process(struct selector_key * key) {
     return request_connect(key);
 
 error:
-    if (thread_pid != 0) {
+    /* if (thread_pid != 0) {
         pthread_cancel(thread_pid);
-    }
+    } */
     st_vars->reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
     logger_log(DEBUG, "Error in request processing.\n");
     sock->origin_domain = (st_vars->parser.dest != NULL && st_vars->parser.dest->address_type == address_ipv6) ? AF_INET6 : AF_INET;
     return try_jump_request_write(key);
 }
 
-unsigned request_solve_block(struct selector_key *key) {
-    struct socks5 * sock = ATTACHMENT(key);
-    struct request_st * st_vars = &sock->client.request;
-    if (sock->origin_resolution == NULL) {
-        logger_log(DEBUG, "failed getaddrinfo\n");
-        st_vars->reply_code = REQUEST_RESPONSE_HOST_UNREACH;
-        sock->origin_domain = AF_INET;
-        return try_jump_request_write(key);
-    }
-    sock->client.request.current = sock->origin_resolution;
-    return request_connect(key);
-}
-
-static unsigned try_jump_request_write(struct selector_key *key) {
+unsigned try_jump_request_write(struct selector_key *key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st_vars = &ATTACHMENT(key)->client.request;
     if (selector_set_interest(key->s, sock->client_fd, OP_WRITE) != SELECTOR_SUCCESS) {
@@ -236,8 +191,6 @@ static unsigned try_jump_request_write(struct selector_key *key) {
     }
     return REQUEST_WRITE;
 }
-
-enum connect_result {CON_OK, CON_ERROR, CON_INPROG};
 
 static enum connect_result 
 try_connect(struct selector_key * key, struct addrinfo * node) {
@@ -295,12 +248,7 @@ unsigned request_connect(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     struct addrinfo * node = sock->client.request.current;
     if (node == NULL) {
-        /* Could not connect to any ip address */
-        logger_log(DEBUG, "could not connect to any ip address\n");
-        if (sock->client.request.reply_code == REQUEST_RESPONSE_SUCCESS) {
-            sock->client.request.reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
-        }
-        return try_jump_request_write(key);
+        return try_next_option(key);
     }
     enum connect_result res;
     do {
@@ -317,12 +265,7 @@ unsigned request_connect(struct selector_key * key) {
             sock->client.request.reply_code = REQUEST_RESPONSE_SUCCESS;
             return try_jump_request_write(key);
         case CON_ERROR:
-            /* Could not connect to any ip address */
-            logger_log(DEBUG, "could not connect to any ip address\n");
-            if (sock->client.request.reply_code == REQUEST_RESPONSE_SUCCESS) {
-                sock->client.request.reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
-            }
-            return try_jump_request_write(key);
+            return try_next_option(key);
         default:
             /* Invalid result */
             abort();
@@ -420,6 +363,11 @@ void request_close(const unsigned state, struct selector_key *key) {
     // }
     logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
+    /** TODO: check next line  */
+    freeDohParser(&st->doh_parser);
+    if (st->doh_fd != -1) {
+        close(st->doh_fd);
+    }
 }
 
 #define MAX_ADDRESS_LENGTH  45
