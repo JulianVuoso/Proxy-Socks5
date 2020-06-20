@@ -1,0 +1,72 @@
+.\" Macros
+.ds PX \s-1POSIX\s+1
+.de EXAMPLE .\" Format de los ejemplos
+.RS 10
+.BR "\\$1"
+.RE
+..
+
+.TH Cliente 1 "15 de Junio 2020"
+.LO 8
+.SH NAME
+cliente \- cliente para la configuracion del servidor
+
+.SH SINOPSIS
+.HP 10
+.B cliente
+-u user:pass [-l host] [-p port] comando
+
+.SH OPCIONES 
+
+.IP "\fB\-u\fB \fIuser:pass\fR"
+Declara usuario y contraseña que se usara para conectarse al servidor
+.IP "\fB\-l\fB \fIhost\fR"
+Host donde escucha el servidor. Por defecto el valor es \fIlocalhost\fR
+.IP "\fB\-p\fB \fIpuerto\fR"
+Puerto donde escucha el servidor. Por defecto el valor es \fI1080\fR
+
+
+
+.SH COMANDOS
+
+.IP "\fBadd-user\fB \fIuser:pass\fR \fItype\fR"
+Agrega el usuario con la contraseña con el tipo. Tanto el usuario como la contraseña tienen un maximo de 255 caracteres. Los tipos son los siguientes:
+.RS
+.nf
+    \fI0\fR \- Cliente
+    \fI1\fR \- Admin
+.fi
+.RE
+.IP "\fBdel-user\fB \fIuser\fR"
+Remueve el usuario
+.IP "\fBlist-users\fB"
+Muestra la lista de usuarios
+.IP "\fBget-metric\fB \fImetric\fR"
+Muestra la metrica elegida. Las metricas son las siguientes:
+
+.RS
+.nf
+
+\fI1\fR \- Historial de conexiones
+\fI2\fR \- Conexiones concurrentes
+\fI3\fR \- Historial de transferencia de bytes
+
+.fi
+.RE
+
+.IP "\fBget-config\fB \fIconfig\fR"
+Muestra la configuracion elegida. Las configuraciones posibles son las listadas para set
+
+.IP "\fBset-config\fB \fIconfig\fR \fIparameter\fR"
+Establece la configuracion indicada. Las configuraciones posibles son:
+
+.RS
+.nf
+
+\fI1\fR - Ambos buffers: el \fIparametro\fR es un numero
+\fI2\fR|- Buffer de lectura: el \fIparametro\fR es un numero
+\fI3\fR - Buffer de escritura: el \fIparametro\fR es un numero
+\fI3\fR - Timeout del select: el \fIparametro\fR es un numero
+
+.fi
+.RE
