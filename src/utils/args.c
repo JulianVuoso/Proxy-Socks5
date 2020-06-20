@@ -4,10 +4,13 @@
 #include <string.h>    /* memset */
 #include <errno.h>
 #include <getopt.h>
+#include <sys/socket.h> /* Address families */
 #include <string.h>
 #include <ctype.h>
 
 #include "args.h"
+
+#define IPV4_REGEX "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}"
 
 static unsigned short
 port(const char *s) {
@@ -132,6 +135,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
 
     args->doh.host = "localhost";
     args->doh.ip   = "127.0.0.1";
+    args->doh.ip_family = AF_INET;
     args->doh.port = 8053;
     args->doh.path = "/getnsrecord";
     args->doh.query = "?dns=";
@@ -195,6 +199,8 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 break;
             case 0xD001:
                 args->doh.ip = optarg;
+                /** TODO: ver como hacer para validar que sea IPv4 o IPv6 */
+                args->doh.ip_family = AF_INET;
                 break;
             case 0xD002:
                 args->doh.port = port(optarg);

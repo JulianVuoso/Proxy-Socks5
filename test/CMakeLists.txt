@@ -76,13 +76,15 @@ add_test(NAME netutils_test COMMAND netutils_test)
 add_executable(dohParser_test 
                 dohParser_test.c 
                 ../src/doh/dohParser.c
-                ../src/doh/dohclient.c )
+                ../src/doh/dohclient.c
+                ../src/utils/buffer.c )
 target_link_libraries(dohParser_test check subunit rt m)
 add_test(NAME dohParser_test COMMAND dohParser_test)
 
 add_executable(dohclient_test 
                 dohclient_test.c 
                 ../src/doh/dohclient.c
-                ../src/doh/dohParser.c )
+                ../src/doh/dohParser.c
+                ../src/utils/buffer.c )
 target_link_libraries(dohclient_test check subunit rt m)
 add_test(NAME dohclient_test COMMAND dohclient_test)
