@@ -66,6 +66,7 @@ try_connect_doh(struct selector_key * key) {
         logger_log(DEBUG, "failed selector_set_nio\n");
         goto errors;
     }
+    logger_log(DEBUG, "DNS ip: %s\n", doh_info.ip);
     /* Connecting to doh server */
     if (connect(st->doh_fd, addr_ptr, addr_len) < 0) {
         if (errno == EINPROGRESS) {
@@ -157,6 +158,7 @@ unsigned dns_connect_write(struct selector_key * key) {
         }
         close(st->doh_fd);
         st->doh_fd = -1;
+        logger_log(DEBUG, "DOH server connect failed\n");
         /* Defaulteo a getaddrinfo */
         return prepare_blocking_doh(key);
     }

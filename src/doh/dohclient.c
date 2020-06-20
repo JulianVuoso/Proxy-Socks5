@@ -7,10 +7,10 @@
 //without null termination
 #define BASE64URL_LENGTH(len) ((((len) + 2) / 3) * 4)
 
-#define HTTP_QUERY_START    "GET /%s?%s="
+#define HTTP_QUERY_START    "GET %s%s"
 #define HTTP_QUERY_END      " HTTP/1.1\r\nhost:%s\r\naccept:application/dns-message\r\n\r\n"
 
-#define HTTP_FULL_QUERY     "GET /%s?%s=%s HTTP/1.1\r\nhost:%s\r\naccept:application/dns-message\r\n\r\n"
+#define HTTP_FULL_QUERY     "GET %s%s%s HTTP/1.1\r\nhost:%s\r\naccept:application/dns-message\r\n\r\n"
 
 #define IPV4_BYTE   0x01
 #define IPV6_BYTE   0x1C
