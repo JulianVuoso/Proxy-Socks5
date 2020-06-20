@@ -44,9 +44,7 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, const char **argv) {
-    struct socks5args args;
-    parse_args(argc, argv, &args);
-    
+
     const char * err_msg = NULL;
 
     enum file_errors file_state = read_users_file(USERS_FILENAME);
@@ -54,6 +52,9 @@ main(const int argc, const char **argv) {
         err_msg = file_error_description(file_state);
         goto finally;
     }
+
+    struct socks5args args;
+    parse_args(argc, argv, &args);
 
     close(0);
 
