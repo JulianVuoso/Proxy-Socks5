@@ -30,5 +30,11 @@ add_executable(socks5d main.c
                        doh/dohParser.c
                        doh/dohclient.c
                        sm/sm_before_error_state.c
-                       sm/socks5mt.c)
-target_link_libraries(socks5d pthread)
+                       sm/socks5mt.c
+                       admin/admin_sm_cmd_state.c
+                       admin/admin_sm_negot_state.c
+                       admin/admin_socks5.c)
+target_link_libraries(socks5d pthread sctp)
+
+add_executable(adminClient client/client.c)
+target_link_libraries(adminClient sctp)

@@ -11,12 +11,7 @@
 #include "socks5mt.h"
 #include "socks5_handler.h"
 
-#include "hello.h"
-#include "negotiation.h"
-#include "request.h"
-
 #include "logger.h"
-#include "netutils.h"
 #include "sm_before_error_state.h"
 
 // Retorna la cantidad de elementos de un arreglo
@@ -53,7 +48,6 @@ socks5_destroy_(struct selector_key *key) {
     if (s->fqdn != NULL) {
         free(s->fqdn);
     }
-    free(s);
 
     // Actualizar cantidad de conexiones concurrentes.
     // Habilitar OP_READ si estabamos en el maximo.
@@ -62,6 +56,8 @@ socks5_destroy_(struct selector_key *key) {
         selector_set_interest(key->s, s->proxy_fd, OP_READ);
     }
     concurrent_connections--;
+    
+    free(s);
 }
 
 /**

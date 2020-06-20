@@ -185,15 +185,19 @@ void free_users_list() {
     free(ulist);
 }
 
-uint8_t authenticate(uint8_t * user, uint8_t * pwd){
+uint8_t authenticate(uint8_t * user, uint8_t * pwd, user_level level){
     if (user == NULL || pwd == NULL) {
         return NEGOT_RESPONSE_ERROR;
     }
     
     struct UserNode * node = ulist->header;
     while (node != NULL){
-        if(strcmp((char*)node->user.username, (char*)user)==0 && strcmp((char*)node->user.password, (char*)pwd)==0)
-            return NEGOT_RESPONSE_SUCCESS;
+        if(strcmp((char*)node->user.username, (char*)user)==0 && strcmp((char*)node->user.password, (char*)pwd)==0) {
+            if (node->user.level >= level)
+                return NEGOT_RESPONSE_SUCCESS;
+            else
+                return NEGOT_RESPONSE_ERROR;
+        }
         node = node->next;
     }
     return NEGOT_RESPONSE_ERROR;    

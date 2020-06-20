@@ -32,7 +32,7 @@ enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl)
 void delete_user_from_list(uint8_t * user);
 struct UserList * list_users();
 
-uint8_t authenticate(uint8_t* user, uint8_t * pwd);
+uint8_t authenticate(uint8_t* user, uint8_t * pwd, user_level level);
 
 void free_users_list();
 
