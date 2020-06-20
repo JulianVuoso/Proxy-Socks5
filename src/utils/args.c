@@ -29,22 +29,22 @@ port(const char *s) {
 
 static void
 add_user_client(char *s) {
-    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0;    
+    // uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0;    
 
-    user = malloc(sizeof(token));
-    if (user == NULL) exit(1);
-    strcpy((char *)user, (char *)token); 
+    // user = malloc(sizeof(token));
+    // if (user == NULL) exit(1);
+    // strcpy((char *)user, (char *)token); 
 
-    token = (uint8_t *)strchr(NULL, SEPARATOR);
-    if(token == NULL){
-        fprintf(stderr, "password not found\n");
-        exit(1);
-    }
-    pass = malloc(sizeof(token));
-    if(pass == NULL) exit(1);
-    strcpy((char *)pass, (char *)token); 
+    // token = (uint8_t *)strchr(NULL, SEPARATOR);
+    // if(token == NULL){
+    //     fprintf(stderr, "password not found\n");
+    //     exit(1);
+    // }
+    // pass = malloc(sizeof(token));
+    // if(pass == NULL) exit(1);
+    // strcpy((char *)pass, (char *)token); 
     
-    add_user_to_list(user, pass, CLIENT);
+    // add_user_to_list(user, pass, CLIENT);
 }
 
 static void
