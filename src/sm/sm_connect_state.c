@@ -2,6 +2,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>      // getaddrinfo
 #include <pthread.h>
+#include <netinet/in.h>
 
 #include "socks5mt.h"
 #include "logger.h"
@@ -59,6 +60,8 @@ try_connect_doh(struct selector_key * key) {
         logger_log(DEBUG, "failed socket creation\n");
         goto errors;
     }
+    /* Agrego referencia en el sock, se agrega un fd */
+    sock->references += 1;
     if (selector_fd_set_nio(st->doh_fd) < 0) {
         logger_log(DEBUG, "failed selector_set_nio\n");
         goto errors;
@@ -88,6 +91,7 @@ errors:
     if (st->doh_fd >= 0) {
         close(st->doh_fd);
         st->doh_fd = -1;
+        sock->references -= 1;
     }
     return CON_ERROR;
 }
@@ -130,6 +134,7 @@ static unsigned build_doh_query(struct selector_key * key) {
     if (doh_query_marshall(st->write_buf, sock->fqdn, doh_info, st->option) < 0) {
         return prepare_blocking_doh(key);
     }
+    logger_log(DEBUG, "going to dns write\n");
     return DNS_WRITE;
 }
 
@@ -170,7 +175,8 @@ unsigned dns_write(struct selector_key *key) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Termine de enviar el mensaje
             if (selector_set_interest_key(key, OP_READ) == SELECTOR_SUCCESS) {
-                ret = DNS_READ; 
+                ret = DNS_READ;
+                logger_log(DEBUG, "going to dns read\n");
             } else {
                 do_before_error(key);
                 ret = ERROR;
@@ -212,7 +218,77 @@ unsigned dns_read(struct selector_key *key) {
     return ret;
 }
 
+static struct addrinfo *
+set_current_addrinfo(struct addrinfo * current, struct sockaddr * sock_address, int family, uint8_t length) {
+    struct addrinfo * ret = calloc(1, sizeof(*ret));
+    if (ret == NULL) {
+        return NULL;
+    }
+    ret->ai_family = family;
+    ret->ai_addr = malloc(length);
+    if (ret->ai_addr == NULL) {
+        return NULL;
+    }
+    memcpy(ret->ai_addr, sock_address, length);
+    ret->ai_addrlen = length;
+    ret->ai_next = current;
+    ret->ai_socktype = SOCK_STREAM;
+    ret->ai_protocol = IPPROTO_TCP;
+    return ret;
+}
+
+static int set_origin_resolution_ipv4(struct selector_key * key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct connect_st * con_st = &sock->client.connect;
+    struct destination * dest = sock->client.request.parser.dest;
+
+    logger_log(DEBUG, "setting origin_resolution ipv4\n");
+    static struct addrinfo * aux;
+    struct sockaddr_in address;
+    for (uint8_t i = 0; i < con_st->parser.rCount; i++) {
+        DNSResRec rec = con_st->parser.records[i];
+        memset(&address, 0, sizeof(address));
+        address.sin_family = AF_INET;
+        memcpy(&address.sin_addr, rec.rddata, rec.rdlength);
+        address.sin_port = htons(dest->port);
+        aux = set_current_addrinfo(sock->origin_resolution, (struct sockaddr *) &address, AF_INET, sizeof(address));
+        if (aux == NULL) {
+            /* Free list */
+            return -1;
+        }
+        sock->origin_resolution = aux;
+    }
+    sock->client.request.current = sock->origin_resolution;
+    return 0;
+}
+
+static int set_origin_resolution_ipv6(struct selector_key * key) {
+    struct socks5 * sock = ATTACHMENT(key);
+    struct connect_st * con_st = &sock->client.connect;
+    struct destination * dest = sock->client.request.parser.dest;
+
+    logger_log(DEBUG, "setting origin_resolution ipv4\n");
+    static struct addrinfo * aux;
+    struct sockaddr_in6 address;
+    for (uint8_t i = 0; i < con_st->parser.rCount; i++) {
+        DNSResRec rec = con_st->parser.records[i];
+        memset(&address, 0, sizeof(address));
+        address.sin6_family = AF_INET6;
+        memcpy(&address.sin6_addr, rec.rddata, rec.rdlength);
+        address.sin6_port = htons(dest->port);
+        aux = set_current_addrinfo(sock->origin_resolution, (struct sockaddr *) &address, AF_INET6, sizeof(address));
+        if (aux == NULL) {
+            /* Free list */
+            return -1;
+        }
+        sock->origin_resolution = aux;
+    }
+    sock->client.request.current = sock->origin_resolution;
+    return 0;
+}
+
 unsigned dns_answer_process(struct selector_key *key, bool errored) {
+    logger_log(DEBUG, "processing dns answer\n");
     struct connect_st * st_vars = &ATTACHMENT(key)->client.connect;
     /* Desregistro el fd y lo cierro */
     if (selector_unregister_fd(key->s, st_vars->doh_fd) != SELECTOR_SUCCESS) {
@@ -235,8 +311,22 @@ unsigned dns_answer_process(struct selector_key *key, bool errored) {
             return prepare_blocking_doh(key);
         }
     } else {
-        /* Si fue exitoso, intento conectarme */
-        /** TODO: PASAR LA LISTA A ORIGIN RESOLUTION */
+        /* Si fue exitoso, seteo origin_resolution */
+        if (st_vars->option == doh_ipv4) {
+            if (set_origin_resolution_ipv4(key) < 0) {
+                logger_log(DEBUG, "failed set_origin_resolution_ipv4\n");
+                do_before_error(key);
+                return ERROR;
+            }
+        } else {
+            if (set_origin_resolution_ipv6(key) < 0) {
+                logger_log(DEBUG, "failed set_origin_resolution_ipv6\n");
+                do_before_error(key);
+                return ERROR;
+            }
+        }
+        logger_log(DEBUG, "trying to connect\n");
+        /* Intento conectarme */
         return request_connect(key);
     }
 }
@@ -293,7 +383,8 @@ static void * request_solve_blocking(void * args) {
     }
     logger_log(DEBUG, "Finalizo la resolucion DNS con getaddrinfo...\n");
 
-    selector_notify_block(key->s, key->fd);
+    /* Aviso que termino al CLIENT FD, el de la key capaz lo cerre ya */
+    selector_notify_block(key->s, sock->client_fd);
 
     free(args);
     return 0;
@@ -328,6 +419,7 @@ error:
 }
 
 unsigned request_solve_block(struct selector_key *key) {
+    logger_log(DEBUG, "solve unblock\n");
     struct socks5 * sock = ATTACHMENT(key);
     struct request_st * st_vars = &sock->client.request;
     if (sock->origin_resolution == NULL) {

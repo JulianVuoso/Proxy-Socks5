@@ -26,6 +26,7 @@
 
 static unsigned concurrent_connections = 0;
 
+/** TODO: Si no es getaddrinfo, liberar la lista a mano  */
 /* Destruye realmente el struct socks5 */
 static void
 socks5_destroy_(struct selector_key *key) {
