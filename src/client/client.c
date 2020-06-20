@@ -6,11 +6,13 @@
 #include <string.h>
 #include <getopt.h>
 
+#include "logger.h"
+
 #define AUTH_MSG_LEN 513
 #define MAX_DATA_LEN 514
 #define READBUFFER_LEN 257
 
-#define DEFAULT_PORT 1080
+#define DEFAULT_PORT 8080
 #define DEFAULT_HOST "127.0.0.1"
 
 #define ADD_USER "add-user"

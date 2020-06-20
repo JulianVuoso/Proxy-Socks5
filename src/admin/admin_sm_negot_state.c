@@ -1,12 +1,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "adminmt.h"
-#include "negotiation.h"
-#include "logger.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/sctp.h>
+#include <errno.h>
+
+#include "adminmt.h"
+#include "negotiation.h"
+#include "logger.h"
 
 void admin_negot_read_init(const unsigned state, struct selector_key *key) {
     struct admin_negot_st * st = &ADMIN_ATTACH(key)->client.negot;
@@ -69,7 +71,7 @@ unsigned admin_negot_write(struct selector_key *key) {
     unsigned ret = ADMIN_NEGOT_WRITE;
     size_t nbytes;
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
-    ssize_t n = sctp_sendmsg(key->fd, buf_read_ptr, nbytes, NULL, 0, 0, MSG_NOSIGNAL, 0, 0, 0);
+    ssize_t n = sctp_sendmsg(key->fd, buf_read_ptr, nbytes, NULL, 0, 0, 0, 0, 0, 0);
 
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);
@@ -87,6 +89,8 @@ unsigned admin_negot_write(struct selector_key *key) {
             }
         }
     } else {
+        logger_log(DEBUG, "admin error en negot write\n\nError. errno message: %s\n\n", strerror(errno));
+        
         ret = ADMIN_ERROR;
     }
 
