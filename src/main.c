@@ -37,6 +37,7 @@ static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
 
+/** TODO: Ver como libero recursos en este caso  */
 static void
 sigterm_handler(const int signal) {
     printf("signal %d, cleaning up and exiting\n",signal);
@@ -137,6 +138,7 @@ main(const int argc, const char **argv) {
             err_msg = "serving";
             goto finally;
         }
+        /** TODO: Agregar timeout */
     }
     if(err_msg == NULL) {
         err_msg = "closing";

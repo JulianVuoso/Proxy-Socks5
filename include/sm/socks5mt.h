@@ -11,6 +11,7 @@
 #include "sm_request_state.h"
 #include "sm_connect_state.h"
 #include "sm_copy_state.h"
+#include "doh_server_struct.h"
 
 // Borrar cuando tenga su sm_state
 // #include "negotiation.h"
@@ -284,7 +285,6 @@ struct socks5 {
         struct hello_st     hello;
         struct negot_st     negot;
         struct request_st   request;
-        struct connect_st   connect;
         struct copy_st      copy;
     } client;
 
@@ -302,6 +302,7 @@ struct socks5 {
     int origin_fd, origin_domain;
     char * fqdn;
     struct addrinfo * origin_resolution;
+    enum connect_options option;
 
     /* Buffers */
     uint8_t read_buffer_mem[INITIAL_BUF_SIZE], write_buffer_mem[INITIAL_BUF_SIZE];

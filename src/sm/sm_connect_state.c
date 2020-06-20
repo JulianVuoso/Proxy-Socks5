@@ -22,7 +22,7 @@ void set_doh_info(struct doh info) {
 static enum connect_result 
 try_connect_doh(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * st = &sock->client.connect;
+    struct request_st * st = &sock->client.request;
 
     struct sockaddr * addr_ptr;
     struct sockaddr_in address;
@@ -98,11 +98,10 @@ errors:
 }
 
 static void init_connect_st(struct selector_key * key) {
-    struct connect_st * st = &ATTACHMENT(key)->client.connect;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st = &sock->client.request;
     st->doh_fd = -1;
-    st->option = doh_ipv4;
-    st->read_buf = &(ATTACHMENT(key)->read_buffer);
-    st->write_buf = &(ATTACHMENT(key)->write_buffer);
+    sock->option = doh_ipv4;
 }
 
 unsigned start_doh_connect(struct selector_key * key) {
@@ -130,9 +129,9 @@ unsigned connect_doh_server(struct selector_key * key) {
 
 static unsigned build_doh_query(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * st = &sock->client.connect;
+    struct request_st * st = &sock->client.request;
 
-    if (doh_query_marshall(st->write_buf, sock->fqdn, doh_info, st->option) < 0) {
+    if (doh_query_marshall(st->write_buf, sock->fqdn, doh_info, sock->option) < 0) {
         return prepare_blocking_doh(key);
     }
     logger_log(DEBUG, "going to dns write\n");
@@ -142,7 +141,7 @@ static unsigned build_doh_query(struct selector_key * key) {
 unsigned dns_connect_write(struct selector_key * key) {
     logger_log(DEBUG, "Gonna get SOL_SOCKET option\n");
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * st = &sock->client.connect;
+    struct request_st * st = &sock->client.request;
     /* Reviso que haya sido por doh_fd, no deberia ser por otra cosa */
     if (key->fd != st->doh_fd) {
         abort();
@@ -167,7 +166,7 @@ unsigned dns_connect_write(struct selector_key * key) {
 }
 
 unsigned dns_write(struct selector_key *key) {
-    struct connect_st * st_vars = &ATTACHMENT(key)->client.connect;
+    struct request_st * st_vars = &ATTACHMENT(key)->client.request;
     unsigned ret = DNS_WRITE;
     size_t nbytes;
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
@@ -185,20 +184,22 @@ unsigned dns_write(struct selector_key *key) {
             }
         }
     } else {
-        do_before_error(key);
-        ret = ERROR;
+        logger_log(DEBUG, "DOH server write failed\n");
+        /* Defaulteo a getaddrinfo */
+        return prepare_blocking_doh(key);
     }
 
     return ret;
 }
 
 void dns_read_init(const unsigned state, struct selector_key *key) {
-    struct connect_st * st = &ATTACHMENT(key)->client.connect;
-    doh_parser_init(&st->parser, st->option);
+    struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st = &sock->client.request;
+    doh_parser_init(&st->doh_parser, sock->option);
 }
 
 unsigned dns_read(struct selector_key *key) {
-    struct connect_st * st_vars = &ATTACHMENT(key)->client.connect;
+    struct request_st * st_vars = &ATTACHMENT(key)->client.request;
     unsigned ret = DNS_READ;
     bool errored = false;
     size_t nbytes;
@@ -207,14 +208,14 @@ unsigned dns_read(struct selector_key *key) {
 
     if (n > 0) {
         buffer_write_adv(st_vars->read_buf, n);
-        const DOHQRSM_STATE st = doh_parser_consume(st_vars->read_buf, &st_vars->parser, &errored);
+        const DOHQRSM_STATE st = doh_parser_consume(st_vars->read_buf, &st_vars->doh_parser, &errored);
         if (doh_parser_is_done(st, 0)) {
             ret = dns_answer_process(key, errored);
         }
     } else {
-        /** TODO: VER SI ACA ES ERROR O NO */
-        logger_log(DEBUG, "failed recv in dns read\n");
-        ret = ERROR;
+        logger_log(DEBUG, "DOH server read failed\n");
+        /* Defaulteo a getaddrinfo */
+        return prepare_blocking_doh(key);
     }
 
     return ret;
@@ -241,14 +242,14 @@ set_current_addrinfo(struct addrinfo * current, struct sockaddr * sock_address, 
 
 static int set_origin_resolution_ipv4(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * con_st = &sock->client.connect;
-    struct destination * dest = sock->client.request.parser.dest;
+    struct request_st * con_st = &sock->client.request;
+    struct destination * dest = con_st->parser.dest;
 
     logger_log(DEBUG, "setting origin_resolution ipv4\n");
     static struct addrinfo * aux;
     struct sockaddr_in address;
-    for (uint8_t i = 0; i < con_st->parser.rCount; i++) {
-        DNSResRec rec = con_st->parser.records[i];
+    for (uint8_t i = 0; i < con_st->doh_parser.rCount; i++) {
+        DNSResRec rec = con_st->doh_parser.records[i];
         memset(&address, 0, sizeof(address));
         address.sin_family = AF_INET;
         memcpy(&address.sin_addr, rec.rddata, rec.rdlength);
@@ -266,14 +267,14 @@ static int set_origin_resolution_ipv4(struct selector_key * key) {
 
 static int set_origin_resolution_ipv6(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * con_st = &sock->client.connect;
-    struct destination * dest = sock->client.request.parser.dest;
+    struct request_st * con_st = &sock->client.request;
+    struct destination * dest = con_st->parser.dest;
 
     logger_log(DEBUG, "setting origin_resolution ipv4\n");
     static struct addrinfo * aux;
     struct sockaddr_in6 address;
-    for (uint8_t i = 0; i < con_st->parser.rCount; i++) {
-        DNSResRec rec = con_st->parser.records[i];
+    for (uint8_t i = 0; i < con_st->doh_parser.rCount; i++) {
+        DNSResRec rec = con_st->doh_parser.records[i];
         memset(&address, 0, sizeof(address));
         address.sin6_family = AF_INET6;
         memcpy(&address.sin6_addr, rec.rddata, rec.rdlength);
@@ -291,7 +292,8 @@ static int set_origin_resolution_ipv6(struct selector_key * key) {
 
 unsigned dns_answer_process(struct selector_key *key, bool errored) {
     logger_log(DEBUG, "processing dns answer\n");
-    struct connect_st * st_vars = &ATTACHMENT(key)->client.connect;
+    struct socks5 * sock = ATTACHMENT(key);
+    struct request_st * st_vars = &sock->client.request;
     /* Desregistro el fd y lo cierro */
     if (selector_unregister_fd(key->s, st_vars->doh_fd) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
@@ -304,9 +306,9 @@ unsigned dns_answer_process(struct selector_key *key, bool errored) {
     /* Si fue con error */
     if (errored) {
         /* Si estaba en IPv4, intento nuevamente con IPv6 */
-        if (st_vars->option == doh_ipv4) {
-            freeDohParser(&st_vars->parser);
-            st_vars->option = doh_ipv6;
+        if (sock->option == doh_ipv4) {
+            freeDohParser(&st_vars->doh_parser);
+            sock->option = doh_ipv6;
             return connect_doh_server(key);
         } else {
             /* Defaulteo a getaddrinfo */
@@ -314,7 +316,7 @@ unsigned dns_answer_process(struct selector_key *key, bool errored) {
         }
     } else {
         /* Si fue exitoso, seteo origin_resolution */
-        if (st_vars->option == doh_ipv4) {
+        if (sock->option == doh_ipv4) {
             if (set_origin_resolution_ipv4(key) < 0) {
                 logger_log(DEBUG, "failed set_origin_resolution_ipv4\n");
                 do_before_error(key);
@@ -335,10 +337,10 @@ unsigned dns_answer_process(struct selector_key *key, bool errored) {
 
 unsigned try_next_option(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * st_vars = &sock->client.connect;
+    struct request_st * st_vars = &sock->client.request;
     
     /* Check if there is another option to try. */
-    if (sock->fqdn == NULL || st_vars->option == default_function) {
+    if (sock->fqdn == NULL || sock->option == default_function) {
         /* Could not connect to any ip address */
         logger_log(DEBUG, "could not connect to any ip address\n");
         if (sock->client.request.reply_code == REQUEST_RESPONSE_SUCCESS) {
@@ -347,9 +349,9 @@ unsigned try_next_option(struct selector_key * key) {
         return try_jump_request_write(key);
     }
     
-    if (st_vars->option == doh_ipv4) {
-        freeDohParser(&st_vars->parser);
-        st_vars->option = doh_ipv6;
+    if (sock->option == doh_ipv4) {
+        freeDohParser(&st_vars->doh_parser);
+        sock->option = doh_ipv6;
         return connect_doh_server(key);
     } else {
         /* Defaulteo a getaddrinfo */
@@ -394,8 +396,7 @@ static void * request_solve_blocking(void * args) {
 
 static unsigned prepare_blocking_doh(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
-    struct connect_st * conn_st_vars = &sock->client.connect;
-    conn_st_vars->option = default_function;
+    sock->option = default_function;
 
     struct request_st * req_st_vars = &sock->client.request;
     pthread_t thread_pid = 0;

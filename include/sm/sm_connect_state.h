@@ -5,13 +5,6 @@
 #include "selector.h"
 #include "doh_server_struct.h"
 
-typedef struct connect_st {
-    int doh_fd;
-    enum connect_options option;
-    buffer * read_buf, * write_buf;
-    struct DOHQueryResSM parser;
-} connect_st;
-
 /* First doh connect (initi and connect) */
 unsigned start_doh_connect(struct selector_key * key);
 

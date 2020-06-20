@@ -131,7 +131,7 @@ getQuery(const char *fqdn, BASE64DNSQuery *query, enum connect_options option) {
 
     //malloc query
     query->length = BASE64URL_LENGTH(DNS_QUERY_LENGTH(fqdnLen) + DNS_HEADER_LENGTH);
-    query->query = malloc(query->length);
+    query->query = malloc(query->length + 1);
     if (query == NULL)
     {
         return -1;
