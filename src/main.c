@@ -58,6 +58,9 @@ main(const int argc, const char **argv) {
         goto finally;
     }
 
+    struct socks5args args;
+    parse_args(argc, argv, &args);
+
     close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;
