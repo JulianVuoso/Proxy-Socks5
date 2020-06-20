@@ -6,23 +6,19 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <string.h>
-#include "dohParser.h"
+
+#include "doh_answer_struct.h"
+#include "buffer.h"
 
 #define PORT 80
+
 typedef struct{
     size_t length;
     char *query;
 }BASE64DNSQuery;
 
-/*
-    params:
-        -fqdn: String input
-        -query: BASE64DNSQuery output
-    returns:
-        -0 if succesful
-        -another number if not
-*/
-int getQuery(const char *fqdn,BASE64DNSQuery *query);
+int doh_query_marshall(buffer * b, const char * fqdn, const struct doh doh_info, enum connect_options option);
+
 int dnsLookUp(const char *fqdn,struct DOHQueryResSM *qrsm);
 
 #endif

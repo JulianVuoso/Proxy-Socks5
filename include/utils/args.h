@@ -2,20 +2,13 @@
 #define ARGS_H_kFlmYm1tW9p5npzDr2opQJ9jM8
 
 #include <stdbool.h>
+#include "doh_server_struct.h"
 
 #define MAX_USERS 10
 
 struct users {
     char *name;
     char *pass;
-};
-
-struct doh {
-    char           *host;
-    char           *ip;
-    unsigned short  port;
-    char           *path;
-    char           *query;
 };
 
 struct socks5args {
