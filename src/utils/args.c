@@ -5,7 +5,7 @@
 #include <errno.h>
 #include <getopt.h>
 #include <string.h>
-#include <regex.h>
+#include <ctype.h>
 
 #include "args.h"
 
@@ -32,7 +32,7 @@ add_user_client(char *s) {
     if (user == NULL) exit(1);
     strcpy((char *)user, (char *)token); 
 
-    token = (uint8_t *)strtok(NULL, SEPARATOR);
+    token = (uint8_t *)strchr(NULL, SEPARATOR);
     if(token == NULL){
         fprintf(stderr, "password not found\n");
         exit(1);
@@ -62,7 +62,8 @@ add_user(char* s) {
                     i++; 
                     break;
             case 2: level = atoi((char *)token); 
-                    if(level != CLIENT && level != ADMIN){
+                    printf("LEVEL: %s", token);
+                    if((level != CLIENT && level != ADMIN)||(!isdigit(*token))){
                         fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
                         exit(1);
                     }
@@ -73,15 +74,13 @@ add_user(char* s) {
         }
         token = (uint8_t *)strtok(NULL, SEPARATOR);
         if(token == NULL){
-            switch (i){
-                case 1: fprintf(stderr, "password not found\n");        
-                        exit(1);
-                        break;
-                case 2: fprintf(stderr, "user level not found\n");        
-                        exit(1);
-                        break;
-                default:
-                    break;
+            if(i==1) {
+                fprintf(stderr, "password not found\n");        
+                exit(1);
+            }
+            if(i==2){
+                fprintf(stderr, "user level not found\n");        
+                exit(1);
             }
         }
     }
