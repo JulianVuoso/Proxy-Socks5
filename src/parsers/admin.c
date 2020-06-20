@@ -8,10 +8,19 @@
 #define PASS    1
 #define VALUE   2
 
+
 static void 
 admin_data_word_init(admin_parser * p, uint8_t type, uint8_t length);
 static bool
 admin_data_word_add(admin_parser * p, uint8_t type, uint8_t byte);
+static uint64_t
+admin_data_value_convert(admin_parser * p);
+static int16_t
+admin_marshall_send_head(buffer * b, uint8_t length, uint8_t * data);
+static int16_t
+admin_marshall_send(buffer * b, uint8_t hlen, uint8_t * head, uint8_t dlen, uint8_t * data);
+
+
 
 
 void
@@ -21,14 +30,14 @@ admin_parser_init(admin_parser * p) {
     p->data = calloc(1, sizeof(admin_received_data));
     if (p->data == NULL) {
         p->state = admin_error;
-        p->state = admin_error_heap_full;
+        p->state = admin_error_server_fail;
         return;
     }
     p->data->value1 = calloc(1, sizeof(admin_data_word));
     p->data->value2 = calloc(1, sizeof(admin_data_word));
     if (p->data->value1 == NULL || p->data->value2 == NULL) {
         p->state = admin_error;
-        p->state = admin_error_heap_full;
+        p->state = admin_error_server_fail;
         return;
     }
 }
@@ -39,8 +48,15 @@ admin_consume(buffer * b, admin_parser * p, bool * errored) {
     while (buffer_can_read(b)) {
         const uint8_t c = buffer_read(b);
         state = admin_parser_feed(p, c);
-        if (admin_is_done(state, errored))
-            break;
+        if (admin_is_done(state, errored)) {
+            if (!errored)
+                p->error = admin_execute_command(p->data);
+            admin_marshall(b, p);
+            p->state = admin_command;
+            p->error = admin_error_none;
+            p->data->option = 0;
+        }
+        
     }
     return state;
 }
@@ -143,9 +159,15 @@ admin_parser_feed(admin_parser * p, uint8_t byte) {
             }
         
         case admin_get_vlen:
-        /* Gets the value length, can be 0 */
-            p->state = admin_get_value;
-            admin_data_word_init(p, VALUE, byte);
+        /* Gets the value length, can be 0 and cant be more than actual unsinged long */
+            if (byte > sizeof(uint64_t)) {
+                p->state = admin_error;
+                p->state = admin_error_inv_vlen;
+
+            } else {
+                p->state = admin_get_value;
+                admin_data_word_init(p, VALUE, byte);
+            }            
             break;
         
 
@@ -184,8 +206,11 @@ admin_error_description(const admin_parser * p) {
         case admin_error_inv_value:
             ret = "invalid value";
             break;
-        case admin_error_heap_full:
-            ret = "could not allocate memory";
+        case admin_error_server_fail:
+            ret = "generated server failure";
+            break;
+        case admin_error_inv_vlen:
+            ret = "value length is too big";
             break;
         default:
             ret = "";
@@ -224,6 +249,54 @@ admin_parser_close(admin_parser * p) {
 }
 
 
+admin_errors
+admin_execute_command(admin_received_data * data) {
+    // TODO ver que devuelven las funciones.
+    uint8_t ret;
+    switch (data->command) {
+        case admin_command_add_user: ret = 0x00; break; // TODO add user.
+        case admin_command_del_user: ret = 0x00; break; // TODO delete user.
+        case admin_command_list_user: ret = 0x00; break; // TODO list users.
+        case admin_command_get_metric: ret = 0x00; break; // TODO get metrics.
+        case admin_command_get_config: ret = 0x00; break; // TODO get config.
+        case admin_command_set_config: ret = 0x00; break; // TOD set config.
+        default: 
+            fprintf(stderr, "unknown command %d\n", data->command);
+            abort();
+    }
+    return (admin_errors) ret;
+}
+
+
+int16_t
+admin_marshall(buffer *b, const admin_parser * p) {
+    uint8_t header[4];
+    header[0] = p->data->command;
+    header[1] = p->error;
+    header[2] = p->data->option;
+    header[3] = 0;
+
+    switch (p->data->command) {
+        case admin_command_list_user: 
+            if (p->error != admin_error_none) 
+                return admin_marshall_send_head(b, 3, header); // header[2] = 0, default not modified
+            return admin_marshall_send(b, 2, header, p->data->value1->length, p->data->value1->value);
+        case admin_command_get_metric: 
+        case admin_command_get_config: 
+        case admin_command_set_config: 
+            if (p->error != admin_error_none) 
+                return admin_marshall_send_head(b, 4, header);
+            return admin_marshall_send(b, 3, header, p->data->value1->length, p->data->value1->value);
+        case admin_command_add_user: 
+        case admin_command_del_user: 
+        default: 
+            return admin_marshall_send_head(b, 2, header);
+    }
+}
+
+
+/* Auxiliary static functions */
+
 static void 
 admin_data_word_init(admin_parser * p, uint8_t type, uint8_t length) {
     admin_data_word * word = p->data->value1;
@@ -231,10 +304,10 @@ admin_data_word_init(admin_parser * p, uint8_t type, uint8_t length) {
 
     word->length = length;
     word->index = 0;
-    word->value = malloc(length + 1);
+    word->value = realloc(word->value, length + 1);
     if (word->value == NULL) {
         p->state = admin_error;
-        p->error = admin_error_heap_full;
+        p->error = admin_error_server_fail;
     }
 }
 
@@ -251,7 +324,28 @@ admin_data_word_add(admin_parser * p, uint8_t type, uint8_t byte) {
     return false;
 }
 
-int
-admin_marshall(buffer *b, uint8_t status) {
-    return 0;
+static uint64_t
+admin_data_value_convert(admin_parser * p) {
+    admin_data_word * value = p->data->value1;
+    uint64_t ret = 0;
+    for (uint8_t i = 0; i < value->length; i++) {
+        ret = (ret << 8) + value->value[i];
+    }
+    return ret;
+
+}
+
+static int16_t
+admin_marshall_send_head(buffer * b, uint8_t length, uint8_t * data) {
+    return admin_marshall_send(b, length, data, 0, NULL);
+}
+
+static int16_t
+admin_marshall_send(buffer * b, uint8_t hlen, uint8_t * head, uint8_t dlen, uint8_t * data) {
+    uint64_t n;
+    uint8_t * buff = buffer_write_ptr(b, &n);
+    if (n < hlen + dlen) return -1;
+    for (uint32_t i = 0; i < hlen; i++) buff[i] = head[i];
+    for (uint32_t i = 0; i < dlen; i++) buff[i] = data[i];
+    return hlen + dlen;
 }

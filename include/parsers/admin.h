@@ -153,15 +153,16 @@ typedef enum admin_state {
 
 /* Admin parser errors */
 typedef enum admin_errors { // TODO no son todos estos
-    admin_error_inv_command,
-    admin_error_inv_utype,
-    admin_error_inv_ulen,
-    admin_error_inv_metric,
-    admin_error_inv_config,
-    admin_error_inv_value,
+    admin_error_inv_command = 0x01,
+    admin_error_inv_ulen = 0x02,
+    admin_error_inv_utype = 0x03,
+    admin_error_inv_metric = 0x04,
+    admin_error_inv_config = 0x05,
+    admin_error_inv_value = 0x06,
+    admin_error_inv_vlen = 0x07, // TODO se agrega en protocol.txt
 
-    admin_error_heap_full,
-    admin_error_none,
+    admin_error_server_fail = 0xFF,
+    admin_error_none = 0x00,
 } admin_errors;
 
 typedef struct admin_data_word {
@@ -225,7 +226,12 @@ admin_is_done(const admin_state state, bool * errored);
 void
 admin_parser_close(admin_parser * p);
 
-int 
-admin_marshall(buffer *b, uint8_t status);
+/** Executes the corresponding command */
+admin_errors
+admin_execute_command(admin_received_data * data);
+
+/** Writes on buffer */
+int16_t 
+admin_marshall(buffer *b, const admin_parser * p);
 
 #endif
