@@ -4,7 +4,7 @@
 #include "negotiation.h"
 #include "selector.h"
 
-// negot_READ, negot_SOLVE, negot_CONNECT y negot_WRITE
+// NEGOT_READ y NEGOT_WRITE
 typedef struct negot_st {
     buffer * read_buf, * write_buf;
     struct negot_parser parser;
