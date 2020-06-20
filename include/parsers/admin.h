@@ -105,13 +105,21 @@ typedef enum admin_commands {
     admin_command_none = 0xFF,
 } admin_commands;
 
+/* Possible user typed */
+typedef enum admin_user_types {
+    admin_user_type_client = 0x00,
+    admin_user_type_admin = 0x01,
+
+    admin_user_type_none = 0xFF,
+} admin_user_types;
+
 /* Possible metrics */
 typedef enum admin_metrics {
     admin_metric_hist_conn = 0x00,
     admin_metric_conc_conn = 0x01,
     admin_metric_hist_btransf = 0x02,
 
-    amdin_metric_none = 0xFF,
+    admin_metric_none = 0xFF,
 } admin_metrics;
 
 /* Possible configurations */
@@ -127,9 +135,16 @@ typedef enum admin_configs {
 /* Admin parser states */
 typedef enum admin_state {
     admin_command,
+    admin_config,
+    admin_metric,
+    admin_utype,
 
-    admin_get_config,
-    admin_set_config,
+    admin_get_ulen,
+    admin_get_user,
+    admin_get_plen,
+    admin_get_pass,    
+    admin_get_vlen,
+    admin_get_value,
 
     admin_done,
     admin_error,
@@ -139,25 +154,43 @@ typedef enum admin_state {
 /* Admin parser errors */
 typedef enum admin_errors { // TODO no son todos estos
     admin_error_inv_command,
-    admin_error_inv_utype, // TODO especifico de add user
+    admin_error_inv_utype,
+    admin_error_inv_ulen,
     admin_error_inv_metric,
     admin_error_inv_config,
-    admin_error_inv_value, // TODO s
-    admin_error_server_fail,
+    admin_error_inv_value,
+
+    admin_error_heap_full,
+    admin_error_none,
 } admin_errors;
+
+typedef struct admin_data_word {
+    uint8_t * value;
+    uint8_t index;
+    uint8_t length;
+} admin_data_word;
+
+/* Maps the data received  */
+typedef struct admin_received_data {
+    /* The selected command */
+    admin_commands command;
+    
+    /* Value for  metrics, config or user type option, casted later */
+    uint8_t option;
+
+    /* Value for user handling */
+    admin_data_word * value1;
+    admin_data_word * value2;
+} admin_received_data;
 
 /* Admin parser struct */
 typedef struct admin_parser {
 
     admin_state state;
     admin_errors error;
-    /* The selected command */
-    admin_commands command;
 
-    admin_metrics metric;
-    admin_configs config;
+    admin_received_data * data;
 
-    uint8_t * value;
 } admin_parser;
 
 /** Initializes the admin parser */
@@ -191,5 +224,8 @@ admin_is_done(const admin_state state, bool * errored);
 /** Frees resources used by the parser */
 void
 admin_parser_close(admin_parser * p);
+
+int 
+admin_marshall(buffer *b, uint8_t status);
 
 #endif
