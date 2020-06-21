@@ -5,6 +5,7 @@ include_directories(../include/doh)
 include_directories(../include/parsers)
 include_directories(../include/sm)
 include_directories(../include/utils)
+include_directories(../include/client)
 
 add_executable(socks5d main.c
                        utils/users.c
@@ -37,5 +38,5 @@ add_executable(socks5d main.c
                        admin/admin_socks5.c)
 target_link_libraries(socks5d pthread sctp)
 
-add_executable(adminClient client/client.c)
+add_executable(adminClient client/client.c client/clientUtils.c)
 target_link_libraries(adminClient sctp)
