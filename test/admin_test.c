@@ -251,6 +251,25 @@ START_TEST (test_admin_set_config_inv_config) {
 }
 END_TEST
 
+START_TEST (test_admin_inv_command) {
+    admin_parser parser;
+    admin_parser_init(&parser);
+    uint8_t data[] = {
+        0xF5  
+    };
+    buffer b; 
+    FIXBUF(b, data);
+    bool errored = false;
+    admin_state state = admin_consume(&b, &parser, &errored);
+    ck_assert_uint_eq(true, errored);
+    ck_assert_uint_eq(admin_error, state);
+    ck_assert_uint_eq(admin_error_inv_command, parser.error);  
+    ck_assert_uint_eq(0xF5, parser.data->command);
+
+    admin_parser_close(&parser);
+}
+END_TEST
+
 
 
 Suite * 
@@ -273,6 +292,7 @@ admin_suite(void) {
     tcase_add_test(tc, test_admin_get_config_inv_config);
     tcase_add_test(tc, test_admin_set_config_ok);
     tcase_add_test(tc, test_admin_set_config_inv_config);
+    tcase_add_test(tc, test_admin_inv_command);
 
     suite_add_tcase(s, tc);
 

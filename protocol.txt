@@ -58,8 +58,8 @@ Los códigos de STATUS existentes son
 	~ GEN SERV FAIL		X'FF'
 
 En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
-Si el servidor envía en su respuesta un STATUS de GEN SERVER FAIL, éste DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
-Si el servidor envía cualquier otro STATUS de respuesta, el cliente puede volver a enviar un nuevo REQUEST.
+Si el servidor envía cualquier otro STATUS de respuesta (exceptuando INV VALUE), el servidor DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
+Si el servidor envía INV VALUE como STATUS de respuesta, el cliente puede volver a enviar un nuevo REQUEST.
 
 Agregar Usuario
 
