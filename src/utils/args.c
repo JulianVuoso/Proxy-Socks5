@@ -71,6 +71,8 @@ add_user(char* s) {
                         exit(1);
                     }
                     add_user_to_list(user, pass, level);
+                    free(user);
+                    free(pass);
                     i = 0; 
                     break;
             default: break;
