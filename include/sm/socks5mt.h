@@ -272,8 +272,6 @@ static const struct state_definition client_statbl[] = {
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
-#define INITIAL_BUF_SIZE 4096
-
 enum connect_result {CON_OK, CON_ERROR, CON_INPROG};
 
 struct socks5 {
@@ -305,7 +303,7 @@ struct socks5 {
     enum connect_options option;
 
     /* Buffers */
-    uint8_t read_buffer_mem[INITIAL_BUF_SIZE], write_buffer_mem[INITIAL_BUF_SIZE];
+    uint8_t * read_buffer_mem, * write_buffer_mem;
     buffer read_buffer, write_buffer;
 
     /* Reference count. If 1, it is destroyed */

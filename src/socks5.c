@@ -13,6 +13,7 @@
 
 #include "logger.h"
 #include "sm_before_error_state.h"
+#include "config.h"
 
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
@@ -20,8 +21,12 @@
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
+/* Connection metrics */
 static unsigned concurrent_connections = 0;
-static unsigned long historical_connections = 0;
+static uint64_t historical_connections = 0;
+
+/* Buffer configuration */
+static uint64_t buffer_read_size = INITIAL_BUF_SIZE, buffer_write_size = INITIAL_BUF_SIZE;
 
 /* Destruye realmente el struct socks5 */
 static void
@@ -47,6 +52,13 @@ socks5_destroy_(struct selector_key *key) {
     }
     if (s->fqdn != NULL) {
         free(s->fqdn);
+    }
+
+    if (s->read_buffer_mem != NULL) {
+        free(s->read_buffer_mem);
+    }
+    if (s->write_buffer_mem != NULL) {
+        free(s->write_buffer_mem);
     }
 
     // Actualizar cantidad de conexiones concurrentes.
@@ -104,8 +116,20 @@ static struct socks5 * socks5_new(int client_fd) {
     ret->stm.states = client_statbl;
     stm_init(&ret->stm);
 
-    buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
-    buffer_init(&ret->write_buffer, N(ret->write_buffer_mem), ret->write_buffer_mem);
+    const uint64_t cur_read_size = sizeof(*ret->read_buffer_mem) * buffer_read_size, 
+                    cur_write_size = sizeof(*ret->write_buffer_mem) * buffer_write_size;
+    
+    ret->read_buffer_mem = malloc(cur_read_size);
+    if (ret->read_buffer_mem == NULL) {
+        return NULL;
+    }
+    ret->write_buffer_mem = malloc(cur_write_size);
+    if (ret->write_buffer_mem == NULL) {
+        return NULL;
+    }
+
+    buffer_init(&ret->read_buffer, cur_read_size, ret->read_buffer_mem);
+    buffer_init(&ret->write_buffer, cur_write_size, ret->write_buffer_mem);
 
     ret->username = NULL;
     ret->username_length = 0;
@@ -223,6 +247,23 @@ unsigned get_concurrent_conn(){
     return concurrent_connections;
 }
 
-unsigned long get_historical_conn(){
+uint64_t get_historical_conn(){
     return historical_connections;
+}
+
+/* Config getters and setters */
+uint64_t get_buffer_read_size(){
+    return buffer_read_size;
+}
+
+uint64_t get_buffer_write_size(){
+    return buffer_write_size;
+}
+
+void set_buffer_read_size(uint64_t size){
+    buffer_read_size = size;
+}
+
+void set_buffer_write_size(uint64_t size){
+    buffer_write_size = size;
 }

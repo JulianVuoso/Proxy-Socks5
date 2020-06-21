@@ -29,7 +29,7 @@ port(const char *s) {
 
 static void
 add_user_client(char *s) {
-    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0;    
+    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass;    
 
     user = malloc(sizeof(token));
     if (user == NULL) exit(1);

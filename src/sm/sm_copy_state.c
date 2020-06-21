@@ -12,7 +12,7 @@
 
 #define MAX_ADDRESS_LENGTH  45
 
-static unsigned long transf_bytes = 0;     /** TODO: Check if long is appropiate or too much */
+static unsigned long transf_bytes = 0;
 
 static void print_credentials(struct selector_key *key);
 
@@ -170,7 +170,6 @@ unsigned copy_write(struct selector_key * key) {
                 logger_log(DEBUG, "failed selector\n");
                 ret = ERROR;
             }
-            /** TODO: CHECK SI ESTO VA BIEN  */
             if (*cur_eof) {
                 (*other_eof) += 1;
                 if (shutdown(key->fd, SHUT_WR) < 0 && errno != ENOTCONN) {

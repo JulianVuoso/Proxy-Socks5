@@ -58,26 +58,27 @@ Los códigos de STATUS existentes son
 	~ GEN SERV FAIL		X'FF'
 
 En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
-Si el servidor envía en su respuesta un STATUS de GEN SERVER FAIL, éste DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
-Si el servidor envía cualquier otro STATUS de respuesta, el cliente puede volver a enviar un nuevo REQUEST.
+Si el servidor envía cualquier otro STATUS de respuesta (exceptuando INV VALUE), el servidor DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
+Si el servidor envía INV VALUE como STATUS de respuesta, el cliente puede volver a enviar un nuevo REQUEST.
 
 Agregar Usuario
 
-	+-----+------+----------+------+------------+-------+
-	| CMD | ULEN |   UNAME  | PLEN |   PASSWD   | UTYPE |
-	+-----+------+----------+------+------------+-------+
-	|  1  |  1   | 1 to 255 |   1  |  1 to 255  |   1   |
-	+-----+------+----------+------+------------+-------+
+	+-----+-------+------+----------+------+------------+
+	| CMD | UTYPE | ULEN |   UNAME  | PLEN |   PASSWD   |
+	+-----+-------+------+----------+------+------------+
+	|  1  |   1   |  1   | 1 to 255 |   1  |  1 to 255  |
+	+-----+-------+------+----------+------+------------+
 
 	Donde:
 		- CMD		X'01'
+		- UTYPE		-> tipo de usuario
+			~ CLIENT	X'00'
+			~ ADMIN		X'01'
 		- ULEN		-> largo del campo UNAME que sigue
 		- UNAME 	-> nombre de usuario
 		- PLEN		-> largo del campo PASSWD que sigue
 		- PASSWD	-> contraseña asociada al UNAME dado
-		- UTYPE		-> tipo de usuario
-			~ CLIENT	X'00'
-			~ ADMIN		X'01'
+
 
 El servidor verifica que el largo sea válido (mayor a 0) y que el tipo de usuario sea correcto, y si lo es, intenta agregar al usuario a la lista. Si el nombre de usuario ya existía, se actualiza su contraseña y su tipo de usuario. 
 Luego envía la siguiente REPLY
