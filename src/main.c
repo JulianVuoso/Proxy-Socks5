@@ -188,12 +188,15 @@ finally:
     // socks5_pool_destroy();
 
     if(server_ipv4 >= 0) {
+        fprintf(stderr, "Closing ipv4 sock...\n");
         close(server_ipv4);
     }
     if(server_ipv6 >= 0) {
+        fprintf(stderr, "Closing ipv6 sock...\n");
         close(server_ipv6);
     }
     if(server_admin >= 0) {
+        fprintf(stderr, "Closing admin sock...\n");
         close(server_admin);
     }
 
