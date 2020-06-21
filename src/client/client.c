@@ -6,6 +6,8 @@
 #include <string.h>
 #include <getopt.h>
 
+#include "client/clientUtils.h"
+
 #define AUTH_MSG_LEN 513
 #define MAX_DATA_LEN 514
 #define READBUFFER_LEN 257
@@ -28,6 +30,8 @@
 
 int main(int argc, char *const *argv)
 {
+    //checkear que todos los comandos esten al final
+    validateArgv(argc,argv);
     //declare variables
     int sockfd = 0;
     long int port = DEFAULT_PORT;
