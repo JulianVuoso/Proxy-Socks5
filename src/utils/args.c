@@ -185,6 +185,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                     exit(1);
                 } else {
                     add_user_client(optarg);
+                    nusers++;
                 }
                 break;
             case 'U':
@@ -193,6 +194,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                     exit(1);
                 } else {
                     add_user(optarg);
+                    nusers++;
                 }
                 break;
             case 'v':
