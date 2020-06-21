@@ -12,6 +12,7 @@
 #define VAL_SIZE_MAX    sizeof(uint64_t)
 #define MSG_MAX_LEN     0xFF
 
+#define STATUS_INDEX            2
 #define CMD_STAT_HLEN           2
 #define CMD_STAT_VLEN_HLEN      3
 #define CMD_STAT_OPT_HLEN       3
@@ -24,6 +25,8 @@ static uint64_t
 byte_array_to_ulong(uint8_t * data, uint8_t length);
 static uint8_t
 string_to_byte_array(const char * s, uint8_t slen, struct admin_data_word * ans);
+static uint8_t
+byte_to_byte_array(uint8_t byte, struct admin_data_word * ans);
 static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans);
 static uint8_t
@@ -46,9 +49,13 @@ exec_cmd_and_answ(enum admin_errors error, struct admin_received_data * data, st
 
 uint8_t
 set_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
-    if (error != admin_error_none && add_user_to_list(data->value1->value, data->value2->value, data->option) != file_no_error) 
-        error = admin_error_server_fail;
-    
+    if (error != admin_error_none) {
+        enum file_errors file_error = add_user_to_list(data->value1->value, data->value2->value, data->option);
+        if (file_error == memory_heap) return 0;
+        if (false /*file_error == file_max_user_reached*/) error = admin_error_max_ucount;
+        else if (file_error != file_no_error) error = admin_error_server_fail; // Any other errors
+    }
+        
     return set_ans_head(error, data, ans, CMD_STAT_HLEN);
 }
 
@@ -64,10 +71,18 @@ get_users(enum admin_errors error, struct admin_received_data * data, struct adm
     if (!set_ans_head(error, data, ans, CMD_STAT_VLEN_HLEN)) return 0;
     if (error != admin_error_none) return 1;
     
-    ans->index--; // If there is no error, override vlen = 0
+    struct UserList * users_list = list_users();
+    if (users_list->size == 0) return 1;
+    ans->index--; // If there is no error and size > 0, override vlen = 0
+    ulong_to_byte_array(users_list->size, ans); // Save user count
 
-    // todo get users
-
+    struct UserNode * current = users_list->header;
+    while (current != NULL) {
+        if (!string_to_byte_array((const char *) current->user.username, 0, ans)) return 0;
+        if (!string_to_byte_array((const char *) current->user.password, 0, ans)) return 0;
+        if (!byte_to_byte_array(current->user.level, ans)) return 0;
+        current = current->next;
+    }
     return 1;
 }
 
@@ -103,8 +118,10 @@ uint8_t
 set_config(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
     if (!set_ans_head(error, data, ans, CMD_STAT_OPT_HLEN)) return 0;
     
-    if (data->value1->length > VAL_SIZE_MAX)
+    if (data->value1->length > VAL_SIZE_MAX) {
+        ans->value[STATUS_INDEX] = admin_error_inv_value;
         return string_to_byte_array("value exceedes possible representation limit", 0, ans);
+    }
 
     uint64_t value = byte_array_to_ulong(data->value1->value, data->value1->length);
     switch (data->option) {
@@ -179,7 +196,18 @@ string_to_byte_array(const char * s, uint8_t slen, struct admin_data_word * ans)
 }
 
 static uint8_t
+byte_to_byte_array(uint8_t byte, struct admin_data_word * ans) {
+    ans->length = ans->index + 1;
+    ans->value = realloc(ans->value, ans->length);
+    if (ans->value == NULL) return 0;
+    
+    ans->value[ans->index++] = byte;
+    return 1;
+}
+
+static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans) {
+    ans->value[STATUS_INDEX] = admin_error_inv_value;
     char s[MSG_MAX_LEN + 1];
     int16_t slen = printf(s, MSG_MAX_LEN + 1, "%s value must be between %ld AND %ld", type, min, max);
     if (slen < -1) return 0;

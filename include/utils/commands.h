@@ -48,6 +48,7 @@ enum admin_errors {
     admin_error_inv_metric = 0x04,
     admin_error_inv_config = 0x05,
     admin_error_inv_value = 0x06,
+    admin_error_max_ucount = 0x07,
 
     admin_error_server_fail = 0xFF,
     admin_error_none = 0x00,

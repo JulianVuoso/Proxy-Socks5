@@ -9,6 +9,7 @@ typedef struct admin_cmd_st {
     buffer * read_buf, * write_buf;
     admin_parser parser;
     struct admin_data_word reply_word;
+    bool marshall_error;
 } admin_cmd_st;
 
 unsigned admin_cmd_process(struct selector_key *key);

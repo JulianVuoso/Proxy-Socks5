@@ -16,6 +16,7 @@ void admin_cmd_init(const unsigned state, struct selector_key *key) {
     st->read_buf = &(ADMIN_ATTACH(key)->read_buffer);
     st->write_buf = &(ADMIN_ATTACH(key)->write_buffer);
     st->reply_word.value = NULL;
+    st->marshall_error = false;
     admin_parser_init(&st->parser);
 }
 
@@ -31,7 +32,7 @@ unsigned admin_cmd_process(struct selector_key *key) {
     unsigned ret = ADMIN_CMD;
 
     exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &st_vars->reply_word);
-    if (admin_marshall(st_vars->write_buf, st_vars->reply_word))
+    if (admin_marshall(st_vars->write_buf, st_vars->reply_word) < 0)
         ret = ADMIN_ERROR;
     return ret;
 }
