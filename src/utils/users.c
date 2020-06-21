@@ -10,16 +10,13 @@
 #define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
 
 static enum file_errors init_users_list();
-// static enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl);
-// static void delete_user_from_list(uint8_t * user);
-// static void print_users();
 static struct UserNode * search_user(uint8_t * user, uint8_t * pwd);
 static struct UserList * ulist;
 
 enum file_errors read_users_file(char * filename){
 
     int state;
-    if(ulist==NULL){
+    if(ulist == NULL){
         state = init_users_list();
         if(state > 0) return state;
     }
@@ -174,6 +171,7 @@ struct UserList * list_users(){
 }
 
 void print_users(){
+    if(ulist == NULL) return;
     struct UserNode * node = ulist->header;
     while(node != NULL){
         printf("User: %s\t Pass: %s\t Level: %d\n", node->user.username, node->user.password, node->user.level);
@@ -223,4 +221,28 @@ static struct UserNode * search_user(uint8_t * user, uint8_t * pwd){
         node = node->next;
     }
     return NULL;
+}
+
+enum file_errors update_users_file(char * filename){
+
+    // fprintf(stdout, "Reopening **%s**\n", filename);
+
+    FILE * file = fopen(filename,"w");
+    if(file == NULL) {
+        if(fclose(file) != 0)
+            return closing_file;
+        return writing_file;
+    }
+
+    if(ulist == NULL) return file_no_error;
+    struct UserNode * node = ulist->header;
+    while(node != NULL){
+        fprintf(file, "%s:%s:%d\n", node->user.username, node->user.password, node->user.level);
+        node = node->next;
+    }
+
+    if(fclose(file) != 0) 
+        return closing_file;
+
+    return file_no_error;
 }
