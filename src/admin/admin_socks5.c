@@ -100,7 +100,7 @@ admin_passive_accept(struct selector_key *key) {
     }
 
     if(SELECTOR_SUCCESS != selector_register(key->s, client, &admin_handler,
-                                              OP_READ, state)) {
+                                              OP_READ, state, true)) {
         goto fail;
     }
     return ;

@@ -13,6 +13,7 @@
 #include <netinet/tcp.h>
 #include <netinet/sctp.h>
 #include <arpa/inet.h>
+#include <time.h>        // timeout type
 
 #include "selector.h"
 #include "socks5.h"
@@ -21,6 +22,7 @@
 #include "logger.h"
 #include "args.h"
 #include "doh_server_struct.h"
+#include "config.h"
 
 /** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
 #define IPV6_ADDRESS    "::"
@@ -39,6 +41,7 @@ static const char * socket_error_description(enum socket_errors error);
 static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
+static time_t timeout = INITIAL_TIMEOUT;
 
 /** TODO: Ver como libero recursos en este caso  */
 static void
@@ -104,7 +107,7 @@ main(const int argc, const char **argv) {
     const struct selector_init conf = {
         .signal = SIGALRM,
         .select_timeout = {
-            .tv_sec  = 10,
+            .tv_sec  = 1,
             .tv_nsec = 0,
         },
     };
@@ -133,11 +136,11 @@ main(const int argc, const char **argv) {
     };
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv4, &socks5,
-                                              OP_READ, NULL);
+                                              OP_READ, NULL, false);
     }
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv6, &socks5,
-                                              OP_READ, NULL);
+                                              OP_READ, NULL, false);
     }
     const struct fd_handler admin_handlers = {
         .handle_read       = admin_passive_accept,
@@ -146,7 +149,7 @@ main(const int argc, const char **argv) {
     };
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_admin, &admin_handlers,
-                                              OP_READ, NULL);
+                                              OP_READ, NULL, false);
     }
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
@@ -159,7 +162,7 @@ main(const int argc, const char **argv) {
             err_msg = "serving";
             goto finally;
         }
-        /** TODO: Agregar timeout */
+        selector_check_timeout(selector, timeout);
     }
     if(err_msg == NULL) {
         err_msg = "closing";
@@ -342,4 +345,13 @@ static const char * file_error_description(enum file_errors error) {
             break;
     }
     return ret;
+}
+
+/* Config getters and setters */
+time_t get_timeout(){
+    return timeout;
+}
+
+void set_timeout(time_t time){
+    timeout = time;
 }

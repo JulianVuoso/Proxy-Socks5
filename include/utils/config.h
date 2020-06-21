@@ -7,8 +7,8 @@
 #define MIN_BUF_SIZE        256
 
 /* Unit: Seconds */
-#define INITIAL_TIMEOUT     300
+#define INITIAL_TIMEOUT     30
 #define MAX_TIMEOUT         600
-#define MIN_TIMEOUT         1
+#define MIN_TIMEOUT         5
 
 #endif

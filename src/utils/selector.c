@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <sys/select.h>
 #include <sys/signal.h>
+#include <time.h>   // for timeout
 #include "selector.h"
 
 #define ERROR_DEFAULT_MSG "something failed"
@@ -38,6 +39,9 @@ selector_error(const selector_status status) {
             break;
         case SELECTOR_IO:
             msg = "I/O error";
+            break;
+        case SELECTOR_TIME:
+            msg = "Time error";
             break;
         default:
             msg = ERROR_DEFAULT_MSG;
@@ -103,6 +107,8 @@ struct item {
    fd_interest         interest;
    const fd_handler   *handler;
    void *              data;
+   bool                timeout;
+   time_t              last_time;
 };
 
 /* tarea bloqueante */
@@ -332,7 +338,8 @@ selector_register(   fd_selector        s,
                      const int          fd,
                      const fd_handler  *handler,
                      const fd_interest  interest,
-                     void *data) {
+                     void *data,
+                     bool timeout) {
     selector_status ret = SELECTOR_SUCCESS;
     // 0. validación de argumentos
     if(s == NULL || INVALID_FD(fd) || handler == NULL) {
@@ -347,17 +354,21 @@ selector_register(   fd_selector        s,
             goto finally;
         }
     }
-
+    time_t curr_time = time(NULL);
+    if (curr_time == ((time_t) -1))
+        return SELECTOR_TIME;
     // 2. registración
     struct item * item = s->fds + ufd;
     if(ITEM_USED(item)) {
         ret = SELECTOR_FDINUSE;
         goto finally;
     } else {
-        item->fd       = fd;
-        item->handler  = handler;
-        item->interest = interest;
-        item->data     = data;
+        item->fd        = fd;
+        item->handler   = handler;
+        item->interest  = interest;
+        item->data      = data;
+        item->last_time = curr_time;
+        item->timeout   = timeout;
 
         // actualizo colaterales
         if(fd > s->max_fd) {
@@ -491,6 +502,13 @@ selector_remove_interest(fd_selector s, int fd, fd_interest i) {
     return ret;
 }
 
+static void update_time(struct item * item) {
+    time_t curr_time = time(NULL);
+    if (curr_time == ((time_t) -1))
+        return;
+    item->last_time = curr_time;
+}
+
 /**
  * se encarga de manejar los resultados del select.
  * se encuentra separado para facilitar el testing
@@ -513,6 +531,7 @@ handle_iteration(fd_selector s) {
                         assert(("OP_READ arrived but no handler. bug!" == 0));
                     } else {
                         item->handler->handle_read(&key);
+                        update_time(item);
                     }
                 }
             }
@@ -522,6 +541,7 @@ handle_iteration(fd_selector s) {
                         assert(("OP_WRITE arrived but no handler. bug!" == 0));
                     } else {
                         item->handler->handle_write(&key);
+                        update_time(item);
                     }
                 }
             }
@@ -542,6 +562,7 @@ handle_block_notifications(fd_selector s) {
             key.fd   = item->fd;
             key.data = item->data;
             item->handler->handle_block(&key);
+            update_time(item);
         }
 
         struct blocking_job * aux = j;
@@ -649,4 +670,22 @@ selector_fd_set_nio(const int fd) {
         }
     }
     return ret;
+}
+
+void selector_check_timeout(fd_selector s, time_t timeout) {
+    time_t curr_time = time(NULL);
+    if (curr_time == ((time_t) -1))
+        return;
+    
+    int n = s->max_fd;
+    for (int i = 0; i <= n; i++) {
+        struct item *item = s->fds + i;
+        if(ITEM_USED(item) && item->timeout) {
+            if ((item->last_time + timeout) < curr_time) {
+                fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld\n", i, item->last_time, curr_time);
+                selector_unregister_fd(s, i);
+                close(i);
+            }
+        }
+    }
 }
