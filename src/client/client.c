@@ -10,6 +10,7 @@
 #include "client/clientUtils.h"
 
 #define AUTH_MSG_LEN 513
+#define MAX_COMMANDS 10
 
 #define PROTO_VERSION 0X01
 
@@ -28,7 +29,6 @@ int main(int argc, char *const *argv)
     char *userpass = NULL;
     struct sockaddr_in addr;
     int opt;
-    int cmd;
     //parse argument
     while ((opt = getopt(argc, argv, "u:p:l:")) > 0)
     {
@@ -112,12 +112,6 @@ int main(int argc, char *const *argv)
     int datalen = 0;
     uint8_t data[MAX_DATA_LEN];
 
-    //get next command
-    cmd = getNextCommand(argc,argv,cmdStartIndex,data,&datalen);
-    if(cmd < 0){
-        exit(-1);
-    }
-
     //open socket for sctp
     if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP)) < 0)
     {
@@ -162,32 +156,45 @@ int main(int argc, char *const *argv)
 
 
     //at this point it is authenticated
-    send(sockfd, data, datalen, 0);
-    recv(sockfd, readBuffer, 2, 0);
-    if (readBuffer[0] != cmd)
+    int cmd[MAX_COMMANDS];
+    int amtCmds = 0;
+    //send all commands received
+    for (int i = 0,fail = 0; i<MAX_COMMANDS && argc>cmdStartIndex && !fail; i++)
     {
-        printf("La respuesta no matchea el comando pedido\n");
-        close(sockfd);
-        return -1;
+        //get next command
+        cmd[i] = getNextCommand(argc,argv,&cmdStartIndex,data,&datalen);
+        if(cmd[i] < 0){
+            fail = i + 1;
+        }else{
+            //send it
+            send(sockfd, data, datalen, 0);
+            amtCmds++;
+        }
     }
-    if (readBuffer[1] == 0x01)
+    // handle all commands send
+    for (int i = 0; i < amtCmds; i++)
     {
-        printf("Comando invalido\n");
-        close(sockfd);
-        return -1;
+        recv(sockfd, readBuffer, 2, 0);
+        if (readBuffer[0] != cmd[i])
+        {
+            printf("La respuesta no matchea el comando pedido\n");
+        }
+        else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
+        }else{
+            //handle response
+            int res = handleResponse(sockfd,cmd[i], readBuffer);
+            if(res<0){
+                exit(-1);
+            }    
+        }
     }
-    if (readBuffer[1] == 0xFF)
-    {
-        printf("Fallo general del servidor\n");
-        close(sockfd);
-        return -1;
-    }
-
-    //handle response
-    int res = handleResponse(sockfd,cmd, readBuffer);
-    if(res<0){
-        exit(-1);
-    }
+    
     //close connection and exit
     close(sockfd);
     return 0;

@@ -28,7 +28,7 @@
 
 
 void validateArgv(int argc,char *const*argv);
-int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,int *datalen);
+int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,int *datalen);
 int handleResponse(int sockfd,int cmd, uint8_t *readBuffer);
 
 #endif

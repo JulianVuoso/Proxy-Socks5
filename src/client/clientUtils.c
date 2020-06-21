@@ -22,17 +22,17 @@ void validateArgv(int argc,char * const*argv){
 }
 
 //get next command
-int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,int *datalen){
+int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,int *datalen){
     int cmd;
-    if (strcmp(argv[cmdStartIndex], "add-user") == 0)
+    if (strcmp(argv[(*cmdStartIndex)], "add-user") == 0)
     {
         cmd = ADD_USER_NO;
-        if (argc <= cmdStartIndex + 1)
+        if (argc <= (*cmdStartIndex) + 1)
         {
             printf("Falta usuario:password a agregar\n");
             return -1;
         }
-        char *nuser = argv[cmdStartIndex + 1];
+        char *nuser = argv[(*cmdStartIndex) + 1];
         int nulen = 0, nplen = 0;
         //ADD USER
         data[0] = ADD_USER_NO;
@@ -68,13 +68,13 @@ int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,in
         }
         data[2] = nulen;
         data[3 + nulen] = nplen;
-        if (argc <= cmdStartIndex + 2)
+        if (argc <= (*cmdStartIndex) + 2)
         {
             data[1] = 0;
         }
         else
         {
-            char *ntype = argv[cmdStartIndex + 2];
+            char *ntype = argv[(*cmdStartIndex) + 2];
             if (ntype[0] == '0')
             {
                 data[1] = 0;
@@ -91,17 +91,18 @@ int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,in
         }
         //cmd|ulen|username|plen|password
         *datalen = 2 + nulen + 1 + nplen + 1;
+        *cmdStartIndex += 2;
     }
-    else if (strcmp(argv[cmdStartIndex], "del-user") == 0)
+    else if (strcmp(argv[(*cmdStartIndex)], "del-user") == 0)
     {
         cmd = DEL_USER_NO;
         data[0] = DEL_USER_NO;
-        if (argc <= cmdStartIndex + 1)
+        if (argc <= (*cmdStartIndex) + 1)
         {
             printf("Falta usuario a borrar\n");
             return -1;
         }
-        char *deluser = argv[cmdStartIndex + 1];
+        char *deluser = argv[(*cmdStartIndex) + 1];
         *datalen = 2;
         for (int i = 0; deluser[i] != 0 && i < MAX_DATA_LEN; i++)
         {
@@ -114,23 +115,25 @@ int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,in
             return -1;
         }
         data[1] = *datalen - 2;
+        *cmdStartIndex += 2;
     }
-    else if (strcmp(argv[cmdStartIndex], "list-users") == 0)
+    else if (strcmp(argv[(*cmdStartIndex)], "list-users") == 0)
     {
         cmd = LIST_USERS_NO;
         data[0] = LIST_USERS_NO;
         *datalen = 1;
+        *cmdStartIndex += 1;
     }
-    else if (strcmp(argv[cmdStartIndex], "get-metric") == 0)
+    else if (strcmp(argv[(*cmdStartIndex)], "get-metric") == 0)
     {
         cmd = GET_METRIC_NO;
         data[0] = GET_METRIC_NO;
-        if (argc <= cmdStartIndex + 1)
+        if (argc <= (*cmdStartIndex) + 1)
         {
             printf("Falta metrica\n");
             return -1;
         }
-        char *metric = argv[cmdStartIndex + 1];
+        char *metric = argv[(*cmdStartIndex) + 1];
         if (metric[0] >= '0' && metric[0] <= '2')
         {
             data[1] = metric[0] - '0';
@@ -141,17 +144,18 @@ int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,in
             return -1;
         }
         *datalen = 2;
+        *cmdStartIndex += 2;
     }
-    else if (strcmp(argv[cmdStartIndex], "get-config") == 0)
+    else if (strcmp(argv[(*cmdStartIndex)], "get-config") == 0)
     {
         cmd = GET_CONFIG_NO;
         data[0] = GET_CONFIG_NO;
-        if (argc <= cmdStartIndex + 1)
+        if (argc <= (*cmdStartIndex) + 1)
         {
             printf("Falta configuracion\n");
             return -1;
         }
-        char *config = argv[cmdStartIndex + 1];
+        char *config = argv[(*cmdStartIndex) + 1];
         if (config[0] >= '0' && config[0] <= '3')
         {
             data[1] = config[0] - '0';
@@ -162,17 +166,18 @@ int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,in
             return -1;
         }
         *datalen = 2;
+        *cmdStartIndex += 2;
     }
-    else if (strcmp(argv[cmdStartIndex], "set-config") == 0)
+    else if (strcmp(argv[(*cmdStartIndex)], "set-config") == 0)
     {
         cmd = SET_CONFIG_NO;
         data[0] = SET_CONFIG_NO;
-        if (argc <= cmdStartIndex + 1)
+        if (argc <= (*cmdStartIndex) + 1)
         {
             printf("Falta configuracion\n");
             return -1;
         }
-        char *config = argv[cmdStartIndex + 1];
+        char *config = argv[(*cmdStartIndex) + 1];
         if (config[0] >= '0' && config[0] <= '3')
         {
             data[1] = config[0] - '0';
@@ -182,16 +187,17 @@ int getNextCommand(int argc,char * const*argv,int cmdStartIndex,uint8_t *data,in
             printf("Error en el formato de la configuracion. Debe ser 0,1,2 o 3\n");
             return -1;
         }
-        if (argc <= cmdStartIndex + 2)
+        if (argc <= (*cmdStartIndex) + 2)
         {
             printf("Falta configuracion\n");
             return -1;
         }
-        char *nval = argv[cmdStartIndex + 2];
+        char *nval = argv[(*cmdStartIndex) + 2];
         unsigned long ulnval = strtoul(nval, NULL, 10);
         data[2] = sizeof(ulnval);
         *((unsigned long *)(data + 2)) = ulnval;
         *datalen = data[2] + 2;
+        *cmdStartIndex += 3;
     }
     else
     {
