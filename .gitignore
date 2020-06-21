@@ -65,3 +65,9 @@ build/
 
 # GDB History
 .gdb_history
+
+# Users file
+users.txt
+
+# Valgrind output file
+valgrind-output.txt
