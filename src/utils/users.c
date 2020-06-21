@@ -9,8 +9,6 @@
 
 #define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
 
-/** TODO: PROBLEMA --> fopen, fgets, fclose --> BLOQUEANTES  */
-
 static enum file_errors init_users_list();
 // static enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl);
 // static void delete_user_from_list(uint8_t * user);

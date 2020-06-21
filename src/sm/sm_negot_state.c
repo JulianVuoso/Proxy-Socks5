@@ -65,7 +65,7 @@ unsigned negot_process(struct selector_key *key) {
     }
     
     if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
-        return ERROR;   /** TODO: No deberia ser NEGOT_RESPONSE_ERROR? */
+        return ERROR;
     
     return NEGOT_WRITE;
 }

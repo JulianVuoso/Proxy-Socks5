@@ -391,7 +391,6 @@ static DOHQRSM_STATE dohBodyParser(const char c, DOHQueryResSM *qrsm)
             qrsm->aux2 = (qrsm->aux2 << 8) + c;
             if (qrsm->aux2 > 0)
             {
-                //TODO: CHECK IF REALLOC OF NULL IS A GOOD IDEA
                 qrsm->rCount++;
                 void *aux = realloc(qrsm->records, qrsm->rCount * sizeof(DNSResRec));
                 if (aux == NULL)

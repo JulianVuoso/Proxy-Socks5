@@ -96,7 +96,6 @@ typedef struct destination {
     uint16_t port;
 } destination;
 
-/* TODO: Ver que mas va aca */
 typedef struct request_parser {
     enum request_state state;
     enum request_errors error;
