@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <getopt.h>
+#include <netdb.h>
 
 #include "client/clientUtils.h"
 
@@ -57,7 +58,7 @@ int main(int argc, char *const *argv)
         case 'l':
             if (optarg != NULL)
             {
-                port = strtol(optarg, NULL, 10);
+                host = optarg;
             }
             break;
         }
