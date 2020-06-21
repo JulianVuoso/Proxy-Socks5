@@ -13,7 +13,7 @@
 #define ADD_USER_NO 1
 #define DEL_USER "del-user"
 #define DEL_USER_NO 2
-#define LIST_USER "list-user"
+#define LIST_USER "list-users"
 #define LIST_USERS_NO 3
 #define GET_METRIC "get-metric"
 #define GET_METRIC_NO 4

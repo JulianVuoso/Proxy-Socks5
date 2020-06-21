@@ -71,9 +71,13 @@ Puerto SCTP  donde escuchará por conexiones entrante del protocolo
 de configuración. Por defecto el valor es \fI8080\fR.
 
 .IP "\fB\-u\fB \fIuser:pass\fR"
-Declara un usuario del proxy con su contraseña. Se puede utilizar
-hasta 10 veces.
+Declara un usuario del proxy con su contraseña. Entre el uso de esta 
+opcion y el de -U, pueden sumar un total de hasta 10 veces.
 
+.IP "\fB\-U\fB \fIuser:pass:utype\fR"
+Declara un usuario del proxy con su contraseña y tipo de usuario. 
+Entre el uso de esta opcion y el de -u, pueden sumar un total de 
+hasta 10 veces. Para el utype -> 0:client 1:admin
 
 .IP "\fB\-v\fB"
 Imprime información sobre la versión versión y termina.

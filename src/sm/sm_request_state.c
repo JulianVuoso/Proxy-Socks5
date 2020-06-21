@@ -210,7 +210,7 @@ try_connect(struct selector_key * key, struct addrinfo * node) {
         if (errno == EINPROGRESS) {
             logger_log(DEBUG, "EINPROGRESS\n");
             /* Espero a poder escribirle al origin_server para determinar si me pude conectar */
-            if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_WRITE, key->data) != SELECTOR_SUCCESS) {
+            if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_WRITE, key->data, true) != SELECTOR_SUCCESS) {
                 logger_log(DEBUG, "failed selector\n");
                 goto errors;
             }
@@ -226,7 +226,7 @@ try_connect(struct selector_key * key, struct addrinfo * node) {
         }
     }
     /* Si me conecte, por ahora no necesito esperar nada de origin, voy a escribirle a client */
-    if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_NOOP, key->data) != SELECTOR_SUCCESS) {
+    if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_NOOP, key->data, true) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
         goto errors;
     }
@@ -337,18 +337,15 @@ unsigned request_write(struct selector_key *key) {
                     ret = COPY;
                 } else {
                     logger_log(DEBUG, "failed selector\n");
-                    do_before_error(key);
                     ret = ERROR;
                 }
             } else {
                 logger_log(DEBUG, "%s\n", request_reply_code_description(sock->client.request.reply_code));
-                do_before_error(key);
                 ret = ERROR;
             }
         }
     } else {
         logger_log(DEBUG, "request write send failed\n");
-        do_before_error(key);
         ret = ERROR;
     }
 

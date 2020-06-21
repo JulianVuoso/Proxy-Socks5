@@ -45,6 +45,7 @@ add_user_client(char *s) {
     strcpy((char *)pass, (char *)token); 
     
     add_user_to_list(user, pass, CLIENT);
+    // update_users_file("users.txt");
 }
 
 static void
@@ -65,7 +66,6 @@ add_user(char* s) {
                     i++; 
                     break;
             case 2: level = atoi((char *)token); 
-                    printf("LEVEL: %s", token);
                     if((level != CLIENT && level != ADMIN)||(!isdigit(*token))){
                         fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
                         exit(1);
@@ -178,19 +178,21 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 args->mng_port   = port(optarg);
                 break;
             case 'u':
-                if(nusers >= MAX_USERS) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
+                if(nusers >= MAX_USERS_ARG) {
+                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS_ARG);
                     exit(1);
                 } else {
                     add_user_client(optarg);
+                    nusers++;
                 }
                 break;
             case 'U':
-                if(nusers >= MAX_USERS) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
+                if(nusers >= MAX_USERS_ARG) {
+                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS_ARG);
                     exit(1);
                 } else {
                     add_user(optarg);
+                    nusers++;
                 }
                 break;
             case 'v':
@@ -218,8 +220,10 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 fprintf(stderr, "unknown argument %d.\n", c);
                 exit(1);
         }
-        print_users();
+        // print_users();
     }
+            print_users();
+
     if (optind < argc) {
         fprintf(stderr, "argument not accepted: ");
         while (optind < argc) {

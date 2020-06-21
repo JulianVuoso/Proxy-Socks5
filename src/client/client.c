@@ -17,7 +17,6 @@
 #define DEFAULT_PORT 8080
 #define DEFAULT_HOST "127.0.0.1"
 
-
 int main(int argc, char *const *argv)
 {
     //checkear que todos los comandos esten al final
@@ -126,7 +125,7 @@ int main(int argc, char *const *argv)
     //convert ip from string to byte
     if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0)
     {
-        printf("IP del host invalida:%s\n", host);
+        printf("IP del host invalida:%s\n", host);list-user
         close(sockfd);
         return -1;
     }

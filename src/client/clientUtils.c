@@ -243,13 +243,14 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             uint16_t nusers = (((uint16_t)readBuffer[0] << 8) & 0xFF00) + readBuffer[1];
             printf("usario tipo\n");
             fflush(stdout);
-            for (int i = 0,nulen = 0; i < nusers; i++)
+            for (int i = 0,nulen = 0,utype=0; i < nusers; i++)
             {
-                recv(sockfd, readBuffer, 1, 0);
-                nulen = readBuffer[0];
-                recv(sockfd, readBuffer, nulen+1, 0);
+                recv(sockfd, readBuffer, 2, 0);
+                utype = readBuffer[0];
+                nulen = readBuffer[1];
+                recv(sockfd, readBuffer, nulen, 0);
                 write(STDOUT_FILENO, readBuffer, nulen);
-                printf(" %u\n", readBuffer[nulen]);
+                printf(" %d\n", utype);
             }
         }
         break;

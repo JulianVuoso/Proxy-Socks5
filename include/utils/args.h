@@ -5,7 +5,7 @@
 #include "doh_server_struct.h"
 #include "users.h"
 
-#define MAX_USERS 10
+#define MAX_USERS_ARG 10
 
 struct users {
     char *name;
@@ -22,7 +22,7 @@ struct socks5args {
     bool            disectors_enabled;
 
     struct doh      doh;
-    struct users    users[MAX_USERS];
+    struct users    users[MAX_USERS_ARG];
 };
 
 /**
