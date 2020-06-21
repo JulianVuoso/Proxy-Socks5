@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "commands.h"
@@ -9,6 +10,12 @@
 
 #define DATA_BLOCK      3
 #define VAL_SIZE_MAX    sizeof(uint64_t)
+#define MSG_MAX_LEN     0xFF
+
+#define CMD_STAT_HLEN           2
+#define CMD_STAT_VLEN_HLEN      3
+#define CMD_STAT_OPT_HLEN       3
+#define CMD_STAT_OPT_VLEN_HLEN  4
 
 
 static uint8_t 
@@ -16,159 +23,91 @@ ulong_to_byte_array(uint64_t value, struct admin_data_word * ans);
 static uint64_t
 byte_array_to_ulong(uint8_t * data, uint8_t length);
 static uint8_t
-copy_string_to_data(const char * s, struct admin_data_word * ans);
-static enum admin_errors
+string_to_byte_array(const char * s, uint8_t slen, struct admin_data_word * ans);
+static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans);
+static uint8_t
+set_ans_head(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans, uint8_t hlen);
 
 
 uint8_t
 exec_cmd_and_answ(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    switch (data->command) {
+        case command_add_user: return set_user(error, data, ans);
+        case command_del_user: return del_user(error, data, ans);
+        case command_list_user: return get_users(error, data, ans);
+        case command_get_metric: return get_metric(error, data, ans);
+        case command_get_config: return get_config(error, data, ans);
+        case command_set_config: return set_config(error, data, ans);
+        default: return set_ans_head(error, data, ans, CMD_STAT_HLEN);
+    }
+}
+
+
+uint8_t
+set_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    if (error != admin_error_none && add_user_to_list(data->value1->value, data->value2->value, data->option) != file_no_error) 
+        error = admin_error_server_fail;
     
-    if (error == admin_error_none) 
-        switch (data->command) {
-            case command_add_user: 
-                error = set_user(data->option, data->value1->value, data->value2->value); break;
-            case command_del_user: 
-                error = del_user(data->value1->value); break;
-            case command_list_user: 
-                error = get_users(); break;
-            case command_get_metric: 
-                error = get_metric(data->option); break;
-            case command_get_config:  
-                error = get_config(data->option); break;
-            case command_set_config:
-                error = set_config(data->option); break;
-            default:
-        }
-
-
-    // uint8_t header[4];
-    // header[0] = data->command;
-    // header[1] = error;
-    // header[2] = data->option;
-    // header[3] = 0;
-    // switch (data->command) {
-    //     case command_list_user: 
-    //         if (error != admin_error_none) // If error sends -> CMD STAT NULEN = 0
-    //             return admin_marshall_send_head(b, 3, header); // header[2] = 0, default not modified
-    //         // If ok sends -> CMD STAT + DATA(NULEN NUSERS ....)
-    //         return admin_marshall_send(b, 2, header, p->data->value2->length, p->data->value2->value);
-    //     case command_get_metric: 
-    //     case command_get_config:  
-    //         if (error != admin_error_none) // If error sends -> CMD STAT CONFIG/METRIC VLEN = 0
-    //             return admin_marshall_send_head(b, 4, header);
-    //         // If ok sends -> CMD STAT CONFIG/METRIC + DATA
-    //         return admin_marshall_send(b, 3, header, p->data->value2->length, p->data->value2->value);
-    //     case command_set_config:
-    //         // Always sends -> CMD STAT CONFIG + DATA(MLEN MESSG)
-    //         return admin_marshall_send(b, 3, header, p->data->value2->length, p->data->value2->value);
-    //     case command_add_user: 
-            
-    //     case command_del_user: 
-    //     default: 
-    //         return admin_marshall_send_head(b, 2, header);
-    // }
-
-
-
-
-
-// enum admin_errors
-// admin_execute_command(admin_received_data * data, enum admin_errors error) {
-//     if (error != admin_error_none) return error;
-//     switch (data->command) {    // All ret 0x00 if succes or 0xFF if srver error.
-//                                 // Except set config, can return 0x06 inv value with message.
-//                                 // To those who need we shall pass the word value2 to be written the response data.
-//         case command_add_user: return (enum admin_errors) 0x00; // TODO add user.
-//         case command_del_user: return (enum admin_errors) 0x00;  // TODO delete user.
-//         case command_list_user: return (enum admin_errors) 0x00; // TODO list users.
-//         case command_get_metric: return (enum admin_errors) 0x00;  // TODO get metrics.
-//         case command_get_config: return (enum admin_errors) 0x00; // TODO get config.
-//         case command_set_config: return (enum admin_errors) 0x00; // TOD set config. 
-//         default: 
-//             fprintf(stderr, "unknown command %d\n", data->command);
-//             abort();
-//     }
-// }
+    return set_ans_head(error, data, ans, CMD_STAT_HLEN);
 }
 
+uint8_t
+del_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    delete_user_from_list(data->value1->value);
 
-enum admin_errors
-set_user(enum user_level level, uint8_t * name, uint8_t * pass) {
-    if (add_user_to_list(name, pass, level) != file_no_error) return admin_error_server_fail;
-    return admin_error_none;
+    return set_ans_head(error, data, ans, CMD_STAT_HLEN);
 }
 
-enum admin_errors
-del_user(uint8_t * name) {
-    delete_user_from_list(name);
-    return admin_error_none;
+uint8_t
+get_users(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    if (!set_ans_head(error, data, ans, CMD_STAT_VLEN_HLEN)) return 0;
+    if (error != admin_error_none) return 1;
+    
+    ans->index--; // If there is no error, override vlen = 0
+
+    // todo get users
+
+    return 1;
 }
 
-enum admin_errors
-get_users(struct admin_data_word * ans) {
+uint8_t
+get_metric(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    if (!set_ans_head(error, data, ans, CMD_STAT_OPT_VLEN_HLEN)) return 0;
+    if (error != admin_error_none) return 1;
 
-    return admin_error_none;
-}
-
-enum admin_errors
-get_metric(enum metric_options metric, struct admin_data_word * ans) {
-    switch (metric) {
-    case metric_hist_conn:
-        if (!ulong_to_byte_array(get_historical_conn(), ans))
-            return admin_error_server_fail;
-        break;
-    case metric_conc_conn:
-        if (!ulong_to_byte_array(get_concurrent_conn(), ans))
-            return admin_error_server_fail;
-        break;
-    case metric_hist_btransf:
-        if (!ulong_to_byte_array(get_transf_bytes(), ans))
-            return admin_error_server_fail;
-        break;
-    default:
-        return admin_error_server_fail; // Should never reach here
+    ans->index--; // If there is no error, override vlen = 0
+    switch (data->option) {
+        case metric_hist_conn: return ulong_to_byte_array(get_historical_conn(), ans);
+        case metric_conc_conn: return ulong_to_byte_array(get_concurrent_conn(), ans);
+        case metric_hist_btransf: return ulong_to_byte_array(get_transf_bytes(), ans);
+        default: return 0; // Should never reach here
     }
-    return admin_error_none;
 }
 
-enum admin_errors
-get_config(enum config_options config, struct admin_data_word * ans) {
-    switch (config) {
-        case config_buff_both_size: // TODO the hell do I do here?
-            break;
-        case config_buff_read_size:
-            if (!ulong_to_byte_array(get_buffer_read_size(), ans))
-                return admin_error_server_fail;
-        case config_buff_write_size:
-            if (!ulong_to_byte_array(get_buffer_write_size(), ans))
-                return admin_error_server_fail;
-        case config_sel_tout: // TODO implement
-            // if (!ulong_to_byte_array(get_timeout(), ans))
-                // return admin_error_server_fail;
-        default:
-            return admin_error_server_fail; // Should never reach here
+uint8_t
+get_config(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    if (!set_ans_head(error, data, ans, CMD_STAT_OPT_VLEN_HLEN)) return 0;
+    if (error != admin_error_none) return 1;
+    
+    ans->index--; // If there is no error, override vlen = 0
+    switch (data->option) {
+        case config_buff_read_size: return ulong_to_byte_array(get_buffer_read_size(), ans);
+        case config_buff_write_size: return ulong_to_byte_array(get_buffer_write_size(), ans);
+        case config_sel_tout: // return ulong_to_byte_array(get_timeout(), ans); TODO implement
+        default: return 0; // Should never reach here
     }
-    return admin_error_none;
 }
 
-enum admin_errors
-set_config(enum config_options config, uint8_t * value, uint8_t vlen, struct admin_data_word * ans) {
-    if (vlen > VAL_SIZE_MAX) {
-        if (!copy_string_to_data("value exceedes possible representation limit", ans)) 
-            return admin_error_server_fail;
-        return admin_error_inv_value;
-    }
+uint8_t
+set_config(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
+    if (!set_ans_head(error, data, ans, CMD_STAT_OPT_HLEN)) return 0;
+    
+    if (data->value1->length > VAL_SIZE_MAX)
+        return string_to_byte_array("value exceedes possible representation limit", 0, ans);
 
-    uint64_t value = byte_array_to_ulong(value, vlen);
-    char * aux_s;
-    switch (config) {
-        case config_buff_both_size:
-            if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE) 
-                return add_inv_value_mssg("Buffer", MIN_BUF_SIZE, MAX_BUF_SIZE, ans);
-            set_buffer_read_size(value);
-            set_buffer_write_size(value);
-            break;
+    uint64_t value = byte_array_to_ulong(data->value1->value, data->value1->length);
+    switch (data->option) {
         case config_buff_read_size:
             if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE) 
                 return add_inv_value_mssg("Buffer", MIN_BUF_SIZE, MAX_BUF_SIZE, ans);
@@ -180,14 +119,13 @@ set_config(enum config_options config, uint8_t * value, uint8_t vlen, struct adm
             set_buffer_write_size(value);
             break;
         case config_sel_tout:
-            if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE) {
+            if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
                 return add_inv_value_mssg("Timeout", MIN_TIMEOUT, MAX_TIMEOUT, ans);
             // TODO set here value when ready
             break;
-        default:
-            return admin_error_server_fail; // Should never reach here
+        default: return 0; // Should never reach here
     }
-    return admin_error_none;
+    return 1;
 }
 
 
@@ -196,24 +134,25 @@ set_config(enum config_options config, uint8_t * value, uint8_t vlen, struct adm
 
 static uint8_t 
 ulong_to_byte_array(uint64_t value, struct admin_data_word * ans) {
-    *dlen = 1;
-    *data = realloc(*data, VAL_SIZE_MAX + 1);
-    if (*data == NULL) return 0;
-
+    ans->value = realloc(ans->value, ans->index + VAL_SIZE_MAX + 1);
+    if (ans->value == NULL) return 0;
+    
     bool zeros = true;
-    uint8_t aux;
+    uint8_t aux, len = 0;
     for (uint8_t i = VAL_SIZE_MAX * 8; i != 0; i -= 8 ) {
         aux = value >> i;
         if (zeros) {
             if (aux != 0) {
                 zeros = 0;
-                *data[*dlen++] = aux;
+                ans->value[ans->index + 1 + len++] = aux;
             }
-        } else *data[*dlen++] = aux;
+        } else ans->value[ans->index + 1 + len++] = aux;
     }
-    *data[0] = *dlen - 1; // Sets value length
-    *data = realloc(*data, *dlen);
-    if (*data == NULL) return 0; // Should not, but just in case
+    ans->value[ans->index] = len; // Sets value length
+    ans->index += len;
+    ans->length = ans->index;
+    ans->value = realloc(ans->value, ans->length);
+    if (ans->value == NULL) return 0; // Should not, but just in case
     return 1;
 }
 
@@ -227,22 +166,36 @@ byte_array_to_ulong(uint8_t * data, uint8_t length) {
 }
 
 static uint8_t
-copy_string_to_data(const char * s, struct admin_data_word * ans) {
-    *dlen = strlen(s) + 1;
-    *data = realloc(*data, *dlen);
-    if (*data == NULL) return 0;
+string_to_byte_array(const char * s, uint8_t slen, struct admin_data_word * ans) {
+    if (!slen) slen = strlen(s);
+    ans->length = ans->index + 1 + slen;
+    ans->value = realloc(ans->value, ans->length);
+    if (ans->value == NULL) return 0;
 
-    for (uint8_t i = 0; s[i] != '\0'; i++)
-        *data[i + 1] = s[i];
-
+    ans->value[ans->index++] = slen;
+    while (*s != '\0')
+        ans->value[ans->index++] = *(s++);
     return 1;
 }
 
-static enum admin_errors
+static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans) {
-    char * s;
-    sprintf(s, "%s value must be between %dl AND %dl", type, min, max);
-    if (!copy_string_to_data(s, data, dlen)) 
-        return admin_error_server_fail;
-    return admin_error_inv_value;
+    char s[MSG_MAX_LEN + 1];
+    int16_t slen = printf(s, MSG_MAX_LEN + 1, "%s value must be between %ld AND %ld", type, min, max);
+    if (slen < -1) return 0;
+    return string_to_byte_array(s, (uint8_t) slen, ans); 
+}
+
+static uint8_t
+set_ans_head(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans, uint8_t hlen) {
+    ans->index = 0;
+    ans->length = hlen;
+    ans->value = realloc(ans->value, ans->length);
+    if (ans->value == NULL) return 0;
+
+    ans->value[ans->index++] = data->command;
+    ans->value[ans->index++] = error;  
+    if (hlen > 2) ans->value[ans->index++] = data->option;
+    if (hlen > 3) ans->value[ans->index++] = 0;
+    return 1;
 }

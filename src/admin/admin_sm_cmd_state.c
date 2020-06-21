@@ -15,11 +15,13 @@ void admin_cmd_init(const unsigned state, struct selector_key *key) {
     struct admin_cmd_st * st = &ADMIN_ATTACH(key)->client.cmd;
     st->read_buf = &(ADMIN_ATTACH(key)->read_buffer);
     st->write_buf = &(ADMIN_ATTACH(key)->write_buffer);
+    st->reply_word.value = NULL;
     admin_parser_init(&st->parser);
 }
 
 void admin_cmd_close(const unsigned state, struct selector_key *key) {
     struct admin_cmd_st * st = &ADMIN_ATTACH(key)->client.cmd;
+    if (st->reply_word.value != NULL) free(st->reply_word.value);
     admin_parser_close(&st->parser);
 }
 
@@ -28,11 +30,9 @@ unsigned admin_cmd_process(struct selector_key *key) {
     struct admin_cmd_st * st_vars = &ADMIN_ATTACH(key)->client.cmd;
     unsigned ret = ADMIN_CMD;
 
-    struct admin_data_word word;
-    exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &word);
-    if (admin_marshall(st_vars->write_buf, word.value, word.length))
+    exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &st_vars->reply_word);
+    if (admin_marshall(st_vars->write_buf, st_vars->reply_word))
         ret = ADMIN_ERROR;
-    
     return ret;
 }
 
@@ -49,7 +49,7 @@ unsigned admin_cmd_read(struct selector_key *key) {
         do {
             const enum admin_state state = admin_consume(st_vars->read_buf, &st_vars->parser, &errored);
             if (admin_is_done(state, 0)) {
-                if (selector_add_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS){
+                if (selector_add_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) {
                     if (admin_cmd_process(key) == ADMIN_ERROR) break;
                     admin_parser_reset(&st_vars->parser);
                 } else {
@@ -73,7 +73,7 @@ unsigned admin_cmd_write(struct selector_key *key) {
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Finish sending message
-            if (selector_remove_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS)
+            if (selector_remove_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) 
                 ret = ADMIN_CMD;
             else ret = ADMIN_ERROR;
         }

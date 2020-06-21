@@ -23,6 +23,7 @@ add_executable(socks5d main.c
                        socks5.c
                        utils/logger.c
                        utils/netutils.c
+                       utils/commands.c
                        sm/sm_hello_state.c
                        sm/sm_negot_state.c
                        sm/sm_request_state.c

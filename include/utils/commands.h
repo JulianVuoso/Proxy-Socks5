@@ -10,20 +10,6 @@ typedef struct admin_data_word {
     uint8_t length;
 } admin_data_word;
 
-
-/* Maps the data received  */
-typedef struct admin_received_data {
-    /* The selected command */
-    enum commands command;
-    
-    /* Value for  metrics, config or user type option, casted later */
-    uint8_t option;
-
-    /* Value for user handling */
-    struct admin_data_word * value1;
-    struct admin_data_word * value2;
-} admin_received_data;
-
 /* Possible commands */
 enum commands {
     command_add_user = 0x01,
@@ -47,10 +33,9 @@ enum metric_options {
 
 /* Possible configurations */
 enum config_options {
-    config_buff_both_size = 0x00,
-    config_buff_read_size = 0x01,
-    config_buff_write_size = 0x02,
-    config_sel_tout = 0x03,
+    config_buff_read_size = 0x00,
+    config_buff_write_size = 0x01,
+    config_sel_tout = 0x02,
 
     config_none = 0xFF,
 };
@@ -68,25 +53,39 @@ enum admin_errors {
     admin_error_none = 0x00,
 };
 
+
+/* Maps the data received  */
+typedef struct admin_received_data {
+    /* The selected command */
+    enum commands command;
+    
+    /* Value for  metrics, config or user type option, casted later */
+    uint8_t option;
+
+    /* Value for user handling */
+    struct admin_data_word * value1;
+    struct admin_data_word * value2;
+} admin_received_data;
+
 uint8_t
 exec_cmd_and_answ(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
-enum admin_errors
-set_user(enum user_level level, uint8_t * name, uint8_t * pass);
+uint8_t
+set_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
-enum admin_errors
-del_user(uint8_t * username);
+uint8_t
+del_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
-enum admin_errors
-get_users(struct admin_data_word * ans);
+uint8_t
+get_users(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
-enum admin_errors
-get_metric(enum metric_options metric, struct admin_data_word * ans);
+uint8_t
+get_metric(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
-enum admin_errors
-get_config(enum config_options config, struct admin_data_word * ans);
+uint8_t
+get_config(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
-enum admin_errors
-set_config(enum config_options config, uint8_t * value, uint8_t vlen,struct admin_data_word * msg);
+uint8_t
+set_config(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans);
 
 #endif

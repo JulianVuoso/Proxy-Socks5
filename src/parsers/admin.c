@@ -141,7 +141,6 @@ admin_parser_feed(struct admin_parser * p, uint8_t byte) {
         /* For configurations */
             p->data->option = byte;
             switch (byte) {
-                case config_buff_both_size:
                 case config_buff_read_size:
                 case config_buff_write_size:
                 case config_sel_tout:
@@ -239,12 +238,12 @@ admin_parser_close(struct admin_parser * p) {
 
 
 int16_t
-admin_marshall(buffer * b, const uint8_t * data, uint8_t length) {
+admin_marshall(buffer * b, struct admin_data_word data) {
     uint64_t n;
     uint8_t * buff = buffer_write_ptr(b, &n);
-    if (length > n) return -1;
-    for (uint32_t i = 0; i < length; i++) buff[i] = data[i];
-    return length;
+    if (data.index > n) return -1;
+    for (uint32_t i = 0; i < data.index; i++) buff[i] = data.value[i];
+    return data.index;
 }
 
 

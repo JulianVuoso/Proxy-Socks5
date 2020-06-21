@@ -162,6 +162,6 @@ admin_parser_close(struct admin_parser * p);
 
 /** Writes on buffer */
 int16_t 
-admin_marshall(buffer *b, const uint8_t * data, uint8_t length);
+admin_marshall(buffer *b, struct admin_data_word data);
 
 #endif

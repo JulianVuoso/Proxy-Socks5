@@ -8,7 +8,7 @@
 typedef struct admin_cmd_st {
     buffer * read_buf, * write_buf;
     admin_parser parser;
-    uint8_t reply_code; // TODO maybe esta al pedo
+    struct admin_data_word reply_word;
 } admin_cmd_st;
 
 unsigned admin_cmd_process(struct selector_key *key);
