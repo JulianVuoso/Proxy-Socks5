@@ -309,6 +309,7 @@ selector_destroy(fd_selector s) {
             for(size_t i = 0; i < s->fd_size ; i++) {
                 if(ITEM_USED(s->fds + i)) {
                     selector_unregister_fd(s, i);
+                    close(i);
                 }
             }
             pthread_mutex_destroy(&s->resolution_mutex);

@@ -63,7 +63,7 @@ main(const int argc, const char **argv) {
     
     const char * err_msg = NULL;
 
-    close(0);
+    // close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;

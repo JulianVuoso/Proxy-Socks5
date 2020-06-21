@@ -32,6 +32,7 @@ static uint64_t buffer_read_size = INITIAL_BUF_SIZE, buffer_write_size = INITIAL
 static void
 socks5_destroy_(struct selector_key *key) {
     struct socks5 * s = ATTACHMENT(key);
+    do_before_error(key);
     if(s->origin_resolution != NULL) {
         /* Si lo llené a mano, libero ai_addr (no lo libera freeaddrinfo) */
         if (s->fqdn == NULL || s->option != default_function) {
