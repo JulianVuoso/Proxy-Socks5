@@ -165,7 +165,7 @@ ulong_to_byte_array(uint64_t value, struct admin_data_word * ans) {
             }
         } else ans->value[ans->index + 1 + len++] = aux;
     }
-    ans->value[ans->index] = len; // Sets value length
+    ans->value[ans->index++] = len; // Sets value length
     ans->index += len;
     ans->length = ans->index;
     ans->value = realloc(ans->value, ans->length);

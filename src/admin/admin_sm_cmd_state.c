@@ -31,9 +31,10 @@ unsigned admin_cmd_process(struct selector_key *key) {
     struct admin_cmd_st * st_vars = &ADMIN_ATTACH(key)->client.cmd;
 
     if (!exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &st_vars->reply_word))
-        return ADMIN_ERROR;
+        return ADMIN_ERROR; 
     if (admin_marshall(st_vars->write_buf, st_vars->reply_word) < 0)
         st_vars->marshall_error = true;
+
     return ADMIN_CMD;
 }
 
@@ -51,8 +52,8 @@ unsigned admin_cmd_read(struct selector_key *key) {
             const enum admin_state state = admin_consume(st_vars->read_buf, &st_vars->parser, &errored);
             if (admin_is_done(state, 0)) {
                 if (selector_add_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) {
-                    admin_parser_reset(&st_vars->parser);
                     ret = admin_cmd_process(key);
+                    admin_parser_reset(&st_vars->parser);
                     if (st_vars->marshall_error) {
                         if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) // If marshall cant 
                             ret = ADMIN_ERROR;
@@ -76,6 +77,8 @@ unsigned admin_cmd_write(struct selector_key *key) {
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
     ssize_t n = sctp_sendmsg(key->fd, buf_read_ptr, nbytes, NULL, 0, 0, 0, 0, 0, 0);
 
+    printf("Hello the n is %ld\n", n);
+
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Finish sending message
@@ -83,7 +86,7 @@ unsigned admin_cmd_write(struct selector_key *key) {
                 ret = ADMIN_CMD;
             else ret = ADMIN_ERROR;
             if (st_vars->marshall_error) {
-                logger_log(DEBUG, "admin error full buffer on write\n\n");
+                logger_log(DEBUG, "admin error full buffer on command write\n\n");
                 ret = ADMIN_ERROR; // This might change
             }  
         }

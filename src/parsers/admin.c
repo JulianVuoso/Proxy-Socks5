@@ -239,10 +239,17 @@ admin_parser_close(struct admin_parser * p) {
 
 int16_t
 admin_marshall(buffer * b, struct admin_data_word data) {
+    if (data.index != data.length) printf("Somehow something happened on marshall command\n");
+
     uint64_t n;
     uint8_t * buff = buffer_write_ptr(b, &n);
-    if (data.index > n) return -1;
-    for (uint32_t i = 0; i < data.index; i++) buff[i] = data.value[i];
+    if (data.length > n) return -1;
+    for (uint64_t i = 0; i < data.length; i++) {
+        buff[i] = data.value[i];
+        printf("%d, ", buff[i]);
+    } 
+    printf("\n");
+    buffer_write_adv(b, data.length);
     return data.index;
 }
 
