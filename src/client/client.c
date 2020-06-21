@@ -363,6 +363,11 @@ int main(int argc, char *const *argv)
         }
         else if (readBuffer[1] == 0x02)
         {
+            printf("Longitud de usuario invalida\n");
+            close(sockfd);
+            return -1;
+        }else if (readBuffer[1] == 0x03)
+        {
             printf("Tipo de usuario invalido\n");
             close(sockfd);
             return -1;
@@ -421,6 +426,11 @@ int main(int argc, char *const *argv)
                 printf("Metrica desconocida:%lu",metricVal);
                 break;
             }
+        }else if (readBuffer[1] == 0x04)
+        {
+            printf("Metrica invalida\n");
+            close(sockfd);
+            return -1;
         }
         break;
     case GET_CONFIG_NO:
@@ -456,12 +466,27 @@ int main(int argc, char *const *argv)
                 printf("Configuracion desconocida:%lu",configVal);
                 break;
             }
+        }else if (readBuffer[1] == 0x05)
+        {
+            printf("Configuracion invalida\n");
+            close(sockfd);
+            return -1;
         }
         break;
     case SET_CONFIG_NO:
         if (readBuffer[1] == 0)
         {
             printf("Configuracion seteada\n");
+        }else if (readBuffer[1] == 0x05)
+        {
+            printf("Configuracion invalida\n");
+            close(sockfd);
+            return -1;
+        }else if (readBuffer[1] == 0x06)
+        {
+            printf("Valor de configuracion invalido\n");
+            close(sockfd);
+            return -1;
         }
         break;
     default:
