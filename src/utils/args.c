@@ -44,7 +44,7 @@ add_user_client(char *s) {
     if(pass == NULL) exit(1);
     strcpy((char *)pass, (char *)token); 
     
-    add_user_to_list(user, pass, CLIENT);
+    add_user_to_list(user, pass, user_client);
 }
 
 static void
@@ -66,7 +66,7 @@ add_user(char* s) {
                     break;
             case 2: level = atoi((char *)token); 
                     printf("LEVEL: %s", token);
-                    if((level != CLIENT && level != ADMIN)||(!isdigit(*token))){
+                    if((level != user_client && level != user_admin)||(!isdigit(*token))){
                         fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
                         exit(1);
                     }

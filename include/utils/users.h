@@ -6,9 +6,16 @@
 
 #define SEPARATOR ":"
 
-typedef enum user_level { CLIENT = 0, ADMIN } user_level;
 
-enum file_errors { file_no_error, opening_file, reading_file, closing_file, wrong_arg, memory_heap };
+/* Possible user typed */
+typedef enum user_level {
+    user_client = 0x00,
+    user_admin = 0x01,
+
+    user_none = 0xFF,
+} user_level;
+
+enum file_errors { file_no_error = 0x00, opening_file, reading_file, closing_file, wrong_arg, memory_heap };
 
 struct User{
     uint8_t * username;
