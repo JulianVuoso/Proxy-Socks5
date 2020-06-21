@@ -13,8 +13,6 @@ static void
 admin_data_word_init(admin_parser * p, uint8_t type, uint8_t length);
 static bool
 admin_data_word_add(admin_parser * p, uint8_t type, uint8_t byte);
-static uint64_t
-admin_data_value_convert(admin_parser * p);
 static int16_t
 admin_marshall_send_head(buffer * b, uint8_t length, uint8_t * data);
 static int16_t
@@ -25,14 +23,13 @@ admin_marshall_send(buffer * b, uint8_t hlen, uint8_t * head, uint8_t dlen, uint
 
 void
 admin_parser_init(admin_parser * p) {
-    p->state = admin_command;
-    p->error = admin_error_none;
     p->data = calloc(1, sizeof(admin_received_data));
     if (p->data == NULL) {
         p->state = admin_error;
         p->state = admin_error_server_fail;
         return;
     }
+    admin_parser_reset(p);
     p->data->value1 = calloc(1, sizeof(admin_data_word));
     p->data->value2 = calloc(1, sizeof(admin_data_word));
     if (p->data->value1 == NULL || p->data->value2 == NULL) {
@@ -42,21 +39,22 @@ admin_parser_init(admin_parser * p) {
     }
 }
 
+void
+admin_parser_reset(admin_parser * p) {
+    p->state = admin_command;
+    p->error = admin_error_none;
+    p->data->option = 0;
+    p->data->command = admin_command_none;
+}
+
 admin_state
 admin_consume(buffer * b, admin_parser * p, bool * errored) {
     admin_state state = p->state;
     while (buffer_can_read(b)) {
         const uint8_t c = buffer_read(b);
         state = admin_parser_feed(p, c);
-        if (admin_is_done(state, errored)) {
-            if (!errored)
-                p->error = admin_execute_command(p->data);
-            admin_marshall(b, p);
-            p->state = admin_command;
-            p->error = admin_error_none;
-            p->data->option = 0;
-        }
-        
+        if (admin_is_done(state, errored))
+            break;
     }
     return state;
 }
@@ -82,10 +80,14 @@ admin_parser_feed(admin_parser * p, uint8_t byte) {
             break;
 
         case admin_get_ulen:
-        /* Gets the user length, can't be 0 */
+        /* Gets the user length, can't be 0 (except for user delete) */
             if (byte == 0) {
-                p->state = admin_error;
-                p->error = admin_error_inv_ulen;
+                if (p->data->command == admin_command_del_user) {
+                    p->state = admin_done;
+                } else {
+                   p->state = admin_error;
+                    p->error = admin_error_inv_ulen; 
+                }
             } else {
                 p->state = admin_get_user;
                 admin_data_word_init(p, UNAME, byte);
@@ -157,17 +159,12 @@ admin_parser_feed(admin_parser * p, uint8_t byte) {
                     p->error = admin_error_inv_config;
                     break;
             }
+            break;
         
         case admin_get_vlen:
-        /* Gets the value length, can be 0 and cant be more than actual unsinged long */
-            if (byte > sizeof(uint64_t)) {
-                p->state = admin_error;
-                p->state = admin_error_inv_vlen;
-
-            } else {
-                p->state = admin_get_value;
-                admin_data_word_init(p, VALUE, byte);
-            }            
+        /* Gets the value length */
+            p->state = admin_get_value;
+            admin_data_word_init(p, VALUE, byte);      
             break;
         
 
@@ -249,23 +246,7 @@ admin_parser_close(admin_parser * p) {
 }
 
 
-admin_errors
-admin_execute_command(admin_received_data * data) {
-    // TODO ver que devuelven las funciones.
-    uint8_t ret;
-    switch (data->command) {
-        case admin_command_add_user: ret = 0x00; break; // TODO add user.
-        case admin_command_del_user: ret = 0x00; break; // TODO delete user.
-        case admin_command_list_user: ret = 0x00; break; // TODO list users.
-        case admin_command_get_metric: ret = 0x00; break; // TODO get metrics.
-        case admin_command_get_config: ret = 0x00; break; // TODO get config.
-        case admin_command_set_config: ret = 0x00; break; // TOD set config.
-        default: 
-            fprintf(stderr, "unknown command %d\n", data->command);
-            abort();
-    }
-    return (admin_errors) ret;
-}
+
 
 
 int16_t
@@ -278,15 +259,19 @@ admin_marshall(buffer *b, const admin_parser * p) {
 
     switch (p->data->command) {
         case admin_command_list_user: 
-            if (p->error != admin_error_none) 
+            if (p->error != admin_error_none) // If error sends -> CMD STAT NULEN = 0
                 return admin_marshall_send_head(b, 3, header); // header[2] = 0, default not modified
-            return admin_marshall_send(b, 2, header, p->data->value1->length, p->data->value1->value);
+            // If ok sends -> CMD STAT + DATA(NULEN NUSERS ....)
+            return admin_marshall_send(b, 2, header, p->data->value2->length, p->data->value2->value);
         case admin_command_get_metric: 
-        case admin_command_get_config: 
-        case admin_command_set_config: 
-            if (p->error != admin_error_none) 
+        case admin_command_get_config:  
+            if (p->error != admin_error_none) // If error sends -> CMD STAT CONFIG/METRIC VLEN = 0
                 return admin_marshall_send_head(b, 4, header);
-            return admin_marshall_send(b, 3, header, p->data->value1->length, p->data->value1->value);
+            // If ok sends -> CMD STAT CONFIG/METRIC + DATA
+            return admin_marshall_send(b, 3, header, p->data->value2->length, p->data->value2->value);
+        case admin_command_set_config:
+            // Always sends -> CMD STAT CONFIG + DATA(MLEN MESSG)
+            return admin_marshall_send(b, 3, header, p->data->value2->length, p->data->value2->value);
         case admin_command_add_user: 
         case admin_command_del_user: 
         default: 
@@ -324,17 +309,6 @@ admin_data_word_add(admin_parser * p, uint8_t type, uint8_t byte) {
     return false;
 }
 
-static uint64_t
-admin_data_value_convert(admin_parser * p) {
-    admin_data_word * value = p->data->value1;
-    uint64_t ret = 0;
-    for (uint8_t i = 0; i < value->length; i++) {
-        ret = (ret << 8) + value->value[i];
-    }
-    return ret;
-
-}
-
 static int16_t
 admin_marshall_send_head(buffer * b, uint8_t length, uint8_t * data) {
     return admin_marshall_send(b, length, data, 0, NULL);
@@ -348,4 +322,38 @@ admin_marshall_send(buffer * b, uint8_t hlen, uint8_t * head, uint8_t dlen, uint
     for (uint32_t i = 0; i < hlen; i++) buff[i] = head[i];
     for (uint32_t i = 0; i < dlen; i++) buff[i] = data[i];
     return hlen + dlen;
+}
+
+
+
+
+
+/** Functions for state machine */
+
+admin_errors
+admin_execute_command(admin_received_data * data, admin_errors error) {
+    if (error != admin_error_none) return error;
+    switch (data->command) {    // All ret 0x00 if succes or 0xFF if srver error.
+                                // Except set config, can return 0x06 inv value with message.
+                                // To those who need we shall pass the word value2 to be written the response data.
+        case admin_command_add_user: return (admin_errors) 0x00; // TODO add user.
+        case admin_command_del_user: return (admin_errors) 0x00;  // TODO delete user.
+        case admin_command_list_user: return (admin_errors) 0x00; // TODO list users.
+        case admin_command_get_metric: return (admin_errors) 0x00;  // TODO get metrics.
+        case admin_command_get_config: return (admin_errors) 0x00; // TODO get config.
+        case admin_command_set_config: return (admin_errors) 0x00; // TOD set config. 
+        default: 
+            fprintf(stderr, "unknown command %d\n", data->command);
+            abort();
+    }
+}
+
+static uint64_t
+admin_data_value_convert(admin_parser * p) {
+    admin_data_word * value = p->data->value1;
+    uint64_t ret = 0;
+    for (uint8_t i = 0; i < value->length; i++) {
+        ret = (ret << 8) + value->value[i];
+    }
+    return ret;
 }

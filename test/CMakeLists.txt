@@ -28,6 +28,13 @@ add_executable(ettercap_test
 target_link_libraries(ettercap_test check subunit rt m)
 add_test(NAME ettercap_test COMMAND ettercap_test)
 
+add_executable(admin_test 
+                admin_test.c 
+                ../src/parsers/admin.c 
+                ../src/utils/buffer.c)
+target_link_libraries(admin_test check subunit rt m)
+add_test(NAME admin_test COMMAND admin_test)
+
 add_executable(buffer_test 
                 buffer_test.c 
                 ../src/utils/buffer.c)

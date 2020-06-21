@@ -222,7 +222,7 @@ END_TEST
 
 
 Suite * 
-negot_suite(void) {
+ettercap_suite(void) {
     Suite *s;
     TCase *tc;
     s = suite_create("socks");
@@ -255,7 +255,7 @@ main(void) {
     Suite *s;
     SRunner *sr;
 
-    s = negot_suite();
+    s = ettercap_suite();
     sr = srunner_create(s);
 
     srunner_run_all(sr, CK_NORMAL);

@@ -126,8 +126,8 @@ typedef enum admin_metrics {
 typedef enum admin_configs {
     admin_config_buff_both_size = 0x00,
     admin_config_buff_read_size = 0x01,
-    admin_config_buff_write_size = 0x03,
-    admin_config_sel_tout = 0x04,
+    admin_config_buff_write_size = 0x02,
+    admin_config_sel_tout = 0x03,
 
     admin_config_none = 0xFF,
 } admin_configs;
@@ -198,6 +198,10 @@ typedef struct admin_parser {
 void
 admin_parser_init(admin_parser * p);
 
+/** Only resets state, error and data option*/
+void
+admin_parser_reset(admin_parser * p);
+
 /**
  * For each buffer element calls admin_parser_feed until empty,  
  * completed parsing or more bytes required.
@@ -225,10 +229,6 @@ admin_is_done(const admin_state state, bool * errored);
 /** Frees resources used by the parser */
 void
 admin_parser_close(admin_parser * p);
-
-/** Executes the corresponding command */
-admin_errors
-admin_execute_command(admin_received_data * data);
 
 /** Writes on buffer */
 int16_t 
