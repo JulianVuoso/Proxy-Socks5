@@ -71,8 +71,6 @@ add_user(char* s) {
                         exit(1);
                     }
                     add_user_to_list(user, pass, level);
-                    free(user);
-                    free(pass);
                     i = 0; 
                     break;
             default: break;
@@ -222,8 +220,10 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 fprintf(stderr, "unknown argument %d.\n", c);
                 exit(1);
         }
-        print_users();
+        // print_users();
     }
+            print_users();
+
     if (optind < argc) {
         fprintf(stderr, "argument not accepted: ");
         while (optind < argc) {
