@@ -164,6 +164,12 @@ main(const int argc, const char **argv) {
         }
         selector_check_timeout(selector, timeout);
     }
+
+    file_state = update_users_file(USERS_FILENAME);
+    if(file_state != file_no_error){
+        fprintf(stdout, "Users file updating failed. Error: %s\n", file_error_description(file_state));
+    }
+
     if(err_msg == NULL) {
         err_msg = "closing";
     }
@@ -333,6 +339,9 @@ static const char * file_error_description(enum file_errors error) {
             break;
         case reading_file:
             ret = "unable to read file";
+            break;
+        case writing_file:
+            ret = "unable to write file";
             break;
         case closing_file:
             ret = "unable to close file";
