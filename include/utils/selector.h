@@ -59,6 +59,8 @@ typedef enum {
     SELECTOR_FDINUSE  = 4,
     /** I/O error check errno */
     SELECTOR_IO       = 5,
+    /** fallo de time */
+    SELECTOR_TIME     = 6,
 } selector_status;
 
 /** retorna una descripción humana del fallo */
@@ -153,7 +155,8 @@ selector_register(fd_selector        s,
                   const int          fd,
                   const fd_handler  *handler,
                   const fd_interest  interest,
-                  void *data);
+                  void *data,
+                  bool timeout);
 
 /**
  * desregistra un file descriptor del selector
@@ -205,5 +208,12 @@ selector_fd_set_nio(const int fd);
 selector_status
 selector_notify_block(fd_selector s,
                  const int   fd);
+
+/** 
+ * Recorre los fds en uso de un selector y revisa si alguno 
+ * esta inactivo hace al menos timeout segundos. 
+ * De ser asi, lo desregistra y lo cierra
+*/
+void selector_check_timeout(fd_selector s, time_t timeout);
 
 #endif
