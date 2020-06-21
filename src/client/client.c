@@ -6,8 +6,6 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "logger.h"
-
 #define AUTH_MSG_LEN 513
 #define MAX_DATA_LEN 514
 #define READBUFFER_LEN 257
@@ -146,12 +144,12 @@ int main(int argc, char *const *argv)
                 if (!pass)
                 {
                     nulen++;
-                    data[i + 2] = nuser[i];
+                    data[i + 3] = nuser[i];
                 }
                 else
                 {
                     nplen++;
-                    data[i + 2] = nuser[i];
+                    data[i + 3] = nuser[i];
                 }
             }
         }
@@ -160,22 +158,22 @@ int main(int argc, char *const *argv)
             printf("Error de formato, el formato de add-user deberia ser user:pass con ambos una longitud entre 1 y 255");
             return -1;
         }
-        data[1] = nulen;
-        data[2 + nulen] = nplen;
+        data[2] = nulen;
+        data[3 + nulen] = nplen;
         if (argc <= optind + 2)
         {
-            data[2 + nulen + 1 + nplen] = 0;
+            data[1] = 0;
         }
         else
         {
             char *ntype = argv[optind + 2];
             if (ntype[0] == '0')
             {
-                data[2 + nulen + 1 + nplen] = 0;
+                data[1] = 0;
             }
             else if (ntype[0] == '1')
             {
-                data[2 + nulen + 1 + nplen] = 1;
+                data[1] = 1;
             }
             else
             {
@@ -282,7 +280,6 @@ int main(int argc, char *const *argv)
             return -1;
         }
         char *nval = argv[optind + 2];
-        //TODO: check
         unsigned long ulnval = strtoul(nval, NULL, 10);
         data[2] = sizeof(ulnval);
         *((unsigned long *)(data + 2)) = ulnval;
@@ -321,7 +318,7 @@ int main(int argc, char *const *argv)
     }
     //authenticate
     send(sockfd, auth, authlen, 0);
-    char readBuffer[READBUFFER_LEN];
+    uint8_t readBuffer[READBUFFER_LEN];
     recv(sockfd, readBuffer, 2, 0);
     if (readBuffer[0] != 0x01)
     {
@@ -366,6 +363,11 @@ int main(int argc, char *const *argv)
         }
         else if (readBuffer[1] == 0x02)
         {
+            printf("Longitud de usuario invalida\n");
+            close(sockfd);
+            return -1;
+        }else if (readBuffer[1] == 0x03)
+        {
             printf("Tipo de usuario invalido\n");
             close(sockfd);
             return -1;
@@ -384,11 +386,13 @@ int main(int argc, char *const *argv)
             uint16_t nusers = (((uint16_t)readBuffer[0] << 8) & 0xFF00) + readBuffer[1];
             printf("usario tipo\n");
             fflush(stdout);
-            for (int i = 0; i < nusers; i++)
+            for (int i = 0,nulen = 0; i < nusers; i++)
             {
-                recv(sockfd, readBuffer, 257, 0);
-                write(STDOUT_FILENO, readBuffer + 1, readBuffer[0]);
-                printf(" %d\n", readBuffer[readBuffer[0] + 2]);
+                recv(sockfd, readBuffer, 1, 0);
+                nulen = readBuffer[0];
+                recv(sockfd, readBuffer, nulen+1, 0);
+                write(STDOUT_FILENO, readBuffer, nulen);
+                printf(" %u\n", readBuffer[nulen]);
             }
         }
         break;
@@ -396,20 +400,93 @@ int main(int argc, char *const *argv)
         if (readBuffer[1] == 0)
         {
             recv(sockfd, readBuffer, READBUFFER_LEN, 0);
-            //TODO:print num
+            if(readBuffer[1] > sizeof(unsigned long)){
+                printf("El numero de bytes de respuesta es muy grande para este cliente \n");
+                close(sockfd);
+                return -1;
+            }
+            unsigned long metricVal = 0;
+            for (int i = 0; i < readBuffer[1]; i++)
+            {
+                metricVal = (metricVal<<8) + readBuffer[i+2];
+            }
+            
+            switch (readBuffer[0])
+            {
+            case 0:
+                printf("Conexiones historicas:%lu",metricVal);
+                break;
+            case 1:
+                printf("Conexiones concurrentes:%lu",metricVal);
+                break;
+            case 2:
+                printf("Transferencia de bytes historica:%lu",metricVal);
+                break;
+            default:
+                printf("Metrica desconocida:%lu",metricVal);
+                break;
+            }
+        }else if (readBuffer[1] == 0x04)
+        {
+            printf("Metrica invalida\n");
+            close(sockfd);
+            return -1;
         }
         break;
     case GET_CONFIG_NO:
         if (readBuffer[1] == 0)
         {
             recv(sockfd, readBuffer, READBUFFER_LEN, 0);
-            //TODO:print num
+            if(readBuffer[1] > sizeof(unsigned long)){
+                printf("El numero de bytes de respuesta es muy grande para este cliente \n");
+                close(sockfd);
+                return -1;
+            }
+            unsigned long configVal = 0;
+            for (int i = 0; i < readBuffer[1]; i++)
+            {
+                configVal = (configVal<<8) + readBuffer[i+2];
+            }
+            
+            switch (readBuffer[0])
+            {
+            case 0:
+                printf("Tamaño de ambos buffers:%lu",configVal);
+                break;
+            case 1:
+                printf("Tamaño de buffer de lectura:%lu",configVal);
+                break;
+            case 2:
+                printf("Tamaño de buffer de escritura:%lu",configVal);
+                break;
+            case 3:
+                printf("Timeout del select:%lu",configVal);
+                break;
+            default:
+                printf("Configuracion desconocida:%lu",configVal);
+                break;
+            }
+        }else if (readBuffer[1] == 0x05)
+        {
+            printf("Configuracion invalida\n");
+            close(sockfd);
+            return -1;
         }
         break;
     case SET_CONFIG_NO:
         if (readBuffer[1] == 0)
         {
             printf("Configuracion seteada\n");
+        }else if (readBuffer[1] == 0x05)
+        {
+            printf("Configuracion invalida\n");
+            close(sockfd);
+            return -1;
+        }else if (readBuffer[1] == 0x06)
+        {
+            printf("Valor de configuracion invalido\n");
+            close(sockfd);
+            return -1;
         }
         break;
     default:
