@@ -72,7 +72,7 @@ try_connect_doh(struct selector_key * key) {
         if (errno == EINPROGRESS) {
             logger_log(DEBUG, "EINPROGRESS\n");
             /* Espero a poder escribirle al doh server para determinar si me pude conectar */
-            if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data) != SELECTOR_SUCCESS) {
+            if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data, true) != SELECTOR_SUCCESS) {
                 logger_log(DEBUG, "failed selector\n");
                 goto errors;
             }
@@ -83,7 +83,7 @@ try_connect_doh(struct selector_key * key) {
         }
     }
     /* Si me conecte, voy a escribirle al server para enviarle la consulta DNS */
-    if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data) != SELECTOR_SUCCESS) {
+    if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data, true) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
         goto errors;
     }
