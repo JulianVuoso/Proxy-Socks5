@@ -5,7 +5,6 @@
 static void
 on_hello_method(struct hello_parser *p, const uint8_t method) {
     uint8_t * selected = p->data;
-    // TODO: Change to SOCKS_HELLO_AUTHENTICATION_REQUIRED
     if (method == SOCKS_HELLO_AUTHENTICATION_REQUIRED) {
         *selected = method;
     }
@@ -15,7 +14,7 @@ void hello_read_init(const unsigned state, struct selector_key *key) {
     struct hello_st * st = &ATTACHMENT(key)->client.hello;
     st->read_buf = &(ATTACHMENT(key)->read_buffer);
     st->write_buf = &(ATTACHMENT(key)->write_buffer);
-    st->method = SOCKS_HELLO_NO_ACCEPTABLE_METHODS; // TODO: CHECK SI VA
+    st->method = SOCKS_HELLO_NO_ACCEPTABLE_METHODS;
     st->parser.data = &st->method;
     st->parser.on_authentication_method = on_hello_method;
     hello_parser_init(&st->parser);

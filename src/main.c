@@ -49,6 +49,7 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, const char **argv) {
+
     /* Try to read users file */
     enum file_errors file_state = read_users_file(USERS_FILENAME);
     if(file_state != file_no_error){

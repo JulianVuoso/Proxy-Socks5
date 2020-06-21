@@ -9,8 +9,6 @@
 
 #define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
 
-/** TODO: PROBLEMA --> fopen, fgets, fclose --> BLOQUEANTES  */
-
 static enum file_errors init_users_list();
 // static enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl);
 // static void delete_user_from_list(uint8_t * user);
@@ -32,7 +30,10 @@ enum file_errors read_users_file(char * filename){
     if (fd < 0) return opening_file;
 
     FILE *file = fdopen(fd, "r");
-    if(file == NULL) return reading_file;
+    if(file == NULL) {
+        close(fd);
+        return reading_file;
+    }
 
     uint8_t * user, * pass, * token;
     char line[MAX_LINE_LENGTH];
@@ -45,17 +46,27 @@ enum file_errors read_users_file(char * filename){
             switch (i)
             {
                 case 0: user = malloc(sizeof(token));
-                        if (user == NULL) return memory_heap;
+                        if (user == NULL) {
+                            close(fd);
+                            return memory_heap;
+                        }
                         strcpy((char *)user, (char *)token); 
                         i++; 
                         break;
                 case 1: pass = malloc(sizeof(token));
-                        if(pass == NULL) return memory_heap;
+                        if(pass == NULL) {
+                            close(fd);
+                            return memory_heap;
+                        }
                         strcpy((char *)pass, (char *)token); 
                         i++; 
                         break;
-                case 2: level = atoi((char *)token); 
-                        add_user_to_list(user, pass, level);
+                case 2: level = atoi((char *)token);
+                        enum file_errors err;
+                        if ((err = add_user_to_list(user, pass, level)) != file_no_error) {
+                            close(fd);
+                            return err;
+                        }
                         i = 0; 
                         break;
                 default: break;

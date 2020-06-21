@@ -434,5 +434,3 @@ unsigned request_solve_block(struct selector_key *key) {
     sock->client.request.current = sock->origin_resolution;
     return request_connect(key);
 }
-
-/** TODO: REVISAR DE CERRAR SIEMPRE EL FD  */
