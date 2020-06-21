@@ -4,8 +4,13 @@
 #include <string.h>    /* memset */
 #include <errno.h>
 #include <getopt.h>
+#include <sys/socket.h> /* Address families */
+#include <string.h>
+#include <ctype.h>
 
 #include "args.h"
+
+#define IPV4_REGEX "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}"
 
 static unsigned short
 port(const char *s) {
@@ -23,18 +28,65 @@ port(const char *s) {
 }
 
 static void
-user(char *s, struct users *user) {
-    char *p = strchr(s, ':');
-    if(p == NULL) {
+add_user_client(char *s) {
+    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass;    
+
+    user = malloc(sizeof(token));
+    if (user == NULL) exit(1);
+    strcpy((char *)user, (char *)token); 
+
+    token = (uint8_t *)strtok(NULL, SEPARATOR);
+    if(token == NULL){
         fprintf(stderr, "password not found\n");
         exit(1);
-    } else {
-        *p = 0;
-        p++;
-        user->name = s;
-        user->pass = p;
     }
+    pass = malloc(sizeof(token));
+    if(pass == NULL) exit(1);
+    strcpy((char *)pass, (char *)token); 
+    
+    add_user_to_list(user, pass, CLIENT);
+}
 
+static void
+add_user(char* s) {
+    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0, level;    
+    while(token)
+    {
+        switch (i)
+        {
+            case 0: user = malloc(sizeof(token));
+                    if (user == NULL) exit(1);
+                    strcpy((char *)user, (char *)token); 
+                    i++; 
+                    break;
+            case 1: pass = malloc(sizeof(token));
+                    if(pass == NULL) exit(1);
+                    strcpy((char *)pass, (char *)token); 
+                    i++; 
+                    break;
+            case 2: level = atoi((char *)token); 
+                    printf("LEVEL: %s", token);
+                    if((level != CLIENT && level != ADMIN)||(!isdigit(*token))){
+                        fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
+                        exit(1);
+                    }
+                    add_user_to_list(user, pass, level);
+                    i = 0; 
+                    break;
+            default: break;
+        }
+        token = (uint8_t *)strtok(NULL, SEPARATOR);
+        if(token == NULL){
+            if(i==1) {
+                fprintf(stderr, "password not found\n");        
+                exit(1);
+            }
+            if(i==2){
+                fprintf(stderr, "user level not found\n");        
+                exit(1);
+            }
+        }
+    }
 }
 
 static void
@@ -49,13 +101,14 @@ usage(const char *progname) {
     fprintf(stderr,
         "Usage: %s [OPTION]...\n"
         "\n"
-        "   -h               Imprime la ayuda y termina.\n"
-        "   -l <SOCKS addr>  Dirección donde servirá el proxy SOCKS.\n"
-        "   -L <conf  addr>  Dirección donde servirá el servicio de management.\n"
-        "   -p <SOCKS port>  Puerto entrante conexiones SOCKS.\n"
-        "   -P <conf port>   Puerto entrante conexiones configuracion\n"
-        "   -u <name>:<pass> Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"
-        "   -v               Imprime información sobre la versión versión y termina.\n"
+        "   -h                        Imprime la ayuda y termina.\n"
+        "   -l <SOCKS addr>           Dirección donde servirá el proxy SOCKS.\n"
+        "   -L <conf  addr>           Dirección donde servirá el servicio de management.\n"
+        "   -p <SOCKS port>           Puerto entrante conexiones SOCKS.\n"
+        "   -P <conf port>            Puerto entrante conexiones configuracion\n"
+        "   -u <name>:<pass>          Usuario y contraseña de usuario que puede usar el proxy. Hasta 10.\n"
+        "   -U <name>:<pass>:<utype>  Usuario, contraseña y tipo de usuario que puede usar el proxy. Hasta 10.\n"
+        "   -v                        Imprime información sobre la versión versión y termina.\n"
         "\n"
         "   --doh-ip    <ip>    \n"
         "   --doh-port  <port>  XXX\n"
@@ -82,6 +135,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
 
     args->doh.host = "localhost";
     args->doh.ip   = "127.0.0.1";
+    args->doh.ip_family = AF_INET;
     args->doh.port = 8053;
     args->doh.path = "/getnsrecord";
     args->doh.query = "?dns=";
@@ -100,7 +154,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
             { 0,           0,                 0, 0 }
         };
 
-        c = getopt_long(argc, (char * const *) argv, "hl:L:Np:P:u:v", long_options, &option_index);
+        c = getopt_long(argc, (char * const *) argv, "hl:L:Np:P:u:U:v", long_options, &option_index);
         if (c == -1)
             break;
 
@@ -128,8 +182,15 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                     fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
                     exit(1);
                 } else {
-                    user(optarg, args->users + nusers);
-                    nusers++;
+                    add_user_client(optarg);
+                }
+                break;
+            case 'U':
+                if(nusers >= MAX_USERS) {
+                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
+                    exit(1);
+                } else {
+                    add_user(optarg);
                 }
                 break;
             case 'v':
@@ -138,6 +199,8 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 break;
             case 0xD001:
                 args->doh.ip = optarg;
+                /** TODO: ver como hacer para validar que sea IPv4 o IPv6 */
+                args->doh.ip_family = AF_INET;
                 break;
             case 0xD002:
                 args->doh.port = port(optarg);
@@ -155,7 +218,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 fprintf(stderr, "unknown argument %d.\n", c);
                 exit(1);
         }
-
+        print_users();
     }
     if (optind < argc) {
         fprintf(stderr, "argument not accepted: ");

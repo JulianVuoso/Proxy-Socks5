@@ -57,7 +57,6 @@ request_parser_feed (request_parser * p, uint8_t byte) {
             }
             break;
         case request_command:
-        /* TODO: check if we support other commands */
             if (byte == REQUEST_COMMAND_CONNECT) {
                 p->state = request_reserved;
             } else {

@@ -10,4 +10,8 @@ void socks5_passive_accept(selector_key * key);
 /* Destruye toda la pool de socks */
 /* void socks5_pool_destroy(void); */
 
+unsigned get_concurrent_conn();
+
+unsigned long get_historical_conn();
+
 #endif

@@ -11,12 +11,8 @@
 #include "socks5mt.h"
 #include "socks5_handler.h"
 
-#include "hello.h"
-#include "negotiation.h"
-#include "request.h"
-
 #include "logger.h"
-#include "netutils.h"
+#include "sm_before_error_state.h"
 
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
@@ -25,6 +21,7 @@
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
 static unsigned concurrent_connections = 0;
+static unsigned long historical_connections = 0;
 
 /* Destruye realmente el struct socks5 */
 static void
@@ -32,10 +29,17 @@ socks5_destroy_(struct selector_key *key) {
     struct socks5 * s = ATTACHMENT(key);
     if(s->origin_resolution != NULL) {
         /* Si lo llené a mano, libero ai_addr (no lo libera freeaddrinfo) */
-        if (s->fqdn == NULL) {
-            free(s->origin_resolution->ai_addr);
+        if (s->fqdn == NULL || s->option != default_function) {
+            /*  */
+            while (s->origin_resolution != NULL) {
+                free(s->origin_resolution->ai_addr);
+                struct addrinfo * aux = s->origin_resolution;
+                s->origin_resolution = s->origin_resolution->ai_next;
+                free(aux);
+            }
+        } else {
+            freeaddrinfo(s->origin_resolution);
         }
-        freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
     if (s->username != NULL) {
@@ -44,7 +48,6 @@ socks5_destroy_(struct selector_key *key) {
     if (s->fqdn != NULL) {
         free(s->fqdn);
     }
-    free(s);
 
     // Actualizar cantidad de conexiones concurrentes.
     // Habilitar OP_READ si estabamos en el maximo.
@@ -53,6 +56,8 @@ socks5_destroy_(struct selector_key *key) {
         selector_set_interest(key->s, s->proxy_fd, OP_READ);
     }
     concurrent_connections--;
+    
+    free(s);
 }
 
 /**
@@ -92,6 +97,7 @@ static struct socks5 * socks5_new(int client_fd) {
     ret->client_fd = client_fd;
     ret->fqdn = NULL;
     ret->origin_resolution = NULL;
+    ret->option = doh_ipv4;
 
     ret->stm.initial = HELLO_READ;
     ret->stm.max_state = ERROR;
@@ -138,6 +144,7 @@ socks5_passive_accept(struct selector_key *key) {
     // Actualizar cantidad de conexiones concurrentes.
     // Deshabilitar OP_READ si alcanzamos el maximo.
     concurrent_connections++;
+    historical_connections++;
     if (concurrent_connections == MAX_CONCURRENT_CON) {
         // Deshabilito OP_READ del socket pasivo (server solo usa OP_READ)
         selector_set_interest_key(key, OP_NOOP);
@@ -210,4 +217,12 @@ socks5_done(struct selector_key* key) {
             close(fds[i]);
         }
     }
+}
+
+unsigned get_concurrent_conn(){
+    return concurrent_connections;
+}
+
+unsigned long get_historical_conn(){
+    return historical_connections;
 }

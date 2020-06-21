@@ -54,7 +54,7 @@ unsigned negot_process(struct selector_key *key) {
     if (st_vars->parser.username == NULL || st_vars->parser.password == NULL) {
         st_vars->reply_code = NEGOT_RESPONSE_ERROR;
     } else {
-        st_vars->reply_code = authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd);
+        st_vars->reply_code = authenticate(st_vars->parser.username->uname, st_vars->parser.password->passwd, CLIENT);
         sock->username = calloc(st_vars->parser.username->ulen + 1, sizeof(*sock->username));
         if (sock->username == NULL) {
             st_vars->reply_code = NEGOT_RESPONSE_ERROR;
@@ -65,7 +65,7 @@ unsigned negot_process(struct selector_key *key) {
     }
     
     if (negot_marshall(st_vars->write_buf, st_vars->reply_code) < 0)
-        return ERROR;   /** TODO: No deberia ser NEGOT_RESPONSE_ERROR? */
+        return ERROR;
     
     return NEGOT_WRITE;
 }

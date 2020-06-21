@@ -19,5 +19,6 @@ void copy_init(const unsigned state, struct selector_key *key);
 unsigned copy_read(struct selector_key * key);
 unsigned copy_write(struct selector_key * key);
 void copy_close(const unsigned state, struct selector_key *key);
+unsigned long get_transf_bytes();
 
 #endif

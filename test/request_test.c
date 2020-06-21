@@ -19,7 +19,6 @@ START_TEST (test_request_normal_ipv4) {
     ck_assert_uint_eq(false, errored);
     ck_assert_uint_eq(request_done, state);
     ck_assert_uint_eq(address_ipv4, parser.dest->address_type);
-    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
     for (int i = 0; i < parser.dest->address_length; i++) {
         ck_assert_uint_eq(data[i + 4], parser.dest->address[i]);
     }
@@ -45,7 +44,6 @@ START_TEST (test_request_normal_ipv6) {
     ck_assert_uint_eq(false, errored);
     ck_assert_uint_eq(request_done, state);
     ck_assert_uint_eq(address_ipv6, parser.dest->address_type);
-    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
     for (int i = 0; i < parser.dest->address_length; i++) {
         ck_assert_uint_eq(data[i + 4], parser.dest->address[i]);
     }
@@ -71,7 +69,6 @@ START_TEST (test_request_normal_ipv6_v2) {
     ck_assert_uint_eq(false, errored);
     ck_assert_uint_eq(request_done, state);
     ck_assert_uint_eq(address_ipv6, parser.dest->address_type);
-    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
     for (int i = 0; i < parser.dest->address_length; i++) {
         printf("%d ", parser.dest->address[i]);
         ck_assert_uint_eq(data[i + 4], parser.dest->address[i]);
@@ -97,7 +94,6 @@ START_TEST (test_request_normal_fqdn) {
     ck_assert_uint_eq(false, errored);
     ck_assert_uint_eq(request_done, state);
     ck_assert_uint_eq(address_fqdn, parser.dest->address_type);
-    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
     for (int i = 0; i < parser.dest->address_length; i++) {
         ck_assert_uint_eq(data[i + 5], parser.dest->address[i]);
     }
@@ -126,7 +122,6 @@ START_TEST (test_request_multiple_request) {
     ck_assert_uint_eq(false, errored);
     ck_assert_uint_eq(request_done, state);
     ck_assert_uint_eq(address_ipv4, parser.dest->address_type);
-    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
     for (int i = 0; i < parser.dest->address_length; i++) {
         ck_assert_uint_eq(data[i + 4], parser.dest->address[i]);
     }
@@ -138,7 +133,6 @@ START_TEST (test_request_multiple_request) {
     ck_assert_uint_eq(false, errored);
     ck_assert_uint_eq(request_done, state);
     ck_assert_uint_eq(address_ipv6, parser.dest->address_type);
-    // TODO: se puede hacer de otra forma? el ck_str me pide char *, no uint8_t *
     for (int i = 0; i < parser.dest->address_length; i++) {
         ck_assert_uint_eq(data[i + 14], parser.dest->address[i]);
     }

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "negotiation.h"
 
+#define SEPARATOR ":"
+
 typedef enum user_level { CLIENT = 0, ADMIN } user_level;
 
 enum file_errors { file_no_error, opening_file, reading_file, closing_file, wrong_arg, memory_heap };
@@ -30,8 +32,10 @@ enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl)
 void delete_user_from_list(uint8_t * user);
 struct UserList * list_users();
 
-uint8_t authenticate(uint8_t* user, uint8_t * pwd);
+uint8_t authenticate(uint8_t* user, uint8_t * pwd, user_level level);
 
 void free_users_list();
+
+void print_users();
 
 #endif

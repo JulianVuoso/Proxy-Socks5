@@ -11,13 +11,16 @@
 #include <sys/socket.h>  // socket
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <netinet/sctp.h>
 #include <arpa/inet.h>
 
 #include "selector.h"
 #include "socks5.h"
+#include "admin_socks5.h"
 #include "users.h"
 #include "logger.h"
 #include "args.h"
+#include "doh_server_struct.h"
 
 /** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
 #define IPV6_ADDRESS    "::"
@@ -27,15 +30,17 @@
 #define LOGGER_FD       1
 #define LOGGER_LEVEL    DEBUG
 
-enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address};
+enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, error_socket_listen, error_invalid_address, error_socket_sockopt};
 
 static unsigned create_socket_ipv4(const char *  address, unsigned port, int * server_fd);
 static unsigned create_socket_ipv6(const char * address, unsigned port, int * server_fd);
+static unsigned create_admin_socket(const char * address, unsigned port, int * admin_fd);
 static const char * socket_error_description(enum socket_errors error);
 static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
 
+/** TODO: Ver como libero recursos en este caso  */
 static void
 sigterm_handler(const int signal) {
     printf("signal %d, cleaning up and exiting\n",signal);
@@ -44,23 +49,26 @@ sigterm_handler(const int signal) {
 
 int
 main(const int argc, const char **argv) {
-    struct socks5args args;
-    parse_args(argc, argv, &args);
-    
-    const char * err_msg = NULL;
 
+    /* Try to read users file */
     enum file_errors file_state = read_users_file(USERS_FILENAME);
     if(file_state != file_no_error){
-        err_msg = file_error_description(file_state);
-        goto finally;
+        fprintf(stdout, "Users file read failed. Error: %s\n", file_error_description(file_state));
     }
+
+    /* Parse args */
+    struct socks5args args;
+    parse_args(argc, argv, &args);
+    set_doh_info(args.doh);
+    
+    const char * err_msg = NULL;
 
     close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    int server_ipv4, server_ipv6;
+    int server_ipv4, server_ipv6, server_admin;
     
     enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
     if (error_ipv4 != socket_no_error) {
@@ -73,6 +81,12 @@ main(const int argc, const char **argv) {
         err_msg = socket_error_description(error_ipv6);
         goto finally;
     }
+    
+    enum socket_errors error_admin = create_admin_socket(args.mng_addr, args.mng_port, &server_admin);
+    if (error_admin != socket_no_error) {
+        err_msg = socket_error_description(error_admin);
+        goto finally;
+    }
 
     fprintf(stdout, "Listening on TCP port %u\n", args.socks_port);
 
@@ -82,7 +96,8 @@ main(const int argc, const char **argv) {
     signal(SIGINT,  sigterm_handler);
 
     if(selector_fd_set_nio(server_ipv4) == -1 || 
-        selector_fd_set_nio(server_ipv6) == -1) {
+        selector_fd_set_nio(server_ipv6) == -1 ||
+            selector_fd_set_nio(server_admin) == -1) {
         err_msg = "getting server socket flags";
         goto finally;
     }
@@ -124,6 +139,15 @@ main(const int argc, const char **argv) {
         ss = selector_register(selector, server_ipv6, &socks5,
                                               OP_READ, NULL);
     }
+    const struct fd_handler admin_handlers = {
+        .handle_read       = admin_passive_accept,
+        .handle_write      = NULL,
+        .handle_close      = NULL, // nada que liberar
+    };
+    if (ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, server_admin, &admin_handlers,
+                                              OP_READ, NULL);
+    }
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
         goto finally;
@@ -135,6 +159,7 @@ main(const int argc, const char **argv) {
             err_msg = "serving";
             goto finally;
         }
+        /** TODO: Agregar timeout */
     }
     if(err_msg == NULL) {
         err_msg = "closing";
@@ -164,6 +189,9 @@ finally:
     }
     if(server_ipv6 >= 0) {
         close(server_ipv6);
+    }
+    if(server_admin >= 0) {
+        close(server_admin);
     }
 
     free_users_list();
@@ -216,13 +244,51 @@ create_socket_ipv6(const char * address, unsigned port, int * server_fd) {
     
     // man 7 ip. no importa reportar nada si falla.
     setsockopt(*server_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
-    setsockopt(*server_fd, SOL_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof(int));
+    if (setsockopt(*server_fd, SOL_IPV6, IPV6_V6ONLY, &(int){ 1 }, sizeof(int)) < 0) {
+        return error_socket_sockopt;
+    }
 
     if(bind(*server_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
         return error_socket_bind;
     }
 
     if (listen(*server_fd, 20) < 0) {
+        return error_socket_listen;
+    }
+
+    return socket_no_error;
+}
+
+static unsigned
+create_admin_socket(const char * address, unsigned port, int * admin_fd) {
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family      = AF_INET;
+    addr.sin_port        = htons(port);
+    if (inet_pton(AF_INET, address, &addr.sin_addr) == 0) {
+        return error_invalid_address;
+    }
+
+    *admin_fd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
+    if (*admin_fd < 0) {
+        return error_socket_create;
+    }
+    // man 7 ip. no importa reportar nada si falla.
+    // setsockopt(*admin_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+    struct sctp_initmsg initmsg;
+    memset(&initmsg, 0, sizeof(initmsg));
+    initmsg.sinit_num_ostreams = 1;
+    initmsg.sinit_max_instreams = 1;
+    initmsg.sinit_max_attempts = 4;
+    if (setsockopt(*admin_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0) {
+        return error_socket_sockopt;
+    }
+    
+    if(bind(*admin_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+        return error_socket_bind;
+    }
+
+    if (listen(*admin_fd, 20) < 0) {
         return error_socket_listen;
     }
 
@@ -241,6 +307,9 @@ static const char * socket_error_description(enum socket_errors error) {
             break;
         case error_socket_listen:
             ret = "unable to listen socket";
+            break;
+        case error_socket_sockopt:
+            ret = "unable to set sockopt";
             break;
         default:
             ret = "";
