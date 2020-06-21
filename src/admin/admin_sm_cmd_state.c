@@ -53,12 +53,15 @@ unsigned admin_cmd_read(struct selector_key *key) {
                 if (selector_add_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) {
                     admin_parser_reset(&st_vars->parser);
                     ret = admin_cmd_process(key);
-                    if (st_vars->marshall_error)
-                        if (selector_remove_interest(key->s, key->fd, OP_READ) == SELECTOR_SUCCESS) // If marshall cant 
-                            break;
-                        else ret = ADMIN_ERROR;
-                } else ret = ADMIN_ERROR;
-                if (ret = ADMIN_ERROR) break;
+                    if (st_vars->marshall_error) {
+                        if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) // If marshall cant 
+                            ret = ADMIN_ERROR;
+                        break;
+                    }
+                } else {
+                    ret = ADMIN_ERROR;
+                    break;
+                }
             }
         } while (buffer_can_read(st_vars->read_buf));
     } else ret = ADMIN_ERROR;
