@@ -3,11 +3,13 @@
 Los archivos de código fuente que no corresponden a testing se encuentran en el directorio src, mientras que los archivos de código fuente de testing se encuentran en el directorio test. Los archivos de headers se encuentran en el directorio include.
 
 Para generar un ejecutable a partir del código fuente proporcionado, se debe utilizar la herramienta `cmake` (al menos en su versión 2.8). Los pasos a seguir son los siguientes:
+
 1. `mkdir build`
 2. `cd build`
 3. `cmake ..`
 4. `cd ..`
 5. `make -C build`
+
 Si se desea limpiar todos los archivos generados al compilar, correr
     `make -C build clean`
 El archivo ejecutable del proxy socks se genera en la ubicación build/src . Para ejecutarlo, se debe ejecutar
