@@ -13,6 +13,8 @@
 #define MAX_DATA_LEN 514
 #define READBUFFER_LEN 257
 
+#define PROTO_VERSION 0X01
+
 #define DEFAULT_PORT 8080
 #define DEFAULT_HOST "127.0.0.1"
 
@@ -36,7 +38,7 @@ int main(int argc, char *const *argv)
     //declare variables
     int sockfd = 0;
     long int port = DEFAULT_PORT;
-    char *host = "127.0.0.1";
+    char *host = DEFAULT_HOST;
     char *userpass = NULL;
     struct sockaddr_in addr;
     int opt;
@@ -63,9 +65,13 @@ int main(int argc, char *const *argv)
             break;
         }
     }
+    
+    //start of commands
+    const int cmdStartIndex = optind;
+
 
     //check theres a command
-    if (argc <= optind)
+    if (argc <= cmdStartIndex)
     {
         printf("Falta comando\n");
         return -1;
@@ -82,7 +88,7 @@ int main(int argc, char *const *argv)
     int authlen = 0;
     uint8_t auth[AUTH_MSG_LEN];
     int ulen = 0, plen = 0;
-    auth[0] = 0x01;
+    auth[0] = PROTO_VERSION;
     for (int i = 0, pass = 0; userpass[i] != 0 && i < AUTH_MSG_LEN - 2; i++)
     {
         if (userpass[i] == ':')
@@ -121,15 +127,15 @@ int main(int argc, char *const *argv)
     uint8_t data[MAX_DATA_LEN];
 
     //check command
-    if (strcmp(argv[optind], "add-user") == 0)
+    if (strcmp(argv[cmdStartIndex], "add-user") == 0)
     {
         cmd = ADD_USER_NO;
-        if (argc <= optind + 1)
+        if (argc <= cmdStartIndex + 1)
         {
             printf("Falta usuario:password a agregar\n");
             return -1;
         }
-        char *nuser = argv[optind + 1];
+        char *nuser = argv[cmdStartIndex + 1];
         int nulen = 0, nplen = 0;
         //ADD USER
         data[0] = ADD_USER_NO;
@@ -165,13 +171,13 @@ int main(int argc, char *const *argv)
         }
         data[2] = nulen;
         data[3 + nulen] = nplen;
-        if (argc <= optind + 2)
+        if (argc <= cmdStartIndex + 2)
         {
             data[1] = 0;
         }
         else
         {
-            char *ntype = argv[optind + 2];
+            char *ntype = argv[cmdStartIndex + 2];
             if (ntype[0] == '0')
             {
                 data[1] = 0;
@@ -189,16 +195,16 @@ int main(int argc, char *const *argv)
         //cmd|ulen|username|plen|password
         datalen = 2 + nulen + 1 + nplen + 1;
     }
-    else if (strcmp(argv[optind], "del-user") == 0)
+    else if (strcmp(argv[cmdStartIndex], "del-user") == 0)
     {
         cmd = DEL_USER_NO;
         data[0] = DEL_USER_NO;
-        if (argc <= optind + 1)
+        if (argc <= cmdStartIndex + 1)
         {
             printf("Falta usuario a borrar\n");
             return -1;
         }
-        char *deluser = argv[optind + 1];
+        char *deluser = argv[cmdStartIndex + 1];
         datalen = 2;
         for (int i = 0; deluser[i] != 0 && i < MAX_DATA_LEN; i++)
         {
@@ -212,22 +218,22 @@ int main(int argc, char *const *argv)
         }
         data[1] = datalen - 2;
     }
-    else if (strcmp(argv[optind], "list-users") == 0)
+    else if (strcmp(argv[cmdStartIndex], "list-users") == 0)
     {
         cmd = LIST_USERS_NO;
         data[0] = LIST_USERS_NO;
         datalen = 1;
     }
-    else if (strcmp(argv[optind], "get-metric") == 0)
+    else if (strcmp(argv[cmdStartIndex], "get-metric") == 0)
     {
         cmd = GET_METRIC_NO;
         data[0] = GET_METRIC_NO;
-        if (argc <= optind + 1)
+        if (argc <= cmdStartIndex + 1)
         {
             printf("Falta metrica\n");
             return -1;
         }
-        char *metric = argv[optind + 1];
+        char *metric = argv[cmdStartIndex + 1];
         if (metric[0] >= '0' && metric[0] <= '2')
         {
             data[1] = metric[0] - '0';
@@ -239,16 +245,16 @@ int main(int argc, char *const *argv)
         }
         datalen = 2;
     }
-    else if (strcmp(argv[optind], "get-config") == 0)
+    else if (strcmp(argv[cmdStartIndex], "get-config") == 0)
     {
         cmd = GET_CONFIG_NO;
         data[0] = GET_CONFIG_NO;
-        if (argc <= optind + 1)
+        if (argc <= cmdStartIndex + 1)
         {
             printf("Falta configuracion\n");
             return -1;
         }
-        char *config = argv[optind + 1];
+        char *config = argv[cmdStartIndex + 1];
         if (config[0] >= '0' && config[0] <= '3')
         {
             data[1] = config[0] - '0';
@@ -260,16 +266,16 @@ int main(int argc, char *const *argv)
         }
         datalen = 2;
     }
-    else if (strcmp(argv[optind], "set-config") == 0)
+    else if (strcmp(argv[cmdStartIndex], "set-config") == 0)
     {
         cmd = SET_CONFIG_NO;
         data[0] = SET_CONFIG_NO;
-        if (argc <= optind + 1)
+        if (argc <= cmdStartIndex + 1)
         {
             printf("Falta configuracion\n");
             return -1;
         }
-        char *config = argv[optind + 1];
+        char *config = argv[cmdStartIndex + 1];
         if (config[0] >= '0' && config[0] <= '3')
         {
             data[1] = config[0] - '0';
@@ -279,12 +285,12 @@ int main(int argc, char *const *argv)
             printf("Error en el formato de la configuracion. Debe ser 0,1,2 o 3\n");
             return -1;
         }
-        if (argc <= optind + 2)
+        if (argc <= cmdStartIndex + 2)
         {
             printf("Falta configuracion\n");
             return -1;
         }
-        char *nval = argv[optind + 2];
+        char *nval = argv[cmdStartIndex + 2];
         unsigned long ulnval = strtoul(nval, NULL, 10);
         data[2] = sizeof(ulnval);
         *((unsigned long *)(data + 2)) = ulnval;
