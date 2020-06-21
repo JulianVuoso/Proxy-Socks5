@@ -219,10 +219,10 @@ socks5_done(struct selector_key* key) {
     }
 }
 
-static unsigned get_concurrent_conn(){
+unsigned get_concurrent_conn(){
     return concurrent_connections;
 }
 
-static unsigned long get_historical_conn(){
+unsigned long get_historical_conn(){
     return historical_connections;
 }
