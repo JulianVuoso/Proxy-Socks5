@@ -17,7 +17,7 @@
 #define ADD_USER_NO 1
 #define DEL_USER "del-user"
 #define DEL_USER_NO 2
-#define LIST_USER "list-user"
+#define LIST_USER "list-users"
 #define LIST_USERS_NO 3
 #define GET_METRIC "get-metric"
 #define GET_METRIC_NO 4
@@ -305,7 +305,7 @@ int main(int argc, char *const *argv)
     //convert ip from string to byte
     if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0)
     {
-        printf("IP del host invalida:%s\n", host);
+        printf("IP del host invalida:%s\n", host);list-user
         close(sockfd);
         return -1;
     }
@@ -386,13 +386,14 @@ int main(int argc, char *const *argv)
             uint16_t nusers = (((uint16_t)readBuffer[0] << 8) & 0xFF00) + readBuffer[1];
             printf("usario tipo\n");
             fflush(stdout);
-            for (int i = 0,nulen = 0; i < nusers; i++)
+            for (int i = 0,nulen = 0,utype=0; i < nusers; i++)
             {
-                recv(sockfd, readBuffer, 1, 0);
-                nulen = readBuffer[0];
-                recv(sockfd, readBuffer, nulen+1, 0);
+                recv(sockfd, readBuffer, 2, 0);
+                utype = readBuffer[0];
+                nulen = readBuffer[1];
+                recv(sockfd, readBuffer, nulen, 0);
                 write(STDOUT_FILENO, readBuffer, nulen);
-                printf(" %u\n", readBuffer[nulen]);
+                printf(" %d\n", utype);
             }
         }
         break;
