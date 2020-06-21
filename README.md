@@ -24,4 +24,4 @@ Las distintas opciones de ejecución se encuentran detalladas en el manual clien
 
 Para el desarrollo de la aplicación, además de los códigos subidos por la cátedra, utilizamos un fragmento de código del sitio 
     https://nachtimwald.com/2017/11/18/base64-encode-and-decode-in-c/
-Que dentro del sitio, se aclara que todo el código posteado allí está licenciado bajo licencia MIT (que es una licencia OSI). Esto se utilizó para decodificar las credenciales en caso de venir codificadas en basic en un header Authentication para HTTP.
+Dentro del sitio, se aclara que todo el código posteado allí está licenciado bajo licencia MIT (que es una licencia OSI). Esto se utilizó para decodificar las credenciales en caso de venir codificadas en basic en un header Authentication para HTTP.
