@@ -29,12 +29,12 @@ void admin_cmd_close(const unsigned state, struct selector_key *key) {
 
 unsigned admin_cmd_process(struct selector_key *key) {
     struct admin_cmd_st * st_vars = &ADMIN_ATTACH(key)->client.cmd;
-    unsigned ret = ADMIN_CMD;
 
-    exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &st_vars->reply_word);
+    if (!exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &st_vars->reply_word))
+        return ADMIN_ERROR;
     if (admin_marshall(st_vars->write_buf, st_vars->reply_word) < 0)
-        ret = ADMIN_ERROR;
-    return ret;
+        st_vars->marshall_error = true;
+    return ADMIN_CMD;
 }
 
 unsigned admin_cmd_read(struct selector_key *key) {
@@ -51,12 +51,14 @@ unsigned admin_cmd_read(struct selector_key *key) {
             const enum admin_state state = admin_consume(st_vars->read_buf, &st_vars->parser, &errored);
             if (admin_is_done(state, 0)) {
                 if (selector_add_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) {
-                    if (admin_cmd_process(key) == ADMIN_ERROR) break;
                     admin_parser_reset(&st_vars->parser);
-                } else {
-                    ret = ADMIN_ERROR;
-                    break;
-                }
+                    ret = admin_cmd_process(key);
+                    if (st_vars->marshall_error)
+                        if (selector_remove_interest(key->s, key->fd, OP_READ) == SELECTOR_SUCCESS) // If marshall cant 
+                            break;
+                        else ret = ADMIN_ERROR;
+                } else ret = ADMIN_ERROR;
+                if (ret = ADMIN_ERROR) break;
             }
         } while (buffer_can_read(st_vars->read_buf));
     } else ret = ADMIN_ERROR;
@@ -77,9 +79,13 @@ unsigned admin_cmd_write(struct selector_key *key) {
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) 
                 ret = ADMIN_CMD;
             else ret = ADMIN_ERROR;
+            if (st_vars->marshall_error) {
+                logger_log(DEBUG, "admin error full buffer on write\n\n");
+                ret = ADMIN_ERROR; // This might change
+            }  
         }
     } else {
-        logger_log(DEBUG, "admin error en command write\n\nError. errno message: %s\n\n", strerror(errno));
+        logger_log(DEBUG, "admin error on command write\n\nError. errno message: %s\n\n", strerror(errno));
         ret = ADMIN_ERROR;
     }
     return ret;
