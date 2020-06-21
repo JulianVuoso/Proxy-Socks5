@@ -349,6 +349,9 @@ static const char * file_error_description(enum file_errors error) {
         case memory_heap:
             ret = "not enough memory heap";
             break;
+        case max_users_reached:
+            ret = "there is no more place for users";
+            break;
         case wrong_arg:
             ret = "wrong argument/s";
             break;

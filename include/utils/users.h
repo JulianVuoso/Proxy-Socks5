@@ -5,10 +5,12 @@
 #include "negotiation.h"
 
 #define SEPARATOR ":"
+#define MAX_USERS (1 << 16) - 1
+#define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
 
 typedef enum user_level { CLIENT = 0, ADMIN } user_level;
 
-enum file_errors { file_no_error, opening_file, reading_file, writing_file, closing_file, wrong_arg, memory_heap };
+enum file_errors { file_no_error, opening_file, reading_file, writing_file, closing_file, wrong_arg, memory_heap, max_users_reached };
 
 struct User{
     uint8_t * username;

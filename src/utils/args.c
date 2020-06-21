@@ -71,6 +71,8 @@ add_user(char* s) {
                         exit(1);
                     }
                     add_user_to_list(user, pass, level);
+                    free(user);
+                    free(pass);
                     i = 0; 
                     break;
             default: break;
@@ -178,16 +180,16 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 args->mng_port   = port(optarg);
                 break;
             case 'u':
-                if(nusers >= MAX_USERS) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
+                if(nusers >= MAX_USERS_ARG) {
+                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS_ARG);
                     exit(1);
                 } else {
                     add_user_client(optarg);
                 }
                 break;
             case 'U':
-                if(nusers >= MAX_USERS) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS);
+                if(nusers >= MAX_USERS_ARG) {
+                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS_ARG);
                     exit(1);
                 } else {
                     add_user(optarg);

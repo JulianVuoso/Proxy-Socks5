@@ -7,8 +7,6 @@
 #include <string.h>
 #include "users.h"
 
-#define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
-
 static enum file_errors init_users_list();
 static struct UserNode * search_user(uint8_t * user, uint8_t * pwd);
 static struct UserList * ulist;
@@ -116,6 +114,9 @@ static enum file_errors init_users_list(){
 
 enum file_errors add_user_to_list(uint8_t * user, uint8_t * pwd, user_level lvl){
     if(ulist == NULL) init_users_list();
+    
+    if(ulist->size == MAX_USERS) return max_users_reached;
+    
     if(user == NULL || pwd == NULL) return wrong_arg;
     struct UserNode * result = search_user(user, pwd);
     if(result == NULL){
