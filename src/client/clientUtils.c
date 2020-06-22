@@ -238,9 +238,15 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         break;
     case LIST_USERS_NO:
         if (readBuffer[1] == 0)
-        {
-            recv(sockfd, readBuffer, 2, 0);
-            uint16_t nusers = (((uint16_t)readBuffer[0] << 8) & 0xFF00) + readBuffer[1];
+        {   
+            recv(sockfd,readBuffer,1,0);
+            int nuserslen = readBuffer[0];
+            recv(sockfd, readBuffer, nuserslen, 0);
+            uint16_t nusers = 0;
+            for (int  i = 0; i < nuserslen; i++)
+            {
+                nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
+            }
             printf("usario tipo\n");
             fflush(stdout);
             for (int i = 0,nulen = 0,utype=0; i < nusers; i++)
