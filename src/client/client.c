@@ -18,9 +18,9 @@
 #define DEFAULT_HOST "127.0.0.1"
 
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char *argv[]) {
     //checkear que todos los comandos esten al final
-    validateArgv(argc,argv);
+    validateArgv(argc,(const char **) argv);
     //declare variables
     int sockfd = 0;
     long int port = DEFAULT_PORT;
@@ -29,7 +29,7 @@ int main(int argc, char const *argv[]) {
     struct sockaddr_in addr;
     int opt;
     //parse argument
-    while ((opt = getopt(argc, argv, "u:p:l:")) > 0)
+    while ((opt = getopt(argc, (char * const *) argv, "u:p:l:")) > 0)
     {
         switch (opt)
         {
