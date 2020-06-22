@@ -7,6 +7,8 @@
 
 #define MAX_USERS_ARG 10
 
+enum parse_states { read_user=0, read_pass, read_type, read_done};
+
 struct users {
     char *name;
     char *pass;

@@ -36,14 +36,26 @@ add_user_client(char *s) {
     strcpy((char *)user, (char *)token); 
 
     token = (uint8_t *)strtok(NULL, SEPARATOR);
-    if(token == NULL){
+
+    /* if(token == NULL){
         fprintf(stderr, "password not found\n");
         exit(1);
     }
     pass = malloc(strlen((const char *) token) + 1);
     if(pass == NULL) exit(1);
-    strcpy((char *)pass, (char *)token); 
+    strcpy((char *)pass, (char *)token);  */
+    /***/
     
+    if (token == NULL) {
+        pass = malloc(2);
+        if(pass == NULL) exit(1);
+        strcpy((char *)pass, "");
+    } else { 
+        pass = malloc(strlen((const char *) token) + 1);
+        if(pass == NULL) exit(1);
+        strcpy((char *)pass, (char *)token);
+    }
+    /***/
     add_user_to_list(user, pass, user_client);
     free(user);
     free(pass);
@@ -52,46 +64,91 @@ add_user_client(char *s) {
 
 static void
 add_user(char* s) {
-    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0, level;
-    while(token)
-    {
-        switch (i)
-        {
-            case 0: user = malloc(strlen((const char *) token) + 1);
-                    if (user == NULL) exit(1);
-                    strcpy((char *)user, (char *)token); 
-                    i++; 
-                    break;
-            case 1: pass = malloc(strlen((const char *) token) + 1);
+    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, state = read_user, level;
+    while(state != read_done){
+        switch (state){
+            case read_user: 
+                if(token == NULL){
+                    fprintf(stderr, "user not found");
+                    exit(1);
+                }
+                user = malloc(strlen((const char *) token) + 1);
+                if (user == NULL) exit(1);
+                strcpy((char *)user, (char *)token); 
+                state = read_pass; 
+                break;
+            case read_pass: 
+                if (token == NULL) {
+                    pass = malloc(2);
                     if(pass == NULL) exit(1);
-                    strcpy((char *)pass, (char *)token); 
-                    i++; 
-                    break;
-            case 2: level = atoi((char *) token); 
-                    if((level != user_client && level != user_admin) || (!isdigit(*token))){
-                        fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
-                        exit(1);
-                    }
-                    enum file_errors err = add_user_to_list(user, pass, level);
-                    free(user);
-                    free(pass);
-                    if (err == memory_heap) exit(1); 
-                    i = 0; 
-                    break;
+                    strcpy((char *)pass, "");
+                } else { 
+                    pass = malloc(strlen((const char *) token) + 1);
+                    if(pass == NULL) exit(1);
+                    strcpy((char *)pass, (char *)token);
+                }
+                state = read_type; 
+                break;
+            case read_type:
+                if(token == NULL){
+                    fprintf(stderr, "user level not found\n");        
+                    exit(1);
+                }
+                level = atoi((char *) token); 
+                if((level != user_client && level != user_admin) || (!isdigit(*token))){
+                    fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
+                    exit(1);
+                }
+                enum file_errors err = add_user_to_list(user, pass, level);
+                free(user);
+                free(pass);
+                if (err == memory_heap) exit(1); 
+                state = read_done; 
+                break;
+            default: break;
+        }
+        token = (uint8_t *)strtok(NULL, SEPARATOR);
+    }
+
+    /* while(token)
+    {
+        switch (state)
+        {
+            case read_user: user = malloc(strlen((const char *) token) + 1);
+                            if (user == NULL) exit(1);
+                            strcpy((char *)user, (char *)token); 
+                            state = read_pass; 
+                            break;
+            case read_pass: pass = malloc(strlen((const char *) token) + 1);
+                            if(pass == NULL) exit(1);
+                            strcpy((char *)pass, (char *)token); 
+                            state = read_type; 
+                            break;
+            case read_type: level = atoi((char *) token); 
+                            if((level != user_client && level != user_admin) || (!isdigit(*token))){
+                                fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
+                                exit(1);
+                            }
+                            enum file_errors err = add_user_to_list(user, pass, level);
+                            free(user);
+                            free(pass);
+                            if (err == memory_heap) exit(1); 
+                            state = read_done; 
+                            break;
             default: break;
         }
         token = (uint8_t *)strtok(NULL, SEPARATOR);
         if(token == NULL){
-            if(i==1) {
+            if(state == read_pass) {
                 fprintf(stderr, "password not found\n");        
                 exit(1);
             }
-            if(i==2){
+            if(state == read_type){
                 fprintf(stderr, "user level not found\n");        
                 exit(1);
             }
         }
-    }
+    } */
 }
 
 static void
