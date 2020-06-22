@@ -63,6 +63,12 @@ typedef enum {
     SELECTOR_TIME     = 6,
 } selector_status;
 
+typedef enum { 
+    NO_TIMEOUT, 
+    CON_TIMEOUT, 
+    GEN_TIMEOUT, 
+} selector_timeout;
+
 /** retorna una descripción humana del fallo */
 const char *
 selector_error(const selector_status status);
@@ -132,11 +138,12 @@ typedef struct fd_handler {
   void (*handle_block)     (struct selector_key *key);
 
   /**
-   * llamado cuando se se desregistra el fd
+   * llamado cuando se desregistra el fd
    * Seguramente deba liberar los recusos alocados en data.
    */
   void (*handle_close)     (struct selector_key *key);
-
+  /* llamado cuando salta un timeout de tipo CON_TIMEOUT  */
+  void (*handle_timeout)   (struct selector_key *key);
 } fd_handler;
 
 /**
@@ -155,8 +162,8 @@ selector_register(fd_selector        s,
                   const int          fd,
                   const fd_handler  *handler,
                   const fd_interest  interest,
-                  void *data,
-                  bool timeout);
+                  void              *data,
+                  selector_timeout   timeout);
 
 /**
  * desregistra un file descriptor del selector
@@ -211,9 +218,13 @@ selector_notify_block(fd_selector s,
 
 /** 
  * Recorre los fds en uso de un selector y revisa si alguno 
- * esta inactivo hace al menos timeout segundos. 
+ * esta inactivo hace al menos timeout segundos (segun corresponda). 
  * De ser asi, lo desregistra y lo cierra
 */
-void selector_check_timeout(fd_selector s, time_t timeout);
+void selector_check_timeout(fd_selector s, time_t timeout_gen, time_t timeout_con);
+
+/* Modifica la opcion de timeout para un fd */
+selector_status
+selector_set_timeout_option(fd_selector s, int fd, selector_timeout timeout);
 
 #endif

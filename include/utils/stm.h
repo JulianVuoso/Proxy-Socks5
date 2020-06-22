@@ -34,6 +34,8 @@ struct state_machine {
     unsigned                      max_state;
     /** estado actual */
     const struct state_definition *current;
+    /** Handler de timeout */
+    unsigned (*on_timeout) (struct selector_key *key);
 };
 
 /**
@@ -78,6 +80,10 @@ stm_handler_write (struct state_machine *stm, struct selector_key *key);
 /** indica que ocurrió el evento block. retorna nuevo id de nuevo estado. */
 unsigned
 stm_handler_block (struct state_machine *stm, struct selector_key *key);
+
+/** indica que ocurrió el evento timeout. retorna nuevo id de nuevo estado. */
+unsigned
+stm_handler_timeout (struct state_machine *stm, struct selector_key *key);
 
 /** indica que ocurrió el evento close. retorna nuevo id de nuevo estado. */
 void

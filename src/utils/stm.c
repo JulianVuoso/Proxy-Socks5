@@ -94,6 +94,15 @@ stm_handler_close(struct state_machine *stm, struct selector_key *key) {
 }
 
 unsigned
+stm_handler_timeout (struct state_machine *stm, struct selector_key *key) {
+    if (stm->on_timeout == 0) return stm->current->state;
+    const unsigned int ret = stm->on_timeout(key);
+    jump(stm, ret, key);
+
+    return ret;
+}
+
+unsigned
 stm_state(struct state_machine *stm) {
     unsigned ret = stm->initial;
     if(stm->current != NULL) {
