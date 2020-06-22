@@ -56,6 +56,7 @@ static struct admin * admin_new(int client_fd) {
     ret->stm.initial = ADMIN_NEGOT_READ;
     ret->stm.max_state = ADMIN_ERROR;
     ret->stm.states = admin_statbl;
+    ret->stm.on_timeout = 0;
     stm_init(&ret->stm);
 
     buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
@@ -100,7 +101,7 @@ admin_passive_accept(struct selector_key *key) {
     }
 
     if(SELECTOR_SUCCESS != selector_register(key->s, client, &admin_handler,
-                                              OP_READ, state, true)) {
+                                              OP_READ, state, GEN_TIMEOUT)) {
         goto fail;
     }
     return ;

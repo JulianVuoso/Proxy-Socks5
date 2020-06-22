@@ -41,7 +41,7 @@ static const char * socket_error_description(enum socket_errors error);
 static const char * file_error_description(enum file_errors error);
 
 static bool done = false;
-static time_t timeout = INITIAL_TIMEOUT;
+static time_t timeout_gen = INIT_GEN_TIMEOUT, timeout_con = INIT_CON_TIMEOUT;
 
 /** TODO: Ver como libero recursos en este caso  */
 static void
@@ -104,6 +104,7 @@ main(const int argc, const char **argv) {
         err_msg = "getting server socket flags";
         goto finally;
     }
+    /** TODO: VER SI LO CAMBIAMOS A 5s */
     const struct selector_init conf = {
         .signal = SIGALRM,
         .select_timeout = {
@@ -136,11 +137,11 @@ main(const int argc, const char **argv) {
     };
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv4, &socks5,
-                                              OP_READ, NULL, false);
+                                              OP_READ, NULL, NO_TIMEOUT);
     }
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv6, &socks5,
-                                              OP_READ, NULL, false);
+                                              OP_READ, NULL, NO_TIMEOUT);
     }
     const struct fd_handler admin_handlers = {
         .handle_read       = admin_passive_accept,
@@ -149,7 +150,7 @@ main(const int argc, const char **argv) {
     };
     if (ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_admin, &admin_handlers,
-                                              OP_READ, NULL, false);
+                                              OP_READ, NULL, NO_TIMEOUT);
     }
     if(ss != SELECTOR_SUCCESS) {
         err_msg = "registering fd";
@@ -162,7 +163,7 @@ main(const int argc, const char **argv) {
             err_msg = "serving";
             goto finally;
         }
-        selector_check_timeout(selector, timeout);
+        selector_check_timeout(selector, timeout_gen, timeout_con);
     }
 
     file_state = update_users_file(USERS_FILENAME);
@@ -363,10 +364,18 @@ static const char * file_error_description(enum file_errors error) {
 }
 
 /* Config getters and setters */
-time_t get_timeout(){
-    return timeout;
+time_t get_timeout_gen() {
+    return timeout_gen;
 }
 
-void set_timeout(time_t time){
-    timeout = time;
+void set_timeout_gen(time_t time) {
+    timeout_gen = time;
+}
+
+time_t get_timeout_con() {
+    return timeout_con;
+}
+
+void set_timeout_con(time_t time) {
+    timeout_con = time;
 }

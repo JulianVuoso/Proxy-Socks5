@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "buffer.h"
+#include "commands.h"
 
 /**
  * ******************** Add User ********************
@@ -93,47 +94,8 @@
 
 */
 
-/* Possible commands */
-typedef enum admin_commands {
-    admin_command_add_user = 0x01,
-    admin_command_del_user = 0x02,
-    admin_command_list_user = 0x03,
-    admin_command_get_metric = 0x04,
-    admin_command_get_config = 0x05,
-    admin_command_set_config = 0x06,
-
-    admin_command_none = 0xFF,
-} admin_commands;
-
-/* Possible user typed */
-typedef enum admin_user_types {
-    admin_user_type_client = 0x00,
-    admin_user_type_admin = 0x01,
-
-    admin_user_type_none = 0xFF,
-} admin_user_types;
-
-/* Possible metrics */
-typedef enum admin_metrics {
-    admin_metric_hist_conn = 0x00,
-    admin_metric_conc_conn = 0x01,
-    admin_metric_hist_btransf = 0x02,
-
-    admin_metric_none = 0xFF,
-} admin_metrics;
-
-/* Possible configurations */
-typedef enum admin_configs {
-    admin_config_buff_both_size = 0x00,
-    admin_config_buff_read_size = 0x01,
-    admin_config_buff_write_size = 0x02,
-    admin_config_sel_tout = 0x03,
-
-    admin_config_none = 0xFF,
-} admin_configs;
-
 /* Admin parser states */
-typedef enum admin_state {
+typedef enum admin_parser_state {
     admin_command,
     admin_config,
     admin_metric,
@@ -146,61 +108,29 @@ typedef enum admin_state {
     admin_get_vlen,
     admin_get_value,
 
-    admin_done,
+    admin_done_p,
     admin_error,
 
-} admin_state;
+} admin_parser_state;
 
-/* Admin parser errors */
-typedef enum admin_errors { // TODO no son todos estos
-    admin_error_inv_command = 0x01,
-    admin_error_inv_ulen = 0x02,
-    admin_error_inv_utype = 0x03,
-    admin_error_inv_metric = 0x04,
-    admin_error_inv_config = 0x05,
-    admin_error_inv_value = 0x06,
-    admin_error_inv_vlen = 0x07, // TODO se agrega en protocol.txt
-
-    admin_error_server_fail = 0xFF,
-    admin_error_none = 0x00,
-} admin_errors;
-
-typedef struct admin_data_word {
-    uint8_t * value;
-    uint8_t index;
-    uint8_t length;
-} admin_data_word;
-
-/* Maps the data received  */
-typedef struct admin_received_data {
-    /* The selected command */
-    admin_commands command;
-    
-    /* Value for  metrics, config or user type option, casted later */
-    uint8_t option;
-
-    /* Value for user handling */
-    admin_data_word * value1;
-    admin_data_word * value2;
-} admin_received_data;
 
 /* Admin parser struct */
 typedef struct admin_parser {
 
-    admin_state state;
-    admin_errors error;
+    enum admin_parser_state state;
+    enum admin_errors error;
 
-    admin_received_data * data;
+    struct admin_received_data * data;
 
 } admin_parser;
 
 /** Initializes the admin parser */
 void
-admin_parser_init(admin_parser * p);
+admin_parser_init(struct admin_parser * p);
 
 /** Only resets state, error and data option*/
 void
-admin_parser_reset(admin_parser * p);
+admin_parser_reset(struct admin_parser * p);
 
 /**
  * For each buffer element calls admin_parser_feed until empty,  
@@ -208,30 +138,30 @@ admin_parser_reset(admin_parser * p);
  * 
  * @param errored output param. If != NULL that value is not modified.
  */
-admin_state
-admin_consume(buffer * b, admin_parser * p, bool * errored);
+enum admin_parser_state
+admin_consume(buffer * b, struct admin_parser * p, bool * errored);
 
 /** Delivers a byte to the parser, when finish returns current state */
-admin_state
-admin_parser_feed(admin_parser * p, uint8_t byte);
+enum admin_parser_state
+admin_parser_feed(struct admin_parser * p, uint8_t byte);
 
 /** If got to a state of error, gets error representation */
 const char *
-admin_error_description(const admin_parser * p);
+admin_error_description(const struct admin_parser * p);
 
 /**
  * Allows to know to the admin_parser_feed if should keep sending bytes or not.
  * If finished fills errored whith true or false depending if error or not.
  */
 bool
-admin_is_done(const admin_state state, bool * errored);
+admin_is_done(const enum admin_parser_state state, bool * errored);
 
 /** Frees resources used by the parser */
 void
-admin_parser_close(admin_parser * p);
+admin_parser_close(struct admin_parser * p);
 
 /** Writes on buffer */
 int16_t 
-admin_marshall(buffer *b, const admin_parser * p);
+admin_marshall(buffer *b, struct admin_data_word data);
 
 #endif

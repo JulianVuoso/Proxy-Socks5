@@ -5,6 +5,7 @@ include_directories(../include/doh)
 include_directories(../include/parsers)
 include_directories(../include/sm)
 include_directories(../include/utils)
+include_directories(../include/client)
 
 add_executable(socks5d main.c
                        utils/users.c
@@ -23,6 +24,7 @@ add_executable(socks5d main.c
                        socks5.c
                        utils/logger.c
                        utils/netutils.c
+                       utils/commands.c
                        sm/sm_hello_state.c
                        sm/sm_negot_state.c
                        sm/sm_request_state.c
@@ -30,12 +32,12 @@ add_executable(socks5d main.c
                        sm/sm_connect_state.c
                        doh/dohParser.c
                        doh/dohclient.c
-                       sm/sm_before_error_state.c
+                       sm/sm_actions.c
                        sm/socks5mt.c
                        admin/admin_sm_cmd_state.c
                        admin/admin_sm_negot_state.c
                        admin/admin_socks5.c)
 target_link_libraries(socks5d pthread sctp)
 
-add_executable(adminClient client/client.c)
+add_executable(adminClient client/client.c client/clientUtils.c)
 target_link_libraries(adminClient sctp)

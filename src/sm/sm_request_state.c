@@ -8,7 +8,7 @@
 
 #include "logger.h"
 #include "netutils.h"
-#include "sm_before_error_state.h"
+#include "sm_actions.h"
 
 #include "socks5mt.h"
 #include "request.h"
@@ -210,7 +210,7 @@ try_connect(struct selector_key * key, struct addrinfo * node) {
         if (errno == EINPROGRESS) {
             logger_log(DEBUG, "EINPROGRESS\n");
             /* Espero a poder escribirle al origin_server para determinar si me pude conectar */
-            if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_WRITE, key->data, true) != SELECTOR_SUCCESS) {
+            if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_WRITE, key->data, CON_TIMEOUT) != SELECTOR_SUCCESS) {
                 logger_log(DEBUG, "failed selector\n");
                 goto errors;
             }
@@ -226,7 +226,7 @@ try_connect(struct selector_key * key, struct addrinfo * node) {
         }
     }
     /* Si me conecte, por ahora no necesito esperar nada de origin, voy a escribirle a client */
-    if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_NOOP, key->data, true) != SELECTOR_SUCCESS) {
+    if (selector_register(key->s, sock->origin_fd, &socks5_handler, OP_NOOP, key->data, GEN_TIMEOUT) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
         goto errors;
     }
@@ -302,6 +302,9 @@ unsigned request_connect_write(struct selector_key *key) {
         sock->client.request.current = sock->client.request.current->ai_next;
         return request_connect(key);
     }
+    /* Ya estableci la conexion, cambio la opcion de timeout */
+    selector_set_timeout_option(key->s, sock->origin_fd, GEN_TIMEOUT);
+
     struct addrinfo * node = sock->client.request.current;
     memcpy(&(sock->origin_addr), node->ai_addr, node->ai_addrlen);
     sock->origin_addr_len = node->ai_addrlen;

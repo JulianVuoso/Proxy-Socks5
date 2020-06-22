@@ -55,11 +55,12 @@ Los códigos de STATUS existentes son
 	~ INV METRIC		X'04'	
 	~ INV CONFIG		X'05'	
 	~ INV VALUE			X'06'	
+	~ MAX UCOUNT		X'07'
 	~ GEN SERV FAIL		X'FF'
 
 En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
-Si el servidor envía cualquier otro STATUS de respuesta (exceptuando INV VALUE), el servidor DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
-Si el servidor envía INV VALUE como STATUS de respuesta, el cliente puede volver a enviar un nuevo REQUEST.
+Si el cliente envía un valor inválido, el servidor DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
+Si el cliente envía un valor válido pero el servidor se encuentra limitado por su implementación, el cliente PUEDE volver a enviar un nuevo REQUEST luego de leer la respuesta.
 
 Agregar Usuario
 
@@ -80,7 +81,8 @@ Agregar Usuario
 		- PASSWD	-> contraseña asociada al UNAME dado
 
 
-El servidor verifica que el largo sea válido (mayor a 0) y que el tipo de usuario sea correcto, y si lo es, intenta agregar al usuario a la lista. Si el nombre de usuario ya existía, se actualiza su contraseña y su tipo de usuario. 
+El servidor verifica que el largo sea válido (mayor a 0) y que el tipo de usuario sea correcto, y si lo es, intenta agregar al usuario a la lista. 
+Si el nombre de usuario ya existía, se actualiza su contraseña y su tipo de usuario. 
 Luego envía la siguiente REPLY
 
 					+-----+--------+
@@ -95,9 +97,11 @@ Luego envía la siguiente REPLY
 			~ SUCCESS			X'00'
 			~ INV ULEN			X'02'
 			~ INV UTYPE			X'03'
+			~ MAX UCOUNT		X'07'
 			~ GEN SERVER FAIL	X'FF'
 
-En caso de recibir INV ULEN o INV UTYPE, el cliente PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV ULEN o INV UTYPE, el cliente NO PUEDE volver a enviar un nuevo REQUEST.
+De recibir MAX UCOUNT , el cliente PUEDE volver a enviar un mensaje.
 
 Eliminar usuario
 
@@ -141,11 +145,11 @@ Listar nombres de usuario
 El servidor intenta listar todos los nombres de usuario existentes junto con su tipo. 
 Luego envía la siguiente REPLY
 
-+-----+--------+-------+--------+------+----------+-------+
-| CMD | STATUS | NULEN | NUSERS | ULEN |   UNAME  | UTYPE |
-+-----+--------+-------+--------+------+----------+-------+
-|  1  |   1    |   1   |1 to 255|  1   | 1 to 255 |   1   |
-+-----+--------+-------+--------+------+----------+-------+
++-----+--------+-------+--------+-------+------+----------+
+| CMD | STATUS | NULEN | NUSERS | UTYPE | ULEN |   UNAME  |
++-----+--------+-------+--------+-------+------+----------+
+|  1  |   1    |   1   |1 to 255|   1   |  1   | 1 to 255 |
++-----+--------+-------+--------+-------+------+----------+
 								[------------|------------]
 										NUSERS veces
 
@@ -200,7 +204,7 @@ El servidor intenta obtener la métrica solicitada. Luego envía la siguiente RE
 
 El valor obtenido debe ser interpretado como un número, que estará en la unidad Bytes en caso de que la configuración solicitada sea X'02'.
 
-En caso de recibir INV METRIC, el cliente DEBE leer los tres campos siguientes según el valor de VLEN. Luego PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV METRIC, el cliente PUEDE leer los tres campos siguientes según el valor de VLEN, aunque NO PODRÁ volver a enviar un nuevo REQUEST.
 
 Obtener configuración
 
@@ -240,9 +244,10 @@ El servidor intenta obtener la configuración solicitada. Luego envía la siguie
 		- VLEN 		-> largo del campo VALUE que sigue
 		- VALUE 	-> valor de la configuración solicitada
 
-En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el valor obtenido debe ser interpretado como un número en unidad bytes. Mientras que si la configuración solicitada es de un timeout (configuración X'03'), el valor obtenido debe ser interpretado como un número en unidad nanosegundos.
+En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el valor obtenido debe ser interpretado como un número en unidad bytes. 
+Mientras que si la configuración solicitada es de un timeout (configuración X'03'), el valor obtenido debe ser interpretado como un número en unidad nanosegundos.
 
-En caso de recibir INV CONFIG, el cliente DEBE leer los tres campos siguientes según el valor de VLEN. Luego PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV CONFIG, el cliente PUEDE leer los tres campos siguientes según el valor de VLEN, aunque NO PODRÁ volver a enviar un nuevo REQUEST.
 
 Cambiar configuración
 
@@ -262,7 +267,8 @@ Cambiar configuración
 		- VLEN		-> largo del campo VALUE que sigue
 		- VALUE 	-> valor de la configuración solicitada
 
-En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el valor dado será interpretado como un número en unidad bytes. Mientras que si la configuración solicitada es de un timeout (configuración X'03'), el valor dado será interpretado como un número en unidad nanosegundos.
+En caso de ser un tamaño de buffer (configuraciones X'00', X'01', X'02'), el valor dado será interpretado como un número en unidad bytes. 
+Mientras que si la configuración solicitada es de un timeout (configuración X'03'), el valor dado será interpretado como un número en unidad nanosegundos.
 
 El servidor valida el valor dado y, de ser correcto, intenta aplicar el cambio de configuración. Luego envía la siguiente REPLY
 
@@ -287,8 +293,9 @@ El servidor valida el valor dado y, de ser correcto, intenta aplicar el cambio d
 		- MLEN		-> largo del campo MESSAGE que sigue
 		- MESSAGE	-> mensaje que explica el error (de ser necesario)
 
-En caso de recibir INV CONFIG o INV VALUE, el cliente DEBE leer los campos que siguen. Luego PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV CONFIG, el cliente PUEDE leer los campos que siguen, aunque NO PODRÁ volver a enviar un nuevo REQUEST.
 En el caso de recibir INV VALUE, el servidor PUEDE enviar una cadena de caracteres en MESSAGE, indicando su largo en MLEN, explicando por qué el valor es inválido.
+Por lo tanto el cliente DEBE leer los campos que le siguen. Luego PUEDE volver a enviar otro REQUEST.
 
 Comando inválido
 
@@ -306,4 +313,4 @@ En caso de que el comando ingresado no corresponda con los valores listados ante
 			~ INV CMD			X'01'
 			~ GEN SERVER FAIL	X'FF'
 
-En caso de recibir INV CMD, el cliente luego PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV CMD, el cliente NO PODRÁ volver a enviar un nuevo REQUEST.
