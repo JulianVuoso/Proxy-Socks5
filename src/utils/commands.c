@@ -54,7 +54,7 @@ set_user(enum admin_errors error, struct admin_received_data * data, struct admi
     if (error != admin_error_none) {
         enum file_errors file_error = add_user_to_list(data->value1->value, data->value2->value, data->option);
         if (file_error == memory_heap) return 0;
-        if (false /*file_error == file_max_user_reached*/) error = admin_error_max_ucount;
+        if (file_error == max_users_reached) error = admin_error_max_ucount;
         else if (file_error != file_no_error) error = admin_error_server_fail; // Any other errors
     }
         
