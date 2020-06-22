@@ -62,14 +62,16 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 }else
                     p->state = negot_uname;
             } else {
-                p->username->uname = malloc(sizeof(*p->username->uname));
+                /* p->username->uname = malloc(sizeof(*p->username->uname));
                 if (p->username->uname == NULL) {
                     p->error = error_negot_no_more_heap;
                     p->state = negot_error;
                 }else{
                     *p->username->uname='\0';
                     p->state = negot_plen;
-                }
+                } */
+                p->error = error_negot_invalid_ulen;
+                p->state = negot_error;
             }
             break;
         case negot_uname:                       // ver cual seria un error
@@ -92,14 +94,16 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 }else
                     p->state = negot_passwd;
             } else {
-                p->password->passwd = malloc(sizeof(*p->password->passwd));
+               /*  p->password->passwd = malloc(sizeof(*p->password->passwd));
                 if (p->password->passwd == NULL) {
                     p->error = error_negot_no_more_heap;
                     p->state = negot_error;
                 }else{
                     *p->password->passwd='\0';
                     p->state = negot_done;
-                }
+                } */
+                p->error = error_negot_invalid_plen;
+                p->state = negot_error;
             }
             break;
         case negot_passwd:                      // ver cual seria un error
