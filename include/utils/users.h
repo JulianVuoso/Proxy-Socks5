@@ -19,6 +19,8 @@ typedef enum user_level {
 
 enum file_errors { file_no_error = 0x00, opening_file, writing_file, reading_file, closing_file, wrong_arg, memory_heap, max_users_reached};
 
+enum parse_states { read_user=0, read_pass, read_type, read_done };
+
 struct User{
     uint8_t * username;
     uint8_t * password;

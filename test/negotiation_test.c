@@ -49,22 +49,41 @@ START_TEST (test_negot_unsupported_version) {
 }
 END_TEST
 
-START_TEST (test_negot_empty_user_pwd) {
+START_TEST (test_negot_empty_user) {
     negot_parser parser;
     negot_parser_init(&parser);
     uint8_t data[] = {
         0x01, 
         0x00,
+        0x01,0x01
+    };
+    buffer b; 
+    FIXBUF(b, data);
+    bool errored = false;
+    enum negot_state state = negot_consume(&b, &parser, &errored);
+    ck_assert_uint_eq(true, errored);
+    ck_assert_uint_eq(negot_error, state);
+    ck_assert_uint_eq(error_negot_invalid_ulen, parser.error);
+    
+    negot_parser_close(&parser);
+}
+END_TEST
+
+START_TEST (test_negot_empty_pwd) {
+    negot_parser parser;
+    negot_parser_init(&parser);
+    uint8_t data[] = {
+        0x01, 
+        0x01,0x01,
         0x00
     };
     buffer b; 
     FIXBUF(b, data);
     bool errored = false;
     enum negot_state state = negot_consume(&b, &parser, &errored);
-    ck_assert_uint_eq(false, errored);
-    ck_assert_uint_eq(negot_done, state);
-    ck_assert_str_eq("", (char*)parser.username->uname);
-    ck_assert_str_eq("", (char*)parser.password->passwd);
+    ck_assert_uint_eq(true, errored);
+    ck_assert_uint_eq(negot_error, state);
+    ck_assert_uint_eq(error_negot_invalid_plen, parser.error);
     
     negot_parser_close(&parser);
 }
@@ -80,8 +99,8 @@ negot_suite(void) {
     tc = tcase_create("negotiation");
     tcase_add_test(tc, test_negot_user_and_pwd);
     tcase_add_test(tc, test_negot_unsupported_version);
-    tcase_add_test(tc, test_negot_empty_user_pwd);
-
+    tcase_add_test(tc, test_negot_empty_user);
+    tcase_add_test(tc, test_negot_empty_pwd);
     suite_add_tcase(s, tc);
 
     return s;

@@ -56,7 +56,7 @@ main(const int argc, const char **argv) {
     /* Try to read users file */
     enum file_errors file_state = read_users_file(USERS_FILENAME);
     if(file_state != file_no_error){
-        fprintf(stdout, "Users file read failed. Error: %s\n", file_error_description(file_state));
+        fprintf(stdout, "Users file read failed. Issue: %s\n", file_error_description(file_state));
     }
 
     /* Parse args */
