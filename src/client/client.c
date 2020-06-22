@@ -166,8 +166,11 @@ int main(int argc, char *const *argv)
             fail = i + 1;
         }else{
             //send it
-            send(sockfd, data, datalen, 0);
-            amtCmds++;
+            if(send(sockfd, data, datalen, 0) != 0){
+                amtCmds++;
+            }else{
+                fail = i + 1;
+            }
         }
     }
     // handle all commands send
