@@ -229,6 +229,11 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             close(sockfd);
             return -1;
         }
+        else if(readBuffer[1]== 0x07){
+            printf("Cantidad de usuarios llena\n");
+            close(sockfd);
+            return -1;
+        }
         break;
     case DEL_USER_NO:
         if (readBuffer[1] == 0)
