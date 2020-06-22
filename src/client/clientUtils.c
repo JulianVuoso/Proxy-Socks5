@@ -27,6 +27,7 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
     if (strcmp(argv[(*cmdStartIndex)], "add-user") == 0)
     {
         cmd = ADD_USER_NO;
+        int utypeSpecified = 0;
         if (argc <= (*cmdStartIndex) + 1)
         {
             printf("Falta usuario:password a agregar\n");
@@ -68,7 +69,7 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
         }
         data[2] = nulen;
         data[3 + nulen] = nplen;
-        if (argc <= (*cmdStartIndex) + 2)
+        if (argc <= (*cmdStartIndex) + 2 || (argv[(*cmdStartIndex) + 2][0] != '0' && argv[(*cmdStartIndex) + 2][0] != '1'))
         {
             data[1] = 0;
         }
@@ -88,10 +89,11 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
                 printf("El tipo de usuario debe ser 0 (cliente) o 1 (admin)\n");
                 return -1;
             }
+            utypeSpecified = 1;
         }
         //cmd|ulen|username|plen|password
         *datalen = 2 + nulen + 1 + nplen + 1;
-        *cmdStartIndex += 2;
+        *cmdStartIndex += 2 + (utypeSpecified?1:0);
     }
     else if (strcmp(argv[(*cmdStartIndex)], "del-user") == 0)
     {
@@ -264,16 +266,21 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             {
                 nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
             }
-            printf("usario tipo\n");
+            printf("usuario    contraseña    tipo\n");
             fflush(stdout);
-            for (unsigned int i = 0,nulen = 0,utype=0; i < nusers; i++)
+            for (unsigned int i = 0,nulen = 0,utype=0,plen = 0; i < nusers; i++)
             {
                 recvWrapper(sockfd, readBuffer, 2, 0);
                 utype = readBuffer[0];
                 nulen = readBuffer[1];
                 recvWrapper(sockfd, readBuffer, nulen, 0);
                 write(STDOUT_FILENO, readBuffer, nulen);
-                printf(" %d\n", utype);
+                write(STDOUT_FILENO,"    ",4);
+                recvWrapper(sockfd, readBuffer, 1, 0);
+                plen = readBuffer[0];
+                recvWrapper(sockfd, readBuffer, plen, 0);
+                write(STDOUT_FILENO, readBuffer, plen);
+                printf("    %d\n", utype);
             }
         }else{
             printf("Error inesperado al listar usuarios\n");
