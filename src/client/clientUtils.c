@@ -221,17 +221,14 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         else if (readBuffer[1] == 0x02)
         {
             printf("Longitud de usuario invalida\n");
-            close(sockfd);
             return -1;
         }else if (readBuffer[1] == 0x03)
         {
             printf("Tipo de usuario invalido\n");
-            close(sockfd);
             return -1;
         }
         else if(readBuffer[1]== 0x07){
             printf("Cantidad de usuarios llena\n");
-            close(sockfd);
             return -1;
         }
         break;
@@ -244,9 +241,9 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
     case LIST_USERS_NO:
         if (readBuffer[1] == 0)
         {   
-            recv(sockfd,readBuffer,1,0);
+            recvWrapper(sockfd,readBuffer,1,0);
             int nuserslen = readBuffer[0];
-            recv(sockfd, readBuffer, nuserslen, 0);
+            recvWrapper(sockfd, readBuffer, nuserslen, 0);
             uint16_t nusers = 0;
             for (int  i = 0; i < nuserslen; i++)
             {
@@ -256,10 +253,10 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             fflush(stdout);
             for (int i = 0,nulen = 0,utype=0; i < nusers; i++)
             {
-                recv(sockfd, readBuffer, 2, 0);
+                recvWrapper(sockfd, readBuffer, 2, 0);
                 utype = readBuffer[0];
                 nulen = readBuffer[1];
-                recv(sockfd, readBuffer, nulen, 0);
+                recvWrapper(sockfd, readBuffer, nulen, 0);
                 write(STDOUT_FILENO, readBuffer, nulen);
                 printf(" %d\n", utype);
             }
@@ -268,10 +265,9 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
     case GET_METRIC_NO:
         if (readBuffer[1] == 0)
         {
-            recv(sockfd, readBuffer, READBUFFER_LEN, 0);
+            recvWrapper(sockfd, readBuffer, READBUFFER_LEN, 0);
             if(readBuffer[1] > sizeof(unsigned long)){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
-                close(sockfd);
                 return -1;
             }
             unsigned long metricVal = 0;
@@ -298,17 +294,15 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x04)
         {
             printf("Metrica invalida\n");
-            close(sockfd);
             return -1;
         }
         break;
     case GET_CONFIG_NO:
         if (readBuffer[1] == 0)
         {
-            recv(sockfd, readBuffer, READBUFFER_LEN, 0);
+            recvWrapper(sockfd, readBuffer, READBUFFER_LEN, 0);
             if(readBuffer[1] > sizeof(unsigned long)){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
-                close(sockfd);
                 return -1;
             }
             unsigned long configVal = 0;
@@ -338,7 +332,6 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x05)
         {
             printf("Configuracion invalida\n");
-            close(sockfd);
             return -1;
         }
         break;
@@ -349,20 +342,30 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x05)
         {
             printf("Configuracion invalida\n");
-            close(sockfd);
             return -1;
         }else if (readBuffer[1] == 0x06)
         {
             printf("Valor de configuracion invalido\n");
-            close(sockfd);
             return -1;
         }
         break;
     default:
         printf("Hubo un problema\n");
-        close(sockfd);
         return -1;
         break;
     }
     return 0;
+}
+
+void recvWrapper(int sockfd,void *buffer, size_t len, int flags){
+    int res = recv(sockfd,buffer,len,flags);
+    if(res == 0 && len != 0){
+        printf("Cerrando conexion\n");
+        close(sockfd);
+        exit(-1);
+    }else if(res < 0){
+        printf("Error en la conexion\n");
+        close(sockfd);
+        exit(-1);
+    }
 }

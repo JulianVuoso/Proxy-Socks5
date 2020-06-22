@@ -139,7 +139,7 @@ int main(int argc, char *const *argv)
     //authenticate
     send(sockfd, auth, authlen, 0);
     uint8_t readBuffer[READBUFFER_LEN];
-    recv(sockfd, readBuffer, 2, 0);
+    recvWrapper(sockfd, readBuffer, 2, 0);
     if (readBuffer[0] != 0x01)
     {
         printf("El servidor usa una version distinta del protocolo\n");
@@ -176,7 +176,7 @@ int main(int argc, char *const *argv)
     // handle all commands send
     for (int i = 0; i < amtCmds; i++)
     {
-        recv(sockfd, readBuffer, 2, 0);
+        recvWrapper(sockfd, readBuffer, 2, 0);
         if (readBuffer[0] != cmd[i])
         {
             printf("La respuesta no matchea el comando pedido\n");
@@ -192,7 +192,8 @@ int main(int argc, char *const *argv)
             //handle response
             int res = handleResponse(sockfd,cmd[i], readBuffer);
             if(res<0){
-                exit(-1);
+                close(sockfd);
+                return -1;
             }    
         }
     }
