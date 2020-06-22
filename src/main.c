@@ -36,7 +36,8 @@ enum socket_errors { socket_no_error, error_socket_create, error_socket_bind, er
 
 static unsigned create_socket_ipv4(const char *  address, unsigned port, int * server_fd);
 static unsigned create_socket_ipv6(const char * address, unsigned port, int * server_fd);
-static unsigned create_admin_socket(const char * address, unsigned port, int * admin_fd);
+static unsigned create_admin_socket_ipv4(const char * address, unsigned port, int * admin_fd);
+static unsigned create_admin_socket_ipv6(const char * address, unsigned port, int * admin_fd);
 static const char * socket_error_description(enum socket_errors error);
 static const char * file_error_description(enum file_errors error);
 
@@ -71,24 +72,54 @@ main(const int argc, const char **argv) {
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
 
-    int server_ipv4, server_ipv6, server_admin;
+    int server_ipv4 = -1, server_ipv6 = -1, admin_ipv4 = -1, admin_ipv6 = -1;
     
-    enum socket_errors error_ipv4 = create_socket_ipv4(args.socks_addr, args.socks_port, &server_ipv4);
-    if (error_ipv4 != socket_no_error) {
-        err_msg = socket_error_description(error_ipv4);
-        goto finally;
+    if (args.socks_addr_ipv4 != NULL) {
+        enum socket_errors error_server_ipv4 = create_socket_ipv4(args.socks_addr_ipv4, args.socks_port, &server_ipv4);
+        if (error_server_ipv4 != socket_no_error) {
+            err_msg = socket_error_description(error_server_ipv4);
+            goto finally;
+        }
+        if (selector_fd_set_nio(server_ipv4) == -1) {
+            err_msg = "getting server socket flags";
+            goto finally;
+        }
     }
-    // TODO check ipv6 address handling by args
-    enum socket_errors error_ipv6 = create_socket_ipv6(IPV6_ADDRESS, args.socks_port, &server_ipv6);
-    if (error_ipv6 != socket_no_error) {
-        err_msg = socket_error_description(error_ipv6);
-        goto finally;
+
+    if (args.socks_addr_ipv6 != NULL) {
+        enum socket_errors error_server_ipv6 = create_socket_ipv6(args.socks_addr_ipv6, args.socks_port, &server_ipv6);
+        if (error_server_ipv6 != socket_no_error) {
+            err_msg = socket_error_description(error_server_ipv6);
+            goto finally;
+        }
+        if (selector_fd_set_nio(server_ipv6) == -1) {
+            err_msg = "getting server socket flags";
+            goto finally;
+        }
     }
-    
-    enum socket_errors error_admin = create_admin_socket(args.mng_addr, args.mng_port, &server_admin);
-    if (error_admin != socket_no_error) {
-        err_msg = socket_error_description(error_admin);
-        goto finally;
+
+    if (args.mng_addr_ipv4 != NULL) {
+        enum socket_errors error_admin_ipv4 = create_admin_socket_ipv4(args.mng_addr_ipv4, args.mng_port, &admin_ipv4);
+        if (error_admin_ipv4 != socket_no_error) {
+            err_msg = socket_error_description(error_admin_ipv4);
+            goto finally;
+        }
+        if (selector_fd_set_nio(admin_ipv4) == -1) {
+            err_msg = "getting server socket flags";
+            goto finally;
+        }
+    }
+
+    if (args.mng_addr_ipv6 != NULL) {
+        enum socket_errors error_admin_ipv6 = create_admin_socket_ipv6(args.mng_addr_ipv6, args.mng_port, &admin_ipv6);
+        if (error_admin_ipv6 != socket_no_error) {
+            err_msg = socket_error_description(error_admin_ipv6);
+            goto finally;
+        }
+        if (selector_fd_set_nio(admin_ipv6) == -1) {
+            err_msg = "getting server socket flags";
+            goto finally;
+        }
     }
 
     fprintf(stdout, "Listening on TCP port %u\n", args.socks_port);
@@ -98,12 +129,6 @@ main(const int argc, const char **argv) {
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
 
-    if(selector_fd_set_nio(server_ipv4) == -1 || 
-        selector_fd_set_nio(server_ipv6) == -1 ||
-            selector_fd_set_nio(server_admin) == -1) {
-        err_msg = "getting server socket flags";
-        goto finally;
-    }
     /** TODO: VER SI LO CAMBIAMOS A 5s */
     const struct selector_init conf = {
         .signal = SIGALRM,
@@ -135,11 +160,11 @@ main(const int argc, const char **argv) {
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    if (ss == SELECTOR_SUCCESS) {
+    if (server_ipv4 != -1 && ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv4, &socks5,
                                               OP_READ, NULL, NO_TIMEOUT);
     }
-    if (ss == SELECTOR_SUCCESS) {
+    if (server_ipv6 != -1 && ss == SELECTOR_SUCCESS) {
         ss = selector_register(selector, server_ipv6, &socks5,
                                               OP_READ, NULL, NO_TIMEOUT);
     }
@@ -148,8 +173,12 @@ main(const int argc, const char **argv) {
         .handle_write      = NULL,
         .handle_close      = NULL, // nada que liberar
     };
-    if (ss == SELECTOR_SUCCESS) {
-        ss = selector_register(selector, server_admin, &admin_handlers,
+    if (admin_ipv4 != -1 && ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, admin_ipv4, &admin_handlers,
+                                              OP_READ, NULL, NO_TIMEOUT);
+    }
+    if (admin_ipv6 != -1 && ss == SELECTOR_SUCCESS) {
+        ss = selector_register(selector, admin_ipv6, &admin_handlers,
                                               OP_READ, NULL, NO_TIMEOUT);
     }
     if(ss != SELECTOR_SUCCESS) {
@@ -195,16 +224,20 @@ finally:
     // socks5_pool_destroy();
 
     if(server_ipv4 >= 0) {
-        fprintf(stderr, "Closing ipv4 sock...\n");
+        fprintf(stderr, "Closing proxy ipv4 sock...\n");
         close(server_ipv4);
     }
     if(server_ipv6 >= 0) {
-        fprintf(stderr, "Closing ipv6 sock...\n");
+        fprintf(stderr, "Closing proxy ipv6 sock...\n");
         close(server_ipv6);
     }
-    if(server_admin >= 0) {
-        fprintf(stderr, "Closing admin sock...\n");
-        close(server_admin);
+    if(admin_ipv4 >= 0) {
+        fprintf(stderr, "Closing admin ipv4 sock...\n");
+        close(admin_ipv4);
+    }
+    if(admin_ipv6 >= 0) {
+        fprintf(stderr, "Closing admin ipv6 sock...\n");
+        close(admin_ipv6);
     }
 
     free_users_list();
@@ -273,7 +306,7 @@ create_socket_ipv6(const char * address, unsigned port, int * server_fd) {
 }
 
 static unsigned
-create_admin_socket(const char * address, unsigned port, int * admin_fd) {
+create_admin_socket_ipv4(const char * address, unsigned port, int * admin_fd) {
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
     addr.sin_family      = AF_INET;
@@ -297,6 +330,43 @@ create_admin_socket(const char * address, unsigned port, int * admin_fd) {
         return error_socket_sockopt;
     }
     
+    if(bind(*admin_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
+        return error_socket_bind;
+    }
+
+    if (listen(*admin_fd, 20) < 0) {
+        return error_socket_listen;
+    }
+
+    return socket_no_error;
+}
+
+static unsigned 
+create_admin_socket_ipv6(const char * address, unsigned port, int * admin_fd) {
+    struct sockaddr_in6 addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin6_family      = AF_INET6;
+    addr.sin6_port        = htons(port);
+    if (inet_pton(AF_INET6, address, &addr.sin6_addr) == 0) {
+        return error_invalid_address;
+    }
+    
+    *admin_fd = socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
+    if (*admin_fd < 0) {
+        return error_socket_create;
+    }
+    
+    // man 7 ip. no importa reportar nada si falla.
+    // setsockopt(*admin_fd, SOL_SOCKET, SO_REUSEADDR, &(int){ 1 }, sizeof(int));
+    struct sctp_initmsg initmsg;
+    memset(&initmsg, 0, sizeof(initmsg));
+    initmsg.sinit_num_ostreams = 1;
+    initmsg.sinit_max_instreams = 1;
+    initmsg.sinit_max_attempts = 4;
+    if (setsockopt(*admin_fd, IPPROTO_SCTP, SCTP_INITMSG, &initmsg, sizeof(initmsg)) < 0) {
+        return error_socket_sockopt;
+    }
+
     if(bind(*admin_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0) {
         return error_socket_bind;
     }

@@ -13,10 +13,12 @@ struct users {
 };
 
 struct socks5args {
-    char *          socks_addr;
+    char *          socks_addr_ipv4;
+    char *          socks_addr_ipv6;
     unsigned short  socks_port;
 
-    char *          mng_addr;
+    char *          mng_addr_ipv4;
+    char *          mng_addr_ipv6;
     unsigned short  mng_port;
 
     bool            disectors_enabled;
