@@ -51,8 +51,10 @@ exec_cmd_and_answ(enum admin_errors error, struct admin_received_data * data, st
 
 uint8_t
 set_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
-    if (error != admin_error_none) {
+    if (error == admin_error_none) {
         enum file_errors file_error = add_user_to_list(data->value1->value, data->value2->value, data->option);
+        printf("New user is %s %s %d -> error %d\n", data->value1->value, data->value2->value, data->option, file_error);
+        print_users();
         if (file_error == memory_heap) return 0;
         if (file_error == max_users_reached) error = admin_error_max_ucount;
         else if (file_error != file_no_error) error = admin_error_server_fail; // Any other errors
@@ -73,6 +75,8 @@ get_users(enum admin_errors error, struct admin_received_data * data, struct adm
     if (!set_ans_head(error, data, ans, CMD_STAT_VLEN_HLEN)) return 0;
     if (error != admin_error_none) return 1;
     
+    print_users();
+    
     struct UserList * users_list = list_users();
     if (users_list->size == 0) return 1;
     ans->index--; // If there is no error and size > 0, override vlen = 0
@@ -80,7 +84,7 @@ get_users(enum admin_errors error, struct admin_received_data * data, struct adm
 
     struct UserNode * current = users_list->header;
     while (current != NULL) {
-            if (!byte_to_byte_array(current->user.level, ans)) return 0;
+        if (!byte_to_byte_array(current->user.level, ans)) return 0;
         if (!string_to_byte_array((const char *) current->user.username, 0, ans)) return 0;
         if (!string_to_byte_array((const char *) current->user.password, 0, ans)) return 0;
         current = current->next;
@@ -111,7 +115,7 @@ get_config(enum admin_errors error, struct admin_received_data * data, struct ad
     switch (data->option) {
         case config_buff_read_size: return ulong_to_byte_array(get_buffer_read_size(), ans);
         case config_buff_write_size: return ulong_to_byte_array(get_buffer_write_size(), ans);
-        case config_sel_tout: // return ulong_to_byte_array(get_timeout(), ans); TODO implement
+        case config_sel_tout: return ulong_to_byte_array(get_timeout(), ans);
         default: return 0; // Should never reach here
     }
 }
@@ -140,7 +144,7 @@ set_config(enum admin_errors error, struct admin_received_data * data, struct ad
         case config_sel_tout:
             if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
                 return add_inv_value_mssg("Timeout", MIN_TIMEOUT, MAX_TIMEOUT, ans);
-            // TODO set here value when ready
+            set_timeout(value);
             break;
         default: return 0; // Should never reach here
     }

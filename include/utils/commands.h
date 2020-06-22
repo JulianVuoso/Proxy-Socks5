@@ -6,8 +6,8 @@
 
 typedef struct admin_data_word {
     uint8_t * value;
-    uint8_t index;
-    uint8_t length;
+    uint64_t index;
+    uint64_t length;
 } admin_data_word;
 
 /* Possible commands */
