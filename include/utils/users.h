@@ -8,9 +8,16 @@
 #define MAX_USERS (1 << 16) - 1
 #define MAX_LINE_LENGTH     514     // UNAME (255) + : + PASS (255) + : + n + \0
 
-typedef enum user_level { CLIENT = 0, ADMIN } user_level;
 
-enum file_errors { file_no_error, opening_file, reading_file, writing_file, closing_file, wrong_arg, memory_heap, max_users_reached };
+/* Possible user typed */
+typedef enum user_level {
+    user_client = 0x00,
+    user_admin = 0x01,
+
+    user_none = 0xFF,
+} user_level;
+
+enum file_errors { file_no_error = 0x00, opening_file, writing_file, reading_file, closing_file, wrong_arg, memory_heap, max_users_reached};
 
 struct User{
     uint8_t * username;

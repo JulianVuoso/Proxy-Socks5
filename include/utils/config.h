@@ -11,4 +11,8 @@
 #define MAX_TIMEOUT         600
 #define MIN_TIMEOUT         5
 
+/* Config getters and setters */
+time_t get_timeout();
+void set_timeout(time_t time);
+
 #endif

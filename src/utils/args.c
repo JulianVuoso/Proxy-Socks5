@@ -29,9 +29,9 @@ port(const char *s) {
 
 static void
 add_user_client(char *s) {
-    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass;    
+    uint8_t * token = (uint8_t *) strtok(s, SEPARATOR), *user, *pass;    
 
-    user = malloc(sizeof(token));
+    user = malloc(strlen((const char *) token) + 1);
     if (user == NULL) exit(1);
     strcpy((char *)user, (char *)token); 
 
@@ -40,37 +40,42 @@ add_user_client(char *s) {
         fprintf(stderr, "password not found\n");
         exit(1);
     }
-    pass = malloc(sizeof(token));
+    pass = malloc(strlen((const char *) token) + 1);
     if(pass == NULL) exit(1);
     strcpy((char *)pass, (char *)token); 
     
-    add_user_to_list(user, pass, CLIENT);
+    add_user_to_list(user, pass, user_client);
+    free(user);
+    free(pass);
     // update_users_file("users.txt");
 }
 
 static void
 add_user(char* s) {
-    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0, level;    
+    uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, i = 0, level;
     while(token)
     {
         switch (i)
         {
-            case 0: user = malloc(sizeof(token));
+            case 0: user = malloc(strlen((const char *) token) + 1);
                     if (user == NULL) exit(1);
                     strcpy((char *)user, (char *)token); 
                     i++; 
                     break;
-            case 1: pass = malloc(sizeof(token));
+            case 1: pass = malloc(strlen((const char *) token) + 1);
                     if(pass == NULL) exit(1);
                     strcpy((char *)pass, (char *)token); 
                     i++; 
                     break;
-            case 2: level = atoi((char *)token); 
-                    if((level != CLIENT && level != ADMIN)||(!isdigit(*token))){
+            case 2: level = atoi((char *) token); 
+                    if((level != user_client && level != user_admin) || (!isdigit(*token))){
                         fprintf(stderr, "invalid user level (0:client 1:admin) \n");        
                         exit(1);
                     }
-                    add_user_to_list(user, pass, level);
+                    enum file_errors err = add_user_to_list(user, pass, level);
+                    free(user);
+                    free(pass);
+                    if (err == memory_heap) exit(1); 
                     i = 0; 
                     break;
             default: break;
@@ -220,9 +225,10 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 fprintf(stderr, "unknown argument %d.\n", c);
                 exit(1);
         }
-        // print_users();
+        
     }
-            print_users();
+    
+    print_users();
 
     if (optind < argc) {
         fprintf(stderr, "argument not accepted: ");

@@ -37,31 +37,21 @@ enum admin_state {
     ADMIN_NEGOT_WRITE,
 
     /**
-     * recibe un request del cliente y lo procesa
+     * recibe un request del cliente y lo procesa.
+     * escribe la respuesta del request al cliente.
      *
      * Intereses:
      *     - OP_READ sobre client_fd
-     *
-     * Transiciones:
-     *   - ADMIN_CMD_READ   mientras el request no esta completo
-     *   - ADMIN_CMD_WRITE  si se termino de leer
-     *   - DONE             si el cliente cerro la conexion y no queda nada por enviar
-     *   - ERROR            ante cualquier error (IO/parseo)
-     */
-    ADMIN_CMD_READ,
-
-    /**
-     * escribe la respuesta del request al cliente
-     *
-     * Intereses:
      *     - OP_WRITE sobre client_fd
      *
      * Transiciones:
-     *   - ADMIN_CMD_WRITE  mientras queden bytes por enviar
-     *   - DONE             si el cliente cerro la conexion y no queda nada por enviar
-     *   - ERROR            por error de I/O
+     *   - ADMIN_CMD   mientras el request no esta completo
+     *   - ADMIN_CMD   si se termino de leer
+     *   - ADMIN_CMD   mientras queden bytes por enviar
+     *   - DONE        si el cliente cerro la conexion y no queda nada por enviar
+     *   - ERROR       ante cualquier error (IO/parseo)
      */
-    ADMIN_CMD_WRITE,
+    ADMIN_CMD,
 
     /* Estado terminal exitoso */
     ADMIN_DONE,
@@ -84,15 +74,10 @@ static const struct state_definition admin_statbl[] = {
         .on_write_ready   = admin_negot_write,
     },
     {
-        .state            = ADMIN_CMD_READ,
-        .on_arrival       = admin_cmd_read_init,
-        .on_departure     = admin_cmd_read_close,
+        .state            = ADMIN_CMD,
+        .on_arrival       = admin_cmd_init,
+        .on_departure     = admin_cmd_close,
         .on_read_ready    = admin_cmd_read,
-    },
-    {
-        .state            = ADMIN_CMD_WRITE,
-        .on_arrival       = admin_cmd_write_init,
-        .on_departure     = admin_cmd_write_close,
         .on_write_ready   = admin_cmd_write,
     },
     {
@@ -115,7 +100,7 @@ struct admin {
     /** estados para el cliente */
     union {
         struct admin_negot_st   negot;
-        // struct admin_cmd_st     cmd;
+        struct admin_cmd_st     cmd;
     } client;
 
     /* Informacion del cliente */

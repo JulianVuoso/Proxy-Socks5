@@ -55,6 +55,7 @@ Los códigos de STATUS existentes son
 	~ INV METRIC		X'04'	
 	~ INV CONFIG		X'05'	
 	~ INV VALUE			X'06'	
+	~ MAX UCOUNT		X'07'
 	~ GEN SERV FAIL		X'FF'
 
 En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
@@ -95,6 +96,7 @@ Luego envía la siguiente REPLY
 			~ SUCCESS			X'00'
 			~ INV ULEN			X'02'
 			~ INV UTYPE			X'03'
+			~ MAX UCOUNT		X'07'
 			~ GEN SERVER FAIL	X'FF'
 
 En caso de recibir INV ULEN o INV UTYPE, el cliente PUEDE volver a enviar un nuevo REQUEST.
@@ -141,11 +143,11 @@ Listar nombres de usuario
 El servidor intenta listar todos los nombres de usuario existentes junto con su tipo. 
 Luego envía la siguiente REPLY
 
-+-----+--------+-------+--------+------+----------+-------+
-| CMD | STATUS | NULEN | NUSERS | ULEN |   UNAME  | UTYPE |
-+-----+--------+-------+--------+------+----------+-------+
-|  1  |   1    |   1   |1 to 255|  1   | 1 to 255 |   1   |
-+-----+--------+-------+--------+------+----------+-------+
++-----+--------+-------+--------+-------+------+----------+
+| CMD | STATUS | NULEN | NUSERS | UTYPE | ULEN |   UNAME  |
++-----+--------+-------+--------+-------+------+----------+
+|  1  |   1    |   1   |1 to 255|   1   |  1   | 1 to 255 |
++-----+--------+-------+--------+-------+------+----------+
 								[------------|------------]
 										NUSERS veces
 

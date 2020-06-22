@@ -363,7 +363,7 @@ static const char * file_error_description(enum file_errors error) {
 }
 
 /* Config getters and setters */
-time_t get_timeout(){
+time_t get_timeout() {
     return timeout;
 }
 
