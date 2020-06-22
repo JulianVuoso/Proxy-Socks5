@@ -117,7 +117,8 @@ get_config(enum admin_errors error, struct admin_received_data * data, struct ad
 uint8_t
 set_config(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
     if (!set_ans_head(error, data, ans, CMD_STAT_OPT_HLEN)) return 0;
-    
+
+
     if (data->value1->length > VAL_SIZE_MAX) {
         ans->value[STATUS_INDEX] = admin_error_inv_value;
         return string_to_byte_array("value exceedes possible representation limit", 0, ans);
@@ -209,7 +210,7 @@ static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans) {
     ans->value[STATUS_INDEX] = admin_error_inv_value;
     char s[MSG_MAX_LEN + 1];
-    int16_t slen = printf(s, MSG_MAX_LEN + 1, "%s value must be between %ld AND %ld", type, min, max);
+    int16_t slen = snprintf(s, MSG_MAX_LEN + 1, "%s value must be between %ld AND %ld", type, min, max);
     if (slen < -1) return 0;
     return string_to_byte_array(s, (uint8_t) slen, ans); 
 }
