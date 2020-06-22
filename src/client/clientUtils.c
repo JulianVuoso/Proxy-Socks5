@@ -205,7 +205,8 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
                 return -1;
             }
         }
-        *datalen = data[2] + 2;
+        data[2] = vlen;
+        *datalen = data[2] + 3;
         *cmdStartIndex += 3;
     }
     else
@@ -239,16 +240,36 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         else if(readBuffer[1]== 0x07){
             printf("Cantidad de usuarios llena\n");
             return -1;
+        }else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+            return -1;
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
+            return -1;
         }else{
             printf("Error inesperado al crear el usuario\n");
+            return -1;
         }
         break;
     case DEL_USER_NO:
         if (readBuffer[1] == 0)
         {
             printf("usuario borrado\n");
+        }else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+            return -1;
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
+            return -1;
         }else{
             printf("Error inesperado al borrar el usuario\n");
+            return -1;
         }
         break;
     case LIST_USERS_NO:
@@ -282,8 +303,18 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
                 write(STDOUT_FILENO, readBuffer, plen);
                 printf("    %d\n", utype);
             }
+        }else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+            return -1;
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
+            return -1;
         }else{
             printf("Error inesperado al listar usuarios\n");
+            return -1;
         }
         break;
     case GET_METRIC_NO:
@@ -320,6 +351,15 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x04)
         {
             printf("Metrica invalida\n");
+            return -1;
+        }else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+            return -1;
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
             return -1;
         }else{
             printf("Error inesperado al obtener metricas\n");
@@ -362,6 +402,15 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         {
             printf("Configuracion invalida\n");
             return -1;
+        }else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+            return -1;
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
+            return -1;
         }else{
             printf("Error inesperado al obtener configuracion\n");
             return -1;
@@ -378,6 +427,15 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x06)
         {
             printf("Valor de configuracion invalido\n");
+            return -1;
+        }else if (readBuffer[1] == 0x01)
+        {
+            printf("Comando invalido\n");
+            return -1;
+        }
+        else if (readBuffer[1] == 0xFF)
+        {
+            printf("Fallo general del servidor\n");
             return -1;
         }else{
             printf("Error inesperado al setear configuracion\n");

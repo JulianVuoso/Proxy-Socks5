@@ -181,14 +181,7 @@ int main(int argc, char *const *argv)
         {
             printf("La respuesta no matchea el comando pedido\n");
         }
-        else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-        }else{
+        else{
             //handle response
             int res = handleResponse(sockfd,cmd[i], readBuffer);
             if(res<0){
