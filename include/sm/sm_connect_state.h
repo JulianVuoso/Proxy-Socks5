@@ -11,7 +11,7 @@ unsigned start_doh_connect(struct selector_key * key);
 /* Next doh connect (no init) */
 unsigned connect_doh_server(struct selector_key * key);
 
-// unsigned prepare_blocking_doh(struct selector_key * key);
+unsigned prepare_blocking_doh(struct selector_key * key);
 
 unsigned dns_connect_write(struct selector_key * key);
 

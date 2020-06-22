@@ -7,13 +7,13 @@
 #define MIN_BUF_SIZE        2048
 
 /* Unit: Seconds */
-#define INIT_GEN_TIMEOUT    1800
-#define MAX_GEN_TIMEOUT     3600
-#define MIN_GEN_TIMEOUT     60
+#define INIT_GEN_TIMEOUT    1800    // 30 minutos
+#define MAX_GEN_TIMEOUT     3600    // 60 minutos
+#define MIN_GEN_TIMEOUT     300     // 5  minutos
 
-#define INIT_CON_TIMEOUT    30
-#define MAX_CON_TIMEOUT     600
-#define MIN_CON_TIMEOUT     5
+#define INIT_CON_TIMEOUT    30      // 30   segundos
+#define MAX_CON_TIMEOUT     240     // 240  segundos
+#define MIN_CON_TIMEOUT     5       // 5    segundos
 
 /* Config getters and setters */
 time_t get_timeout_gen();

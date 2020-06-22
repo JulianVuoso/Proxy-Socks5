@@ -8,7 +8,7 @@
 
 #include "logger.h"
 #include "netutils.h"
-#include "sm_before_error_state.h"
+#include "sm_actions.h"
 
 #include "socks5mt.h"
 #include "request.h"

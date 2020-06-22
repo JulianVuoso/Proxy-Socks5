@@ -138,11 +138,12 @@ typedef struct fd_handler {
   void (*handle_block)     (struct selector_key *key);
 
   /**
-   * llamado cuando se se desregistra el fd
+   * llamado cuando se desregistra el fd
    * Seguramente deba liberar los recusos alocados en data.
    */
   void (*handle_close)     (struct selector_key *key);
-
+  /* llamado cuando salta un timeout de tipo CON_TIMEOUT  */
+  void (*handle_timeout)   (struct selector_key *key);
 } fd_handler;
 
 /**

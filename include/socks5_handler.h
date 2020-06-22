@@ -7,12 +7,14 @@ void socks5_read(selector_key * key);
 void socks5_write(selector_key * key);
 void socks5_block(selector_key * key);
 void socks5_close(selector_key * key);
+void socks5_timeout(selector_key * key);
 
 static const fd_handler socks5_handler = {
-    .handle_read = socks5_read,
-    .handle_write = socks5_write,
-    .handle_block = socks5_block,
-    .handle_close = socks5_close,
+    .handle_read    = socks5_read,
+    .handle_write   = socks5_write,
+    .handle_block   = socks5_block,
+    .handle_close   = socks5_close,
+    .handle_timeout = socks5_timeout,
 };
 
 #endif

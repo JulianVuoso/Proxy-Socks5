@@ -12,7 +12,7 @@
 #include "socks5_handler.h"
 
 #include "logger.h"
-#include "sm_before_error_state.h"
+#include "sm_actions.h"
 #include "config.h"
 
 // Retorna la cantidad de elementos de un arreglo
@@ -118,6 +118,7 @@ static struct socks5 * socks5_new(int client_fd) {
     ret->stm.initial = HELLO_READ;
     ret->stm.max_state = ERROR;
     ret->stm.states = client_statbl;
+    ret->stm.on_timeout = do_when_timeout;
     stm_init(&ret->stm);
 
     const uint64_t cur_read_size = sizeof(*ret->read_buffer_mem) * buffer_read_size, 
@@ -229,6 +230,15 @@ void socks5_block(struct selector_key *key) {
 
 void socks5_close(struct selector_key *key) {
     socks5_destroy(key);
+}
+
+void socks5_timeout(struct selector_key *key) {
+    struct state_machine *stm   = &ATTACHMENT(key)->stm;
+    const enum socks5_state st = stm_handler_timeout(stm, key);
+
+    if(ERROR == st || DONE == st) {
+        socks5_done(key);
+    }
 }
 
 static void

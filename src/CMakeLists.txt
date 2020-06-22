@@ -31,7 +31,7 @@ add_executable(socks5d main.c
                        sm/sm_connect_state.c
                        doh/dohParser.c
                        doh/dohclient.c
-                       sm/sm_before_error_state.c
+                       sm/sm_actions.c
                        sm/socks5mt.c
                        admin/admin_sm_cmd_state.c
                        admin/admin_sm_negot_state.c

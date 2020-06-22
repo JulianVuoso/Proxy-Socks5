@@ -7,12 +7,11 @@
 #include "socks5mt.h"
 #include "logger.h"
 #include "socks5_handler.h"
-#include "sm_before_error_state.h"
+#include "sm_actions.h"
 #include "dohParser.h"
 
 static struct doh doh_info;
 
-static unsigned prepare_blocking_doh(struct selector_key * key);
 static unsigned build_doh_query(struct selector_key * key);
 
 void set_doh_info(struct doh info) {
@@ -396,7 +395,7 @@ static void * request_solve_blocking(void * args) {
     return 0;
 }
 
-static unsigned prepare_blocking_doh(struct selector_key * key) {
+unsigned prepare_blocking_doh(struct selector_key * key) {
     struct socks5 * sock = ATTACHMENT(key);
     sock->option = default_function;
 
