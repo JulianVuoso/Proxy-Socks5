@@ -305,7 +305,7 @@ int main(int argc, char *const *argv)
     //convert ip from string to byte
     if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0)
     {
-        printf("IP del host invalida:%s\n", host);list-user
+        printf("IP del host invalida:%s\n", host);
         close(sockfd);
         return -1;
     }
