@@ -420,25 +420,37 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         if (readBuffer[1] == 0)
         {
             printf("Configuracion seteada\n");
-        }else if (readBuffer[1] == 0x05)
-        {
-            printf("Configuracion invalida\n");
-            return -1;
-        }else if (readBuffer[1] == 0x06)
-        {
-            printf("Valor de configuracion invalido\n");
-            return -1;
-        }else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-            return -1;
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-            return -1;
         }else{
-            printf("Error inesperado al setear configuracion\n");
+            if (readBuffer[1] == 0x05)
+            {
+                printf("Configuracion invalida\n");
+                
+            }else if (readBuffer[1] == 0x06)
+            {
+                printf("Valor de configuracion invalido\n");
+                
+            }else if (readBuffer[1] == 0x01)
+            {
+                printf("Comando invalido\n");
+                
+            }
+            else if (readBuffer[1] == 0xFF)
+            {
+                printf("Fallo general del servidor\n");
+                
+            }else{
+                printf("Error inesperado al setear configuracion\n");
+                
+            }
+            recvWrapper(sockfd,readBuffer,2,0);
+            unsigned int mlen = readBuffer[1];
+            if(mlen>0){
+                recvWrapper(sockfd,readBuffer,mlen,0);
+                printf("mensaje del servidor:");
+                fflush(stdout);
+                write(STDOUT_FILENO,readBuffer,mlen);
+                printf("\n");
+            }
             return -1;
         }
         break;
