@@ -11,12 +11,17 @@
 #include "admin.h"
 #include "logger.h"
 
+
+static bool
+is_irrecoverable_error(enum admin_errors error);
+
+
 void admin_cmd_init(const unsigned state, struct selector_key *key) {
     struct admin_cmd_st * st = &ADMIN_ATTACH(key)->client.cmd;
     st->read_buf = &(ADMIN_ATTACH(key)->read_buffer);
     st->write_buf = &(ADMIN_ATTACH(key)->write_buffer);
     st->reply_word.value = NULL;
-    st->marshall_error = false;
+    st->irrec_error = false;
     admin_parser_init(&st->parser);
 }
 
@@ -32,8 +37,11 @@ unsigned admin_cmd_process(struct selector_key *key) {
 
     if (!exec_cmd_and_answ(st_vars->parser.error, st_vars->parser.data, &st_vars->reply_word))
         return ADMIN_ERROR; 
+
+    st_vars->irrec_error = is_irrecoverable_error(st_vars->reply_word.value[STATUS_INDEX]);
+
     if (admin_marshall(st_vars->write_buf, st_vars->reply_word) < 0)
-        st_vars->marshall_error = true;
+        st_vars->irrec_error = true;
 
     return ADMIN_CMD;
 }
@@ -54,8 +62,8 @@ unsigned admin_cmd_read(struct selector_key *key) {
                 if (selector_add_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) {
                     ret = admin_cmd_process(key);
                     admin_parser_reset(&st_vars->parser);
-                    if (st_vars->marshall_error) {
-                        if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) // If marshall cant 
+                    if (st_vars->irrec_error) { // If marshall cant or is an irrecoverable error
+                        if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) 
                             ret = ADMIN_ERROR;
                         break;
                     }
@@ -83,7 +91,7 @@ unsigned admin_cmd_write(struct selector_key *key) {
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) 
                 ret = ADMIN_CMD;
             else ret = ADMIN_ERROR;
-            if (st_vars->marshall_error) {
+            if (st_vars->irrec_error) {
                 logger_log(DEBUG, "admin error full buffer on command write\n\n");
                 ret = ADMIN_ERROR; // This might change
             }  
@@ -93,4 +101,17 @@ unsigned admin_cmd_write(struct selector_key *key) {
         ret = ADMIN_ERROR;
     }
     return ret;
+}
+
+
+/* Auxiliary functions */
+
+static bool
+is_irrecoverable_error(enum admin_errors error) {
+    switch (error) {
+        case admin_error_inv_value:
+        case admin_error_max_ucount:
+        case admin_error_none: return false; // This are recoverable errors (or none)
+        default: return true;
+    }
 }
