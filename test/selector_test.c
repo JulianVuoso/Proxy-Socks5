@@ -91,7 +91,7 @@ START_TEST (test_selector_register_fd) {
     fd_selector s = selector_new(INITIAL_SIZE);
     ck_assert(s != NULL);
 
-    ck_assert_uint_eq(SELECTOR_IARGS,   selector_register(0, -1, 0, 0, data_mark, true));
+    ck_assert_uint_eq(SELECTOR_IARGS,   selector_register(0, -1, 0, 0, data_mark, GEN_TIMEOUT));
 
     const struct fd_handler h = {
         .handle_read   = NULL,
@@ -100,7 +100,7 @@ START_TEST (test_selector_register_fd) {
     };
     int fd = ITEMS_MAX_SIZE - 1;
     ck_assert_uint_eq(SELECTOR_SUCCESS,
-                      selector_register(s, fd, &h, 0, data_mark, true));
+                      selector_register(s, fd, &h, 0, data_mark, GEN_TIMEOUT));
     const struct item *item = s->fds + fd;
     ck_assert_int_eq (fd,         s->max_fd);
     ck_assert_int_eq (fd,         item->fd);
@@ -127,7 +127,7 @@ START_TEST (test_selector_register_unregister_register) {
     };
     int fd = ITEMS_MAX_SIZE - 1;
     ck_assert_uint_eq(SELECTOR_SUCCESS,
-                      selector_register(s, fd, &h, 0, data_mark, true));
+                      selector_register(s, fd, &h, 0, data_mark, GEN_TIMEOUT));
     ck_assert_uint_eq(SELECTOR_SUCCESS,
                       selector_unregister_fd(s, fd));
 
@@ -139,7 +139,7 @@ START_TEST (test_selector_register_unregister_register) {
     ck_assert_ptr_eq (0x00,       item->data);
 
     ck_assert_uint_eq(SELECTOR_SUCCESS,
-                      selector_register(s, fd, &h, 0, data_mark, true));
+                      selector_register(s, fd, &h, 0, data_mark, GEN_TIMEOUT));
     item = s->fds + fd;
     ck_assert_int_eq (fd,         s->max_fd);
     ck_assert_int_eq (fd,         item->fd);

@@ -179,7 +179,7 @@ socks5_passive_accept(struct selector_key *key) {
     }
 
     if(SELECTOR_SUCCESS != selector_register(key->s, client, &socks5_handler,
-                                              OP_READ, state, true)) {
+                                              OP_READ, state, GEN_TIMEOUT)) {
         goto fail;
     }
     return ;

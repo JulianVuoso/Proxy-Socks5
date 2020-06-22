@@ -72,7 +72,7 @@ try_connect_doh(struct selector_key * key) {
         if (errno == EINPROGRESS) {
             logger_log(DEBUG, "EINPROGRESS\n");
             /* Espero a poder escribirle al doh server para determinar si me pude conectar */
-            if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data, true) != SELECTOR_SUCCESS) {
+            if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data, CON_TIMEOUT) != SELECTOR_SUCCESS) {
                 logger_log(DEBUG, "failed selector\n");
                 goto errors;
             }
@@ -83,7 +83,7 @@ try_connect_doh(struct selector_key * key) {
         }
     }
     /* Si me conecte, voy a escribirle al server para enviarle la consulta DNS */
-    if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data, true) != SELECTOR_SUCCESS) {
+    if (selector_register(key->s, st->doh_fd, &socks5_handler, OP_WRITE, key->data, GEN_TIMEOUT) != SELECTOR_SUCCESS) {
         logger_log(DEBUG, "failed selector\n");
         goto errors;
     }
@@ -161,6 +161,8 @@ unsigned dns_connect_write(struct selector_key * key) {
         /* Defaulteo a getaddrinfo */
         return prepare_blocking_doh(key);
     }
+    /* Ya estableci la conexion, cambio la opcion de timeout */
+    selector_set_timeout_option(key->s, st->doh_fd, GEN_TIMEOUT);
     /* Me mantengo interesado en escribir en doh_fd */
     return build_doh_query(key);
 }

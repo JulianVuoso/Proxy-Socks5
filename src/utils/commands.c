@@ -114,7 +114,7 @@ get_config(enum admin_errors error, struct admin_received_data * data, struct ad
     switch (data->option) {
         case config_buff_read_size: return ulong_to_byte_array(get_buffer_read_size(), ans);
         case config_buff_write_size: return ulong_to_byte_array(get_buffer_write_size(), ans);
-        case config_sel_tout: return ulong_to_byte_array(get_timeout(), ans);
+        case config_sel_tout: return ulong_to_byte_array(get_timeout_gen(), ans);
         default: return 0; // Should never reach here
     }
 }
@@ -142,8 +142,8 @@ set_config(enum admin_errors error, struct admin_received_data * data, struct ad
             break;
         case config_sel_tout:
             if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
-                return add_inv_value_mssg("Timeout", MIN_TIMEOUT, MAX_TIMEOUT, ans);
-            set_timeout(value);
+                return add_inv_value_mssg("Timeout", MIN_GEN_TIMEOUT, MAX_GEN_TIMEOUT, ans);
+            set_timeout_gen(value);
             break;
         default: return 0; // Should never reach here
     }
