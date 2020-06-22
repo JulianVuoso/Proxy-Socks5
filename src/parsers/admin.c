@@ -244,7 +244,6 @@ admin_marshall(buffer * b, struct admin_data_word data) {
     if (data.length > n) return -1;
     for (uint64_t i = 0; i < data.length; i++) {
         buff[i] = data.value[i];
-        printf("%d, ", buff[i]);
     } 
     printf("\n");
     buffer_write_adv(b, data.length);
