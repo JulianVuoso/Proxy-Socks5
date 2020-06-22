@@ -12,6 +12,8 @@
 #define VAL_SIZE_MAX    sizeof(uint64_t)
 #define MSG_MAX_LEN     0xFF
 
+#define BITS_P_BYTE             8
+
 #define STATUS_INDEX            2
 #define CMD_STAT_HLEN           2
 #define CMD_STAT_VLEN_HLEN      3
@@ -78,9 +80,9 @@ get_users(enum admin_errors error, struct admin_received_data * data, struct adm
 
     struct UserNode * current = users_list->header;
     while (current != NULL) {
+            if (!byte_to_byte_array(current->user.level, ans)) return 0;
         if (!string_to_byte_array((const char *) current->user.username, 0, ans)) return 0;
         if (!string_to_byte_array((const char *) current->user.password, 0, ans)) return 0;
-        if (!byte_to_byte_array(current->user.level, ans)) return 0;
         current = current->next;
     }
     return 1;
@@ -156,7 +158,7 @@ ulong_to_byte_array(uint64_t value, struct admin_data_word * ans) {
     
     bool zeros = true;
     uint8_t aux, len = 0;
-    for (uint8_t i = VAL_SIZE_MAX * 8; i != 0; i -= 8 ) {
+    for (int8_t i = VAL_SIZE_MAX * (BITS_P_BYTE - 1); i >= 0; i -= BITS_P_BYTE ) {
         aux = value >> i;
         if (zeros) {
             if (aux != 0) {

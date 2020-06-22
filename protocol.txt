@@ -143,11 +143,11 @@ Listar nombres de usuario
 El servidor intenta listar todos los nombres de usuario existentes junto con su tipo. 
 Luego envía la siguiente REPLY
 
-+-----+--------+-------+--------+------+----------+-------+
-| CMD | STATUS | NULEN | NUSERS | ULEN |   UNAME  | UTYPE |
-+-----+--------+-------+--------+------+----------+-------+
-|  1  |   1    |   1   |1 to 255|  1   | 1 to 255 |   1   |
-+-----+--------+-------+--------+------+----------+-------+
++-----+--------+-------+--------+-------+------+----------+
+| CMD | STATUS | NULEN | NUSERS | UTYPE | ULEN |   UNAME  |
++-----+--------+-------+--------+-------+------+----------+
+|  1  |   1    |   1   |1 to 255|   1   |  1   | 1 to 255 |
++-----+--------+-------+--------+-------+------+----------+
 								[------------|------------]
 										NUSERS veces
 

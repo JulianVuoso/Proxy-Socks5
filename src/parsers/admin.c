@@ -239,8 +239,6 @@ admin_parser_close(struct admin_parser * p) {
 
 int16_t
 admin_marshall(buffer * b, struct admin_data_word data) {
-    if (data.index != data.length) printf("Somehow something happened on marshall command\n");
-
     uint64_t n;
     uint8_t * buff = buffer_write_ptr(b, &n);
     if (data.length > n) return -1;

@@ -77,8 +77,6 @@ unsigned admin_cmd_write(struct selector_key *key) {
     uint8_t * buf_read_ptr = buffer_read_ptr(st_vars->write_buf, &nbytes);
     ssize_t n = sctp_sendmsg(key->fd, buf_read_ptr, nbytes, NULL, 0, 0, 0, 0, 0, 0);
 
-    printf("Hello the n is %ld\n", n);
-
     if (n > 0) {
         buffer_read_adv(st_vars->write_buf, n);
         if (!buffer_can_read(st_vars->write_buf)) { // Finish sending message
