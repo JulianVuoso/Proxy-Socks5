@@ -8,35 +8,28 @@ static uint8_t
 ulongToByteArray(uint64_t value, uint8_t * data);
 
 //chekear que todos los comandos esten al final
-void validateArgv(int argc,char * const*argv){
-    for (int i = 1,optEnd = 0, optArg = 0; i < argc; i++)
-    {
-           if(!optArg){
-               if(argv[i][0]=='-'){
-                   if(optEnd){
-                       printf("Formato erroneo, los comandos deben ir al final\n");
-                       exit(-1);
-                   }
-                   optArg = 1;
-               }else{
-                   optEnd = 1;
-               }
-           }else{
-               optArg = 0;
-           }
+void validateArgv(int argc, char const *argv[]){
+    for (int i = 1, optEnd = 0, optArg = 0; i < argc; i++) {
+        if(!optArg) {
+            if(argv[i][0] == '-') {
+                if(optEnd) {
+                    printf("Formato erroneo, los comandos deben ir al final\n");
+                    exit(-1);
+                }
+                optArg = 1;
+            } else optEnd = 1;
+        } else optArg = 0;
     }
 }
 
 //get next command
-int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,int *datalen){
+int getNextCommand(int argc,char const *argv[], int * cmdStartIndex, uint8_t * data, int * datalen) {
     int cmd;
-    if (strcmp(argv[(*cmdStartIndex)], "add-user") == 0)
-    {
+    if (strcmp(argv[(*cmdStartIndex)], "add-user") == 0) {
         cmd = ADD_USER_NO;
         int utypeSpecified = 0;
-        if (argc <= (*cmdStartIndex) + 1)
-        {
-            printf("Falta usuario:password a agregar\n");
+        if (argc <= (*cmdStartIndex) + 1) {
+            printf("Missing user:pass\n");
             return -1;
         }
         char *nuser = argv[(*cmdStartIndex) + 1];

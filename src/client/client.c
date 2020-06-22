@@ -17,8 +17,8 @@
 #define DEFAULT_PORT 8080
 #define DEFAULT_HOST "127.0.0.1"
 
-int main(int argc, char *const *argv)
-{
+
+int main(int argc, char const *argv[]) {
     //checkear que todos los comandos esten al final
     validateArgv(argc,argv);
     //declare variables
