@@ -102,6 +102,7 @@ admin_parser_feed(struct admin_parser * p, uint8_t byte) {
         /* Gets password length */
             p->state = admin_get_pass;
             admin_data_word_init(p, PASS, byte);
+            if (byte == 0) p->state = admin_done_p;
             break;
 
         case admin_get_pass:
@@ -263,6 +264,7 @@ admin_data_word_init(admin_parser * p, uint8_t type, uint8_t length) {
         p->state = admin_error;
         p->error = admin_error_server_fail;
     }
+    word->value[length] = '\0';
 }
 
 static bool

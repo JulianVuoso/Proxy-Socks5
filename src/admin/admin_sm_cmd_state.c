@@ -92,8 +92,8 @@ unsigned admin_cmd_write(struct selector_key *key) {
                 ret = ADMIN_CMD;
             else ret = ADMIN_ERROR;
             if (st_vars->irrec_error) {
-                logger_log(DEBUG, "admin error full buffer on command write\n\n");
-                ret = ADMIN_ERROR; // This might change
+                logger_log(DEBUG, "Admin error. Irrecoverable error\n\n");
+                ret = ADMIN_ERROR;
             }  
         }
     } else {
