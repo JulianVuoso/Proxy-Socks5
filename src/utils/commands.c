@@ -8,7 +8,6 @@
 #include "sm_copy_state.h" // For metric
 #include "config.h" // For buffers max and min
 
-#define DATA_BLOCK      3
 #define VAL_SIZE_MAX    sizeof(uint64_t)
 #define MSG_MAX_LEN     0xFF
 
@@ -52,8 +51,6 @@ uint8_t
 set_user(enum admin_errors error, struct admin_received_data * data, struct admin_data_word * ans) {
     if (error == admin_error_none) {
         enum file_errors file_error = add_user_to_list(data->value1->value, data->value2->value, data->option);
-        printf("New user is %s %s %d -> error %d\n", data->value1->value, data->value2->value, data->option, file_error);
-        print_users();
         if (file_error == memory_heap) return 0;
         if (file_error == max_users_reached) error = admin_error_max_ucount;
         else if (file_error != file_no_error) error = admin_error_server_fail; // Any other errors
@@ -74,8 +71,6 @@ get_users(enum admin_errors error, struct admin_received_data * data, struct adm
     if (!set_ans_head(error, data, ans, CMD_STAT_VLEN_HLEN)) return 0;
     if (error != admin_error_none) return 1;
     
-    print_users();
-
     struct UserList * users_list = list_users();
     if (users_list->size == 0) return 1;
     ans->index--; // If there is no error and size > 0, override vlen = 0
@@ -159,7 +154,7 @@ ulong_to_byte_array(uint64_t value, struct admin_data_word * ans) {
     ans->value = realloc(ans->value, ans->index + VAL_SIZE_MAX + 1);
     if (ans->value == NULL) return 0;
     
-    bool zeros = true;
+    uint8_t zeros = 1;
     uint8_t aux, len = 0;
     for (int8_t i = VAL_SIZE_MAX * (BITS_P_BYTE - 1); i >= 0; i -= BITS_P_BYTE ) {
         aux = value >> i;

@@ -1,5 +1,11 @@
 #include "client/clientUtils.h"
 
+#define MAX_VAL_UINT64  0xFFFFFFFFFFFFFFFF
+#define BITS_P_BYTE             8
+#define VAL_SIZE_MAX    sizeof(uint64_t)
+
+static uint8_t 
+ulongToByteArray(uint64_t value, uint8_t * data);
 
 //chekear que todos los comandos esten al final
 void validateArgv(int argc,char * const*argv){
@@ -195,17 +201,17 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
             return -1;
         }
         char *nval = argv[(*cmdStartIndex) + 2];
-        int vlen = 0;
-        for (int i = 0;nval[i]!=0 && i<255; i++,vlen++)
-        {
-            if(nval[i]>='0' && nval[i]<= '9'){
-                data[i+3] = nval[i]-'0';
-            }else{
+        uint64_t val = 0;
+        for (int i = 0; nval[i] != 0; i++) {
+            if(val < (MAX_VAL_UINT64 / 10) && nval[i]>='0' && nval[i]<= '9')
+                val = val * 10 + nval[i] - '0';
+           else{
                 printf("Error en el formato del valor de configuracion. Debe ser un numero de menos de 255 digitos\n");
                 return -1;
             }
         }
-        data[2] = vlen;
+
+        data[2] = ulongToByteArray(val, data + 3);
         *datalen = data[2] + 3;
         *cmdStartIndex += 3;
     }
@@ -380,7 +386,7 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             unsigned long configVal = 0;
             for (int i = 0; i < configLen; i++)
             {
-                configVal = (configVal*10) + readBuffer[i];
+                configVal = (configVal << 8) + readBuffer[i];
             }
             
             switch (config)
@@ -473,4 +479,20 @@ void recvWrapper(int sockfd,void *buffer, size_t len, int flags){
         close(sockfd);
         exit(-1);
     }
+}
+
+static uint8_t 
+ulongToByteArray(uint64_t value, uint8_t * data) {
+    uint8_t zeros = 1;
+    uint8_t aux, len = 0;
+    for (int8_t i = VAL_SIZE_MAX * (BITS_P_BYTE - 1); i >= 0; i -= BITS_P_BYTE ) {
+        aux = value >> i;
+        if (zeros) {
+            if (aux != 0) {
+                zeros = 0;
+                data[len++] = aux;
+            }
+        } else data[len++] = aux;
+    }
+   return len;
 }
