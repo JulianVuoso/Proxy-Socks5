@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "users.h"
 
-#define STATUS_INDEX            2
+#define STATUS_INDEX            1
 
 typedef struct admin_data_word {
     uint8_t * value;
