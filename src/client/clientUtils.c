@@ -253,20 +253,20 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         if (readBuffer[1] == 0)
         {   
             recvWrapper(sockfd,readBuffer,1,0);
-            int nuserslen = readBuffer[0];
+            unsigned int nuserslen = readBuffer[0];
             if(nuserslen > sizeof(unsigned long)){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
                 return -1;
             }
             recvWrapper(sockfd, readBuffer, nuserslen, 0);
             unsigned long nusers = 0;
-            for (int  i = 0; i < nuserslen; i++)
+            for (unsigned int  i = 0; i < nuserslen; i++)
             {
                 nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
             }
             printf("usario tipo\n");
             fflush(stdout);
-            for (int i = 0,nulen = 0,utype=0; i < nusers; i++)
+            for (unsigned int i = 0,nulen = 0,utype=0; i < nusers; i++)
             {
                 recvWrapper(sockfd, readBuffer, 2, 0);
                 utype = readBuffer[0];
