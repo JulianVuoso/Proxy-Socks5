@@ -1,4 +1,4 @@
-#include "client/clientUtils.h"
+#include "clientUtils.h"
 
 #define MAX_VAL_UINT64  0xFFFFFFFFFFFFFFFF
 #define BITS_P_BYTE             8
@@ -23,7 +23,7 @@ void validateArgv(int argc, char const *argv[]){
 }
 
 //get next command
-int getNextCommand(int argc,char const *argv[], int * cmdStartIndex, uint8_t * data, int * datalen) {
+int getNextCommand(int argc,char *argv[], int * cmdStartIndex, uint8_t * data, int * datalen) {
     int cmd;
     if (strcmp(argv[(*cmdStartIndex)], "add-user") == 0) {
         cmd = ADD_USER_NO;

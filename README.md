@@ -8,7 +8,7 @@ Para generar un ejecutable a partir del código fuente proporcionado, se debe ut
 2. `cd build`
 3. `cmake ..`
 4. `cd ..`
-5. `make -C build`
+5. `make -C build clean all`
 
 Si se desea limpiar todos los archivos generados al compilar, correr
     `make -C build clean`
