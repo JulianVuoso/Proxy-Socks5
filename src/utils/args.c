@@ -37,16 +37,16 @@ add_user_client(char *s) {
 
     token = (uint8_t *)strtok(NULL, SEPARATOR);
 
-    /* if(token == NULL){
+    if(token == NULL){
         fprintf(stderr, "password not found\n");
         exit(1);
     }
     pass = malloc(strlen((const char *) token) + 1);
     if(pass == NULL) exit(1);
-    strcpy((char *)pass, (char *)token);  */
+    strcpy((char *)pass, (char *)token); 
     /***/
     
-    if (token == NULL) {
+    /* if (token == NULL) {
         pass = malloc(2);
         if(pass == NULL) exit(1);
         strcpy((char *)pass, "");
@@ -54,7 +54,7 @@ add_user_client(char *s) {
         pass = malloc(strlen((const char *) token) + 1);
         if(pass == NULL) exit(1);
         strcpy((char *)pass, (char *)token);
-    }
+    } */
     /***/
     add_user_to_list(user, pass, user_client);
     free(user);
@@ -65,7 +65,8 @@ add_user_client(char *s) {
 static void
 add_user(char* s) {
     uint8_t * token = (uint8_t *)strtok(s, SEPARATOR), *user, *pass, state = read_user, level;
-    while(state != read_done){
+    
+    /* while(state != read_done){
         switch (state){
             case read_user: 
                 if(token == NULL){
@@ -109,8 +110,8 @@ add_user(char* s) {
         }
         token = (uint8_t *)strtok(NULL, SEPARATOR);
     }
-
-    /* while(token)
+ */
+    while(token)
     {
         switch (state)
         {
@@ -148,7 +149,7 @@ add_user(char* s) {
                 exit(1);
             }
         }
-    } */
+    }
 }
 
 static void

@@ -32,32 +32,32 @@ enum file_errors read_users_file(char * filename){
 
     uint8_t * user, * pass, * token;
     char line[MAX_LINE_LENGTH];
-    int i = 0, level;
-    while(fgets(line, sizeof(line), file) != NULL)
-    {
+    int sm_state = read_user, level;
+    while(fgets(line, sizeof(line), file) != NULL){
         token = (uint8_t *)strtok(line, SEPARATOR);    
-        while(token)
-        {
-            switch (i)
-            {
-                case 0: user = malloc(strlen((const char *) token) + 1);
+        while(token){
+            switch (sm_state){
+                case read_user: 
+                        user = malloc(strlen((const char *) token) + 1);
                         if (user == NULL) {
                             close(fd);
                             return memory_heap;
                         }
                         strcpy((char *)user, (char *)token); 
-                        i++; 
+                        sm_state = read_pass;
                         break;
-                case 1: pass = malloc(strlen((const char *) token) + 1);
+                case read_pass: 
+                        pass = malloc(strlen((const char *) token) + 1);
                         if(pass == NULL) {
                             close(fd);
                             free(user);
                             return memory_heap;
                         }
                         strcpy((char *)pass, (char *)token); 
-                        i++; 
+                        sm_state = read_type;
                         break;
-                case 2: level = atoi((char *)token);
+                case read_type: 
+                        level = atoi((char *)token);
                         enum file_errors err = add_user_to_list(user, pass, level);
                         free(user);
                         free(pass);
@@ -65,7 +65,7 @@ enum file_errors read_users_file(char * filename){
                             close(fd);
                             return err;
                         }
-                        i = 0; 
+                        sm_state = read_done; 
                         break;
                 default: break;
             }
