@@ -166,14 +166,10 @@ int main(int argc, char *const *argv)
             fail = i + 1;
         }else{
             //send it
-            if(send(sockfd, data, datalen, 0) != 0){
+            if(send(sockfd, data, datalen, 0) != 0)
                 amtCmds++;
-                printf("---------- Sent data ---------- \n");
-                for (uint64_t i = 0; i < datalen; i++) printf("0x%02X ", data[i]);
-                printf("\n---------- End of data ----------\n\n");
-            }else{
+            else
                 fail = i + 1;
-            }
         }
     }
     // handle all commands send

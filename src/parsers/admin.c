@@ -242,12 +242,8 @@ admin_marshall(buffer * b, struct admin_data_word data) {
     uint64_t n;
     uint8_t * buff = buffer_write_ptr(b, &n);
     if (data.length > n) return -1;
-    printf("---------- Sent data ---------- \n");
-    for (uint64_t i = 0; i < data.length; i++) {
+    for (uint64_t i = 0; i < data.length; i++)
         buff[i] = data.value[i];
-        printf("0x%02X ", data.value[i]);
-    } 
-    printf("\n---------- End of data ----------\n\n");
     buffer_write_adv(b, data.length);
     return data.index;
 }

@@ -279,21 +279,19 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }
         break;
     case LIST_USERS_NO:
-        if (readBuffer[1] == 0)
-        {   
+        if (readBuffer[1] == 0) {   
             recvWrapper(sockfd,readBuffer,1,0);
             unsigned int nuserslen = readBuffer[0];
-            if(nuserslen > sizeof(unsigned long)){
+            if(nuserslen > sizeof(unsigned long)) {
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
                 return -1;
             }
             recvWrapper(sockfd, readBuffer, nuserslen, 0);
             unsigned long nusers = 0;
             for (unsigned int  i = 0; i < nuserslen; i++)
-            {
                 nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
-            }
-            printf("usuario    contraseña    tipo\n");
+
+            printf("N\tNombre\tPassw\t Tipo\n");
             fflush(stdout);
             for (unsigned int i = 0,nulen = 0,utype=0,plen = 0; i < nusers; i++)
             {
@@ -301,13 +299,12 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
                 utype = readBuffer[0];
                 nulen = readBuffer[1];
                 recvWrapper(sockfd, readBuffer, nulen, 0);
-                write(STDOUT_FILENO, readBuffer, nulen);
-                write(STDOUT_FILENO,"    ",4);
+                printf("%d\t%*.*s\t", i+1, nulen, nulen, readBuffer);
                 recvWrapper(sockfd, readBuffer, 1, 0);
                 plen = readBuffer[0];
                 recvWrapper(sockfd, readBuffer, plen, 0);
-                write(STDOUT_FILENO, readBuffer, plen);
-                printf("    %d\n", utype);
+                    printf("%*.*s\t", plen, plen, readBuffer);
+                printf("%s\n", (utype == 0)? "cliente" : "admin");
             }
         }else if (readBuffer[1] == 0x01)
         {
@@ -329,29 +326,29 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             recvWrapper(sockfd, readBuffer, 2, 0);
             int metric = readBuffer[0];
             int metricLen = readBuffer[1];
-            if(readBuffer[1] > 18){
+            if(readBuffer[1] > 8){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
                 return -1;
             }
+            if (metricLen != 0) recvWrapper(sockfd, readBuffer, metricLen, 0);
             unsigned long metricVal = 0;
-            for (int i = 0; i < metricLen; i++)
-            {
-                metricVal = (metricVal*10) + readBuffer[i];
+            for (int i = 0; i < metricLen; i++) {
+                metricVal = (metricVal << 8) + readBuffer[i];
             }
             
             switch (metric)
             {
             case 0:
-                printf("Conexiones historicas:%lu\n",metricVal);
+                printf("Conexiones historicas: %lu\n",metricVal);
                 break;
             case 1:
-                printf("Conexiones concurrentes:%lu\n",metricVal);
+                printf("Conexiones concurrentes: %lu\n",metricVal);
                 break;
             case 2:
-                printf("Transferencia de bytes historica:%lu\n",metricVal);
+                printf("Transferencia de bytes historica: %lu\n",metricVal);
                 break;
             default:
-                printf("Metrica desconocida:%lu\n",metricVal);
+                printf("Metrica desconocida: %lu\n",metricVal);
                 break;
             }
         }else if (readBuffer[1] == 0x04)
@@ -382,7 +379,7 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
                 return -1;
             }
-            recvWrapper(sockfd, readBuffer, configLen, 0);
+            if (configLen != 0) recvWrapper(sockfd, readBuffer, configLen, 0);
             unsigned long configVal = 0;
             for (int i = 0; i < configLen; i++)
             {
@@ -392,16 +389,16 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             switch (config)
             {
             case 0:
-                printf("Tamaño de buffer de lectura:%lu\n",configVal);
+                printf("Tamaño de buffer de lectura: %lu\n",configVal);
                 break;
             case 1:
-                printf("Tamaño de buffer de escritura:%lu\n",configVal);
+                printf("Tamaño de buffer de escritura: %lu\n",configVal);
                 break;
             case 2:
-                printf("Timeout del select:%lu\n",configVal);
+                printf("Timeout del select: %lu\n",configVal);
                 break;
             default:
-                printf("Configuracion desconocida:%lu\n",configVal);
+                printf("Configuracion desconocida: %lu\n",configVal);
                 break;
             }
         }else if (readBuffer[1] == 0x05)
@@ -452,7 +449,7 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             unsigned int mlen = readBuffer[1];
             if(mlen>0){
                 recvWrapper(sockfd,readBuffer,mlen,0);
-                printf("mensaje del servidor:");
+                printf("mensaje del servidor: ");
                 fflush(stdout);
                 write(STDOUT_FILENO,readBuffer,mlen);
                 printf("\n");
