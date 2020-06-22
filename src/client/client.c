@@ -80,7 +80,7 @@ int main(int argc, char *const *argv)
         {
             if (pass)
             {
-                printf("Error de formato, el formato de -u deberia ser user:pass");
+                printf("Error de formato, el formato de -u deberia ser user:pass\n");
                 return -1;
             }
             pass = 1;
@@ -102,7 +102,7 @@ int main(int argc, char *const *argv)
     //check there actually is a user and password
     if (ulen <= 0 || ulen > 255 || plen > 255 || plen <= 0)
     {
-        printf("Error de formato, el formato de -u deberia ser user:pass con ambos una longitud entre 1 y 255");
+        printf("Error de formato, el formato de -u deberia ser user:pass con ambos una longitud entre 1 y 255\n");
         return -1;
     }
     auth[1] = ulen;

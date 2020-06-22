@@ -6,7 +6,7 @@
 .RE
 ..
 
-.TH Cliente 1 "15 de Junio 2020"
+.TH Cliente 1 "21 de Junio 2020"
 .LO 8
 .SH NAME
 cliente \- cliente para la configuracion del servidor
@@ -14,14 +14,14 @@ cliente \- cliente para la configuracion del servidor
 .SH SINOPSIS
 .HP 10
 .B cliente
--u user:pass [-l host] [-p port] comando
+-u user:pass [-l hostIP] [-p port] comando
 
 .SH OPCIONES 
 
 .IP "\fB\-u\fB \fIuser:pass\fR"
 Declara usuario y contraseña que se usara para conectarse al servidor
-.IP "\fB\-l\fB \fIhost\fR"
-Host donde escucha el servidor. Por defecto el valor es \fIlocalhost\fR
+.IP "\fB\-l\fB \fIhostIP\fR"
+IP del host donde escucha el servidor. Por defecto el valor es \fI127.0.0.1s\fR
 .IP "\fB\-p\fB \fIpuerto\fR"
 Puerto donde escucha el servidor. Por defecto el valor es \fI8080\fR
 
@@ -47,9 +47,9 @@ Muestra la metrica elegida. Las metricas son las siguientes:
 .RS
 .nf
 
-\fI1\fR \- Historial de conexiones
-\fI2\fR \- Conexiones concurrentes
-\fI3\fR \- Historial de transferencia de bytes
+\fI0\fR \- Historial de conexiones
+\fI1\fR \- Conexiones concurrentes
+\fI2\fR \- Historial de transferencia de bytes
 
 .fi
 .RE
@@ -63,10 +63,9 @@ Establece la configuracion indicada. Las configuraciones posibles son:
 .RS
 .nf
 
-\fI1\fR - Ambos buffers: el \fIparametro\fR es un numero
-\fI2\fR|- Buffer de lectura: el \fIparametro\fR es un numero
-\fI3\fR - Buffer de escritura: el \fIparametro\fR es un numero
-\fI3\fR - Timeout del select: el \fIparametro\fR es un numero
+\fI0\fR|- Buffer de lectura: el \fIparametro\fR es un numero
+\fI1\fR - Buffer de escritura: el \fIparametro\fR es un numero
+\fI2\fR - Timeout del select: el \fIparametro\fR es un numero
 
 .fi
 .RE

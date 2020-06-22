@@ -42,7 +42,7 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
             {
                 if (pass)
                 {
-                    printf("Error de formato, el formato del parametro de add-user deberia ser user:pass");
+                    printf("Error de formato, el formato del parametro de add-user deberia ser user:pass\n");
                     return -1;
                 }
                 pass = 1;
@@ -63,7 +63,7 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
         }
         if (nulen <= 0 || nulen > 255 || nplen <= 0 || nplen > 255)
         {
-            printf("Error de formato, el formato de add-user deberia ser user:pass con ambos una longitud entre 1 y 255");
+            printf("Error de formato, el formato de add-user deberia ser user:pass con ambos una longitud entre 1 y 255\n");
             return -1;
         }
         data[2] = nulen;
@@ -111,7 +111,7 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
         }
         if (*datalen <= 0 || *datalen > 255)
         {
-            printf("Error de formato, el formato de del-user deberia ser user con longitud entre 1 y 255");
+            printf("Error de formato, el formato de del-user deberia ser user con longitud entre 1 y 255\n");
             return -1;
         }
         data[1] = *datalen - 2;
@@ -156,13 +156,13 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
             return -1;
         }
         char *config = argv[(*cmdStartIndex) + 1];
-        if (config[0] >= '0' && config[0] <= '3')
+        if (config[0] >= '0' && config[0] <= '2')
         {
             data[1] = config[0] - '0';
         }
         else
         {
-            printf("Error en el formato de la configuracion. Debe ser 0,1,2 o 3\n");
+            printf("Error en el formato de la configuracion. Debe ser 0,1 o 2\n");
             return -1;
         }
         *datalen = 2;
@@ -178,13 +178,13 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
             return -1;
         }
         char *config = argv[(*cmdStartIndex) + 1];
-        if (config[0] >= '0' && config[0] <= '3')
+        if (config[0] >= '0' && config[0] <= '2')
         {
             data[1] = config[0] - '0';
         }
         else
         {
-            printf("Error en el formato de la configuracion. Debe ser 0,1,2 o 3\n");
+            printf("Error en el formato de la configuracion. Debe ser 0,1 o 2\n");
             return -1;
         }
         if (argc <= (*cmdStartIndex) + 2)
@@ -279,16 +279,16 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             switch (readBuffer[0])
             {
             case 0:
-                printf("Conexiones historicas:%lu",metricVal);
+                printf("Conexiones historicas:%lu\n",metricVal);
                 break;
             case 1:
-                printf("Conexiones concurrentes:%lu",metricVal);
+                printf("Conexiones concurrentes:%lu\n",metricVal);
                 break;
             case 2:
-                printf("Transferencia de bytes historica:%lu",metricVal);
+                printf("Transferencia de bytes historica:%lu\n",metricVal);
                 break;
             default:
-                printf("Metrica desconocida:%lu",metricVal);
+                printf("Metrica desconocida:%lu\n",metricVal);
                 break;
             }
         }else if (readBuffer[1] == 0x04)
@@ -314,19 +314,19 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
             switch (readBuffer[0])
             {
             case 0:
-                printf("Tamaño de ambos buffers:%lu",configVal);
+                printf("Tamaño de ambos buffers:%lu\n",configVal);
                 break;
             case 1:
-                printf("Tamaño de buffer de lectura:%lu",configVal);
+                printf("Tamaño de buffer de lectura:%lu\n",configVal);
                 break;
             case 2:
-                printf("Tamaño de buffer de escritura:%lu",configVal);
+                printf("Tamaño de buffer de escritura:%lu\n",configVal);
                 break;
             case 3:
-                printf("Timeout del select:%lu",configVal);
+                printf("Timeout del select:%lu\n",configVal);
                 break;
             default:
-                printf("Configuracion desconocida:%lu",configVal);
+                printf("Configuracion desconocida:%lu\n",configVal);
                 break;
             }
         }else if (readBuffer[1] == 0x05)
