@@ -193,9 +193,16 @@ int getNextCommand(int argc,char * const*argv,int *cmdStartIndex,uint8_t *data,i
             return -1;
         }
         char *nval = argv[(*cmdStartIndex) + 2];
-        unsigned long ulnval = strtoul(nval, NULL, 10);
-        data[2] = sizeof(ulnval);
-        *((unsigned long *)(data + 2)) = ulnval;
+        int vlen = 0;
+        for (int i = 0;nval[i]!=0 && i<255; i++,vlen++)
+        {
+            if(nval[i]>='0' && nval[i]<= '9'){
+                data[i+3] = nval[i]-'0';
+            }else{
+                printf("Error en el formato del valor de configuracion. Debe ser un numero de menos de 255 digitos\n");
+                return -1;
+            }
+        }
         *datalen = data[2] + 2;
         *cmdStartIndex += 3;
     }
@@ -230,12 +237,16 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         else if(readBuffer[1]== 0x07){
             printf("Cantidad de usuarios llena\n");
             return -1;
+        }else{
+            printf("Error inesperado al crear el usuario\n");
         }
         break;
     case DEL_USER_NO:
         if (readBuffer[1] == 0)
         {
             printf("usuario borrado\n");
+        }else{
+            printf("Error inesperado al borrar el usuario\n");
         }
         break;
     case LIST_USERS_NO:
@@ -243,8 +254,12 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         {   
             recvWrapper(sockfd,readBuffer,1,0);
             int nuserslen = readBuffer[0];
+            if(nuserslen > sizeof(unsigned long)){
+                printf("El numero de bytes de respuesta es muy grande para este cliente \n");
+                return -1;
+            }
             recvWrapper(sockfd, readBuffer, nuserslen, 0);
-            uint16_t nusers = 0;
+            unsigned long nusers = 0;
             for (int  i = 0; i < nuserslen; i++)
             {
                 nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
@@ -260,23 +275,27 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
                 write(STDOUT_FILENO, readBuffer, nulen);
                 printf(" %d\n", utype);
             }
+        }else{
+            printf("Error inesperado al listar usuarios\n");
         }
         break;
     case GET_METRIC_NO:
         if (readBuffer[1] == 0)
         {
-            recvWrapper(sockfd, readBuffer, READBUFFER_LEN, 0);
-            if(readBuffer[1] > sizeof(unsigned long)){
+            recvWrapper(sockfd, readBuffer, 2, 0);
+            int metric = readBuffer[0];
+            int metricLen = readBuffer[1];
+            if(readBuffer[1] > 18){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
                 return -1;
             }
             unsigned long metricVal = 0;
-            for (int i = 0; i < readBuffer[1]; i++)
+            for (int i = 0; i < metricLen; i++)
             {
-                metricVal = (metricVal<<8) + readBuffer[i+2];
+                metricVal = (metricVal*10) + readBuffer[i];
             }
             
-            switch (readBuffer[0])
+            switch (metric)
             {
             case 0:
                 printf("Conexiones historicas:%lu\n",metricVal);
@@ -295,34 +314,37 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         {
             printf("Metrica invalida\n");
             return -1;
+        }else{
+            printf("Error inesperado al obtener metricas\n");
+            return -1;
         }
         break;
     case GET_CONFIG_NO:
         if (readBuffer[1] == 0)
         {
-            recvWrapper(sockfd, readBuffer, READBUFFER_LEN, 0);
-            if(readBuffer[1] > sizeof(unsigned long)){
+            recvWrapper(sockfd, readBuffer, 2, 0);
+            int config = readBuffer[0];
+            int configLen = readBuffer[1];
+            if(configLen > 18){
                 printf("El numero de bytes de respuesta es muy grande para este cliente \n");
                 return -1;
             }
+            recvWrapper(sockfd, readBuffer, configLen, 0);
             unsigned long configVal = 0;
-            for (int i = 0; i < readBuffer[1]; i++)
+            for (int i = 0; i < configLen; i++)
             {
-                configVal = (configVal<<8) + readBuffer[i+2];
+                configVal = (configVal*10) + readBuffer[i];
             }
             
-            switch (readBuffer[0])
+            switch (config)
             {
             case 0:
-                printf("Tamaño de ambos buffers:%lu\n",configVal);
-                break;
-            case 1:
                 printf("Tamaño de buffer de lectura:%lu\n",configVal);
                 break;
-            case 2:
+            case 1:
                 printf("Tamaño de buffer de escritura:%lu\n",configVal);
                 break;
-            case 3:
+            case 2:
                 printf("Timeout del select:%lu\n",configVal);
                 break;
             default:
@@ -332,6 +354,9 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x05)
         {
             printf("Configuracion invalida\n");
+            return -1;
+        }else{
+            printf("Error inesperado al obtener configuracion\n");
             return -1;
         }
         break;
@@ -346,6 +371,9 @@ int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
         }else if (readBuffer[1] == 0x06)
         {
             printf("Valor de configuracion invalido\n");
+            return -1;
+        }else{
+            printf("Error inesperado al setear configuracion\n");
             return -1;
         }
         break;
