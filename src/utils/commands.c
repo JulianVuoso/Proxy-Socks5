@@ -14,7 +14,6 @@
 
 #define BITS_P_BYTE             8
 
-#define STATUS_INDEX            2
 #define CMD_STAT_HLEN           2
 #define CMD_STAT_VLEN_HLEN      3
 #define CMD_STAT_OPT_HLEN       3
@@ -76,7 +75,7 @@ get_users(enum admin_errors error, struct admin_received_data * data, struct adm
     if (error != admin_error_none) return 1;
     
     print_users();
-    
+
     struct UserList * users_list = list_users();
     if (users_list->size == 0) return 1;
     ans->index--; // If there is no error and size > 0, override vlen = 0

@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "users.h"
 
+#define STATUS_INDEX            2
+
 typedef struct admin_data_word {
     uint8_t * value;
     uint64_t index;
