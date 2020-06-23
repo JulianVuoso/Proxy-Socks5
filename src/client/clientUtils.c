@@ -281,7 +281,7 @@ handle_response(int sockfd, int cmd, uint8_t *readBuffer) {
 
         case command_set_config:
             switch (readBuffer[1]) {
-                case error_none: printf("%s Configuracion seteada\n", sOk); break;
+                case error_none: printf("%s Configuracion seteada\n", sOk); recv_wrapper(sockfd, readBuffer, 1,0); break;
                 
                 case error_inv_value: print_string_from_answer(sockfd, readBuffer); break;
                 default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;

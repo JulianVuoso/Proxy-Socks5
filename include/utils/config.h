@@ -2,7 +2,7 @@
 #define CONFIG_H_19f0b153be5728feffa7b7fa77734dd81693b7bb
 
 /* Unit: Bytes */
-#define INITIAL_BUF_SIZE    32768
+#define INITIAL_BUF_SIZE    8192
 #define MAX_BUF_SIZE        524288
 #define MIN_BUF_SIZE        2048
 
