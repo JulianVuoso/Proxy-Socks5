@@ -1,4 +1,4 @@
-#include "client/clientUtils.h"
+#include "clientUtils.h"
 
 #define MAX_VAL_UINT64  0xFFFFFFFFFFFFFFFF
 #define BITS_P_BYTE             8

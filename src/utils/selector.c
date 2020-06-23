@@ -107,7 +107,7 @@ struct item {
    fd_interest         interest;
    const fd_handler   *handler;
    void *              data;
-   bool                timeout;
+   selector_timeout    timeout;
    time_t              last_time;
 };
 
@@ -338,8 +338,8 @@ selector_register(   fd_selector        s,
                      const int          fd,
                      const fd_handler  *handler,
                      const fd_interest  interest,
-                     void *data,
-                     bool timeout) {
+                     void              *data,
+                     selector_timeout   timeout) {
     selector_status ret = SELECTOR_SUCCESS;
     // 0. validación de argumentos
     if(s == NULL || INVALID_FD(fd) || handler == NULL) {
@@ -499,6 +499,24 @@ selector_remove_interest(fd_selector s, int fd, fd_interest i) {
     if (ret == SELECTOR_SUCCESS && (cur_int & i) != 0) {
         ret = selector_set_interest(s, fd, cur_int - i);
     }
+    return ret;
+}
+
+selector_status
+selector_set_timeout_option(fd_selector s, int fd, selector_timeout timeout) {
+    selector_status ret = SELECTOR_SUCCESS;
+
+    if(NULL == s || INVALID_FD(fd)) {
+        ret = SELECTOR_IARGS;
+        goto finally;
+    }
+    struct item *item = s->fds + fd;
+    if(!ITEM_USED(item)) {
+        ret = SELECTOR_IARGS;
+        goto finally;
+    }
+    item->timeout = timeout;
+finally:
     return ret;
 }
 
@@ -672,7 +690,7 @@ selector_fd_set_nio(const int fd) {
     return ret;
 }
 
-void selector_check_timeout(fd_selector s, time_t timeout) {
+void selector_check_timeout(fd_selector s, time_t timeout_gen, time_t timeout_con) {
     time_t curr_time = time(NULL);
     if (curr_time == ((time_t) -1))
         return;
@@ -680,12 +698,38 @@ void selector_check_timeout(fd_selector s, time_t timeout) {
     int n = s->max_fd;
     for (int i = 0; i <= n; i++) {
         struct item *item = s->fds + i;
-        if(ITEM_USED(item) && item->timeout) {
-            if ((item->last_time + timeout) < curr_time) {
-                fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld\n", i, item->last_time, curr_time);
-                selector_unregister_fd(s, i);
-                close(i);
+        if(ITEM_USED(item)) {
+            switch (item->timeout)
+            {
+                case GEN_TIMEOUT:
+                    if ((item->last_time + timeout_gen) < curr_time) {
+                        fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld\n", i, item->last_time, curr_time);
+                        selector_unregister_fd(s, i);
+                        close(i);
+                    }
+                    break;
+                case CON_TIMEOUT:
+                    if ((item->last_time + timeout_con) < curr_time) {
+                        struct selector_key key = {
+                            .s    = s,
+                            .fd   = item->fd,
+                            .data = item->data,
+                        };
+                        fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld. Procedo a handle_timeout\n", i, item->last_time, curr_time);
+                        if (item->handler->handle_timeout != 0) {
+                            item->handler->handle_timeout(&key);
+                        } else {
+                            fprintf(stdout, "No hay handle_timeout\n");
+                            selector_unregister_fd(s, i);
+                            close(i);
+                        }
+                    }
+                    break;
+                case NO_TIMEOUT:
+                default:
+                    break;
             }
+            
         }
     }
 }

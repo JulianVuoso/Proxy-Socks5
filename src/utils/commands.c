@@ -109,8 +109,8 @@ get_config(enum admin_errors error, struct admin_received_data * data, struct ad
     switch (data->option) {
         case config_buff_read_size: return ulong_to_byte_array(get_buffer_read_size(), ans);
         case config_buff_write_size: return ulong_to_byte_array(get_buffer_write_size(), ans);
-        case config_gen_tout: return ulong_to_byte_array(/*get_timeout1()*/0, ans);
-        case config_con_tout: return ulong_to_byte_array(/*get_timeout2()*/0, ans);
+        case config_gen_tout: return ulong_to_byte_array(get_timeout_gen(), ans);
+        case config_con_tout: return ulong_to_byte_array(get_timeout_con(), ans);
         default: return 0; // Should never reach here
     }
 }
@@ -139,13 +139,13 @@ set_config(enum admin_errors error, struct admin_received_data * data, struct ad
             break;
         case config_gen_tout:
             if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
-                return add_inv_value_mssg("Timeout", MIN_TIMEOUT, MAX_TIMEOUT, ans);
-            /*set_timeout1(value);*/
+                return add_inv_value_mssg("General timeout", MIN_GEN_TIMEOUT, MAX_GEN_TIMEOUT, ans);
+            set_timeout_gen(value);
             break;
         case config_con_tout:
             if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
-                return add_inv_value_mssg("Timeout", MIN_TIMEOUT, MAX_TIMEOUT, ans);
-            /*set_timeout2(value);*/
+                return add_inv_value_mssg("Connection timeout", MIN_CON_TIMEOUT, MAX_CON_TIMEOUT, ans);
+            set_timeout_con(value);
             break;
         default: return 0; // Should never reach here
     }
