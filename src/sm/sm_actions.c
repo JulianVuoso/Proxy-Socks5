@@ -31,9 +31,9 @@ void do_before_error(struct selector_key * key) {
 }
 
 unsigned do_when_timeout(struct selector_key * key) {
-    if (key == NULL) return;
+    if (key == NULL) return ERROR;
     struct socks5 * sock = ATTACHMENT(key);
-    if (sock == NULL || sock->stm.current == NULL) return;
+    if (sock == NULL || sock->stm.current == NULL) return ERROR;
     unsigned state = sock->stm.current->state;
     int * fd;
     unsigned (*next) (selector_key *);
