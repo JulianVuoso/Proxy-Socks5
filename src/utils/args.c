@@ -215,7 +215,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 break;
             case 'u':
                 if(nusers >= MAX_USERS_ARG) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS_ARG);
+                    fprintf(stderr, "maximum number of command line users reached: %d.\n", MAX_USERS_ARG);
                     exit(1);
                 } else {
                     add_user_client(optarg);
@@ -224,7 +224,7 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 break;
             case 'U':
                 if(nusers >= MAX_USERS_ARG) {
-                    fprintf(stderr, "maximun number of command line users reached: %d.\n", MAX_USERS_ARG);
+                    fprintf(stderr, "maximum number of command line users reached: %d.\n", MAX_USERS_ARG);
                     exit(1);
                 } else {
                     add_user(optarg);
