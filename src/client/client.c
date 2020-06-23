@@ -6,6 +6,8 @@
 #include <string.h>
 #include <getopt.h>
 #include <netdb.h>
+#include <errno.h>
+#include <stdbool.h>
 
 #include "client/clientUtils.h"
 
@@ -29,9 +31,14 @@ int main(int argc, char * const *argv) {
     int sockfd = 0;
     long int port = DEFAULT_PORT;
     char *host = DEFAULT_HOST;
+    int domain = AF_INET;
     char *userpass = NULL;
     struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    struct sockaddr_in6 addr6;
+    memset(&addr6, 0, sizeof(addr6));
     int opt;
+    bool got_address = false;
 
     //parse argument
     while ((opt = getopt(argc, argv, "u:p:l:")) > 0) {
@@ -43,7 +50,19 @@ int main(int argc, char * const *argv) {
             userpass = optarg;
             break;
         case 'l':
-            if (optarg != NULL) host = optarg;
+            if (optarg != NULL) {
+                if (inet_pton(AF_INET, optarg, &addr.sin_addr) == 1) {
+                    host = optarg;
+                    domain = AF_INET;
+                } else if (inet_pton(AF_INET6, optarg, &addr6.sin6_addr) == 1) {
+                    host = optarg;
+                    domain = AF_INET6;
+                } else {
+                    printf("%s Invalid Host IP (%s)\n", cError, host);
+                    return -1;
+                }
+                got_address = true;
+            }
             break;
         }
     }
@@ -93,23 +112,34 @@ int main(int argc, char * const *argv) {
     uint8_t data[MAX_DATA_LEN];
 
     //open socket for sctp
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP)) < 0) {
+    if ((sockfd = socket(domain, SOCK_STREAM, IPPROTO_SCTP)) < 0) {
         printf("%s Error creating socket\n", cError);
         return -1;
     }
 
     //set addr
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
+    struct sockaddr * addr_ptr;
+    socklen_t length;
+    if (domain == AF_INET) {
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(port);
+        addr_ptr = (struct sockaddr *) &addr;
+        length = sizeof(addr);
+    } else {
+        addr6.sin6_family = AF_INET6;
+        addr6.sin6_port = htons(port);
+        addr_ptr = (struct sockaddr *) &addr6;
+        length = sizeof(addr6);
+    }
 
     //convert ip from string to byte
-    if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
+    if (!got_address && inet_pton(domain, host, &addr.sin_addr) <= 0) {
         printf("%s Invalid Host IP (%s)\n", cError, host);
         close(sockfd);
         return -1;
     }
     //connect
-    if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if (connect(sockfd, addr_ptr, length) < 0) {
         printf("%s Error connecting proxy\n", cError);
         close(sockfd);
         return -1;
