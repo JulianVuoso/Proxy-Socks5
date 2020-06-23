@@ -235,12 +235,14 @@ enum file_errors update_users_file(char * filename){
 
     FILE * file = fopen(filename,"w");
     if(file == NULL) {
-        if(fclose(file) != 0)
-            return closing_file;
         return writing_file;
     }
 
-    if(ulist == NULL) return file_no_error;
+    if(ulist == NULL) {
+        if(fclose(file) != 0)
+            return closing_file;
+        return file_no_error;
+    }
     struct UserNode * node = ulist->header;
     while(node != NULL){
         fprintf(file, "%s:%s:%d\n", node->user.username, node->user.password, node->user.level);

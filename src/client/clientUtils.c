@@ -47,7 +47,7 @@ get_next_command(int argc, char * const *argv, int * cmdStartIndex, uint8_t * da
         int nulen = 0, nplen = 0;
         //ADD USER
         
-        for (int i = 0, pass = 0; nuser[i] != 0 && i < MAX_DATA_LEN - 2; i++) {
+        for (int i = 0, pass = 0; i < MAX_DATA_LEN - 2 && nuser[i] != 0; i++) {
             if (nuser[i] == ':') {
                 if (pass) {
                     printf("\n%s add-user should be user:pass\n", cError);
@@ -96,7 +96,7 @@ get_next_command(int argc, char * const *argv, int * cmdStartIndex, uint8_t * da
         *datalen = 2;
         if (!(argc <= (*cmdStartIndex) + 1) && *argv[(*cmdStartIndex) + 1] != '+') {
             char *deluser = argv[(*cmdStartIndex) + 1];    
-            for (int i = 0; deluser[i] != 0 && i < MAX_DATA_LEN; i++) {
+            for (int i = 0; i < MAX_DATA_LEN && deluser[i] != 0; i++) {
                 data[i + 2] = deluser[i];
                 (*datalen)++;
             }
@@ -357,7 +357,7 @@ print_user_list(int sockfd, uint8_t *readBuffer) {
         utype = readBuffer[0];
         nulen = readBuffer[1];
         recv_wrapper(sockfd, readBuffer, nulen, 0);
-        printf("\t\t%d\t%*.*s\t", i+1, nulen, nulen, readBuffer);
+        printf("\t\t%ud\t%*.*s\t", i+1, nulen, nulen, readBuffer);
         recv_wrapper(sockfd, readBuffer, 1, 0);
         plen = readBuffer[0];
         recv_wrapper(sockfd, readBuffer, plen, 0);

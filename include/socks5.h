@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "selector.h"
 
-#define MAX_CONCURRENT_CON  500
+#define MAX_CONCURRENT_CON  600
 
 /* Recibe la llave del item */
 void socks5_passive_accept(selector_key * key);
