@@ -39,5 +39,5 @@ add_executable(socks5d main.c
                        admin/admin_socks5.c)
 target_link_libraries(socks5d pthread sctp)
 
-add_executable(adminClient client/client.c client/clientUtils.c)
-target_link_libraries(adminClient sctp)
+add_executable(client client/client.c client/clientUtils.c)
+target_link_libraries(client sctp)
