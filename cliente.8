@@ -29,7 +29,7 @@ Puerto donde escucha el servidor. Por defecto el valor es \fI8080\fR
 
 .SH COMANDOS
 
-.IP "\fBadd-user\fB \fIuser:pass\fR \fItype\fR"
+.IP "\fB+add-user\fB \fIuser:pass\fR \fItype\fR"
 Agrega el usuario con la contraseña con el tipo. Tanto el usuario como la contraseña tienen un maximo de 255 caracteres. Los tipos son los siguientes:
 .RS
 .nf
@@ -37,11 +37,11 @@ Agrega el usuario con la contraseña con el tipo. Tanto el usuario como la contr
     \fI1\fR \- Admin
 .fi
 .RE
-.IP "\fBdel-user\fB \fIuser\fR"
+.IP "\fB+del-user\fB \fIuser\fR"
 Remueve el usuario
-.IP "\fBlist-users\fB"
+.IP "\fB+list-users\fB"
 Muestra la lista de usuarios
-.IP "\fBget-metric\fB \fImetric\fR"
+.IP "\fB+get-metric\fB \fImetric\fR"
 Muestra la metrica elegida. Las metricas son las siguientes:
 
 .RS
@@ -54,10 +54,10 @@ Muestra la metrica elegida. Las metricas son las siguientes:
 .fi
 .RE
 
-.IP "\fBget-config\fB \fIconfig\fR"
+.IP "\fB+get-config\fB \fIconfig\fR"
 Muestra la configuracion elegida. Las configuraciones posibles son las listadas para set
 
-.IP "\fBset-config\fB \fIconfig\fR \fIparameter\fR"
+.IP "\fB+set-config\fB \fIconfig\fR \fIparameter\fR"
 Establece la configuracion indicada. Las configuraciones posibles son:
 
 .RS
@@ -65,7 +65,8 @@ Establece la configuracion indicada. Las configuraciones posibles son:
 
 \fI0\fR - Buffer de lectura: el \fIparametro\fR es un numero
 \fI1\fR - Buffer de escritura: el \fIparametro\fR es un numero
-\fI2\fR - Timeout del select: el \fIparametro\fR es un numero
+\fI2\fR - Timeout general: el \fIparametro\fR es un numero
+\fI2\fR - Timeout de conexion: el \fIparametro\fR es un numero
 
 .fi
 .RE
