@@ -162,8 +162,7 @@ add_user(char* s) {
 static void
 version(void) {
     fprintf(stderr, "socks5v version 1.0\n"
-                    "ITBA Protocolos de Comunicación 2020/1 -- Grupo 1\n"
-                    "AQUI VA LA LICENCIA\n");
+                    "ITBA Protocolos de Comunicación 2020/1 -- Grupo 1\n");
 }
 
 static void
