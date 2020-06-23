@@ -40,27 +40,28 @@ A cada comando le corresponde un formato de REPLY particular, especificado a con
 El cliente PUEDE enviar un comando seguido de otro, a lo cual el servidor DEBE responder en orden.
 
 Los códigos de CMD existentes son 
-	~ ADD USER			X'01'	
-	~ DELETE USER		X'02'	
-	~ LIST USERS		X'03'	
-	~ GET METRIC		X'04'	
-	~ GET CONFIG		X'05'	
-	~ SET CONFIG		X'06'
+	~ ADD USER			X'00'	
+	~ DELETE USER		X'01'	
+	~ LIST USERS		X'02'	
+	~ GET METRIC		X'03'	
+	~ GET CONFIG		X'04'	
+	~ SET CONFIG		X'05'
 
 Los códigos de STATUS existentes son
 	~ SUCCESS			X'00' 
 	~ INV CMD			X'01'
 	~ INV ULEN			X'02'	
-	~ INV UTYPE			X'03'	
-	~ INV METRIC		X'04'	
-	~ INV CONFIG		X'05'	
-	~ INV VALUE			X'06'	
-	~ MAX UCOUNT		X'07'
+	~ INV UTYPE			X'03'
+	~ INV PLEN			X'04'	
+	~ INV METRIC		X'05'	
+	~ INV CONFIG		X'06'	
+	~ MAX UCOUNT		X'A0'
+	~ INV VALUE			X'A1'	
 	~ GEN SERV FAIL		X'FF'
 
 En cualquiera de los comandos, el servidor debe enviar un STATUS de GEN SERV FAIL en caso de que haya ocurrido un error irrecuperable de funcionamiento en el mismo, sin relación con lo enviado por el cliente. 
 Si el cliente envía un valor inválido, el servidor DEBE cerrar la conexión SCTP con el cliente en un lapso de tiempo corto después de enviar la REPLY.
-Si el cliente envía un valor válido pero el servidor se encuentra limitado por su implementación, el cliente PUEDE volver a enviar un nuevo REQUEST luego de leer la respuesta.
+Si el cliente envía un valor válido pero el servidor se encuentra limitado por su implementación (errores X'A0' a X'AF'), el cliente PUEDE volver a enviar un nuevo REQUEST luego de leer la respuesta.
 
 Agregar Usuario
 
@@ -71,7 +72,7 @@ Agregar Usuario
 	+-----+-------+------+----------+------+------------+
 
 	Donde:
-		- CMD		X'01'
+		- CMD		X'00'
 		- UTYPE		-> tipo de usuario
 			~ CLIENT	X'00'
 			~ ADMIN		X'01'
@@ -92,15 +93,16 @@ Luego envía la siguiente REPLY
 					+-----+--------+
 
 	Donde: 
-		- CMD		X'01'
+		- CMD		X'00'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
 			~ INV ULEN			X'02'
 			~ INV UTYPE			X'03'
-			~ MAX UCOUNT		X'07'
+			~ INV PLEN			X'04'
+			~ MAX UCOUNT		X'A0'
 			~ GEN SERVER FAIL	X'FF'
 
-En caso de recibir INV ULEN o INV UTYPE, el cliente NO PUEDE volver a enviar un nuevo REQUEST.
+En caso de recibir INV ULEN, INV UTYPE, o INV PLEN el cliente NO PUEDE volver a enviar un nuevo REQUEST.
 De recibir MAX UCOUNT , el cliente PUEDE volver a enviar un mensaje.
 
 Eliminar usuario
@@ -112,7 +114,7 @@ Eliminar usuario
 				+-----+------+----------+
 
 	Donde:
-		- CMD		X'02'
+		- CMD		X'01'
 		- ULEN		-> largo del campo UNAME que sigue
 		- UNAME 	-> nombre de usuario a remover
 
@@ -126,7 +128,7 @@ Luego envía la siguiente REPLY
 					+-----+--------+
 
 	Donde: 
-		- CMD		X'02'
+		- CMD		X'01'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
 			~ GEN SERVER FAIL	X'FF'
@@ -140,7 +142,7 @@ Listar nombres de usuario
 						+-----+
 	
 	Donde:
-		- CMD		X'03'
+		- CMD		X'02'
 
 El servidor intenta listar todos los nombres de usuario existentes junto con su tipo. 
 Luego envía la siguiente REPLY
@@ -154,7 +156,7 @@ Luego envía la siguiente REPLY
 										NUSERS veces
 
 	Donde: 
-		- CMD		X'03'
+		- CMD		X'02'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
 			~ GEN SERVER FAIL	X'FF'
@@ -175,7 +177,7 @@ Obtener métrica
 					+-----+--------+
 	
 	Donde:
-		- CMD		X'04'
+		- CMD		X'03'
 		- METRIC 	-> métrica solicitada
 			~ HISTORIC CONNECTIONS		X'00'
 			~ CONCURRENT CONNECTIONS	X'01'
@@ -190,10 +192,10 @@ El servidor intenta obtener la métrica solicitada. Luego envía la siguiente RE
 		+-----+--------+--------+------+----------+
 
 	Donde: 
-		- CMD		X'04'
+		- CMD		X'03'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV METRIC		X'04'
+			~ INV METRIC		X'05'
 			~ GEN SERVER FAIL	X'FF'
 		- METRIC 	-> métrica solicitada
 			~ HISTORIC CONNECTIONS		X'00'
@@ -215,12 +217,12 @@ Obtener configuración
 					+-----+--------+
 	
 	Donde:
-		- CMD		X'05'
+		- CMD		X'04'
 		- CONFIG 	-> configuración solicitada
-			~ BUFFER SIZE BOTH  X'00'		
-			~ BUFFER READ		X'01'
-			~ BUFFER WRITE		X'02'
-			~ SELECT TIMEOUT	X'03'
+			~ BUFFER READ		X'00'
+			~ BUFFER WRITE		X'01'
+			~ GENERAL TIMEOUT	X'02'
+			~ CONNEC TIMEOUT	X'03'
 	
 El servidor intenta obtener la configuración solicitada. Luego envía la siguiente REPLY
 
@@ -231,16 +233,16 @@ El servidor intenta obtener la configuración solicitada. Luego envía la siguie
 		+-----+--------+--------+------+----------+
 
 	Donde: 
-		- CMD		X'05'
+		- CMD		X'04'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV CONFIG		X'05'
+			~ INV CONFIG		X'06'
 			~ GEN SERVER FAIL	X'FF'
 		- CONFIG 	-> configuración solicitada
-			~ BUFFER SIZE BOTH  X'00'		
-			~ BUFFER READ		X'01'
-			~ BUFFER WRITE		X'02'
-			~ SELECT TIMEOUT	X'03'
+			~ BUFFER READ		X'00'
+			~ BUFFER WRITE		X'01'
+			~ GENERAL TIMEOUT	X'02'
+			~ CONNEC TIMEOUT	X'03'
 		- VLEN 		-> largo del campo VALUE que sigue
 		- VALUE 	-> valor de la configuración solicitada
 
@@ -258,12 +260,12 @@ Cambiar configuración
 			+-----+--------+------+----------+
 	
 	Donde:
-		- CMD		X'06'
+		- CMD		X'05'
 		- CONFIG 	-> configuración solicitada
-			~ BUFFER SIZE BOTH  X'00'		
-			~ BUFFER READ		X'01'
-			~ BUFFER WRITE		X'02'
-			~ SELECT TIMEOUT	X'03'
+			~ BUFFER READ		X'00'
+			~ BUFFER WRITE		X'01'
+			~ GENERAL TIMEOUT	X'02'
+			~ CONNEC TIMEOUT	X'03'
 		- VLEN		-> largo del campo VALUE que sigue
 		- VALUE 	-> valor de la configuración solicitada
 
@@ -279,17 +281,17 @@ El servidor valida el valor dado y, de ser correcto, intenta aplicar el cambio d
 		+-----+--------+--------+------+----------+
 
 	Donde: 
-		- CMD		X'06'
+		- CMD		X'05'
 		- STATUS	-> estado de respuesta
 			~ SUCCESS			X'00'
-			~ INV CONFIG		X'05'
-			~ INV VALUE			X'06'
+			~ INV CONFIG		X'06'
+			~ INV VALUE			X'A1'
 			~ GEN SERVER FAIL	X'FF'
 		- CONFIG 	-> configuración solicitada
-			~ BUFFER SIZE BOTH  X'00'		
-			~ BUFFER READ		X'01'
-			~ BUFFER WRITE		X'02'
-			~ SELECT TIMEOUT	X'03'
+			~ BUFFER READ		X'00'
+			~ BUFFER WRITE		X'01'
+			~ GENERAL TIMEOUT	X'02'
+			~ CONNEC TIMEOUT	X'03'
 		- MLEN		-> largo del campo MESSAGE que sigue
 		- MESSAGE	-> mensaje que explica el error (de ser necesario)
 

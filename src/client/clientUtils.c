@@ -216,6 +216,7 @@ handle_response(int sockfd, int cmd, uint8_t *readBuffer) {
                 case error_none: printf("User created/updated successfully\n"); break;
 
                 case error_inv_ulen: printf("Invalid user length\n"); return -1;
+                case error_inv_plen: printf("Invalid password length\n"); return -1;
                 case error_inv_utype: printf("Invalid user type\n"); return -1;
                 case error_max_ucount: printf("User capacity full\n"); return -1;
                 default: printf("Bad formatted answer. Invalid received status\n"); return -1;
@@ -264,7 +265,8 @@ handle_response(int sockfd, int cmd, uint8_t *readBuffer) {
                     switch (option) {
                         case config_buff_read_size: printf("Read buffer size: %lu bytes\n", value); break;
                         case config_buff_write_size: printf("Write buffer size: %lu bytes\n", value); break;
-                        case config_sel_tout: printf("Select timeout buffer size: %lu s\n", value); break;
+                        case config_gen_tout: printf("General timeout: %lu s\n", value); break;
+                        case config_con_tout: printf("Connection timeout: %lu s\n", value); break;
                         default: printf("Bad formatted answer. Invalid received configuration\n"); return -1; 
                     }
                     break;

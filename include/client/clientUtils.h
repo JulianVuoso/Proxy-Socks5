@@ -36,26 +36,30 @@ void recv_wrapper(int sockfd,void *buffer, size_t len, int flags);
 
 
 enum response_errors {
+    error_none = 0x00,
     error_inv_command = 0x01,
+    /* users */
     error_inv_ulen = 0x02,
-    error_inv_utype = 0x03,
-    error_inv_metric = 0x04,
-    error_inv_config = 0x05,
-    error_inv_value = 0x06,
-    error_max_ucount = 0x07,
+    error_inv_plen = 0x03,
+    error_inv_utype = 0x04,
+
+    error_inv_metric = 0x05,
+    error_inv_config = 0x06,
+    
+    error_max_ucount = 0xA0,
+    error_inv_value = 0xA1,
 
     error_server_fail = 0xFF,
-    error_none = 0x00,
 };
 
 /* Possible commands */
 enum commands {
-    command_add_user = 0x01,
-    command_del_user = 0x02,
-    command_list_user = 0x03,
-    command_get_metric = 0x04,
-    command_get_config = 0x05,
-    command_set_config = 0x06,
+    command_add_user = 0x00,
+    command_del_user = 0x01,
+    command_list_user = 0x02,
+    command_get_metric = 0x03,
+    command_get_config = 0x04,
+    command_set_config = 0x05,
 
     command_none = 0xFF,
 };
@@ -73,7 +77,8 @@ enum metric_options {
 enum config_options {
     config_buff_read_size = 0x00,
     config_buff_write_size = 0x01,
-    config_sel_tout = 0x02,
+    config_gen_tout = 0x02,
+    config_con_tout = 0x03,
 
     config_none = 0xFF,
 };
