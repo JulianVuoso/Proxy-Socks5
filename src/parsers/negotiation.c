@@ -53,7 +53,7 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
             }
             break;
         case negot_ulen:
-            if (byte > 0) {                     // ver cual seria un error
+            if (byte > 0) {                    
                 p->username->ulen = byte;
                 p->username->uname = malloc(sizeof(*p->username->uname) * (byte + 1));
                 if (p->username->uname == NULL) {
@@ -62,19 +62,11 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 }else
                     p->state = negot_uname;
             } else {
-                /* p->username->uname = malloc(sizeof(*p->username->uname));
-                if (p->username->uname == NULL) {
-                    p->error = error_negot_no_more_heap;
-                    p->state = negot_error;
-                }else{
-                    *p->username->uname='\0';
-                    p->state = negot_plen;
-                } */
                 p->error = error_negot_invalid_ulen;
                 p->state = negot_error;
             }
             break;
-        case negot_uname:                       // ver cual seria un error
+        case negot_uname:                      
                 p->username->ulen--;
                 p->username->uname[p->username->index++] = byte;
                 if(p->username->ulen < 1 ){
@@ -85,7 +77,7 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 }
             break;
         case negot_plen:
-            if (byte > 0) {                     // ver cual seria un error
+            if (byte > 0) {                    
                 p->password->plen = byte;
                 p->password->passwd = malloc(sizeof(*p->password->passwd) * (byte + 1));
                 if (p->password->passwd == NULL) {
@@ -94,19 +86,11 @@ negot_parser_feed (negot_parser * p, uint8_t byte) {
                 }else
                     p->state = negot_passwd;
             } else {
-               /*  p->password->passwd = malloc(sizeof(*p->password->passwd));
-                if (p->password->passwd == NULL) {
-                    p->error = error_negot_no_more_heap;
-                    p->state = negot_error;
-                }else{
-                    *p->password->passwd='\0';
-                    p->state = negot_done;
-                } */
                 p->error = error_negot_invalid_plen;
                 p->state = negot_error;
             }
             break;
-        case negot_passwd:                      // ver cual seria un error
+        case negot_passwd:                      
                 p->password->plen--;
                 p->password->passwd[p->password->index++] = byte;
                 if(p->password->plen == 0){
