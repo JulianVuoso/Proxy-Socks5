@@ -25,6 +25,7 @@ void request_read_init(const unsigned state, struct selector_key *key) {
     request_parser_init(&st->parser);
     st->current = NULL;
     st->reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+    st->doh_fd = -1;
 }
 
 unsigned request_read(struct selector_key *key) {
