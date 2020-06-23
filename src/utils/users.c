@@ -204,8 +204,6 @@ static struct UserNode * search_user(uint8_t * user, uint8_t * pwd){
 
 enum file_errors update_users_file(char * filename){
 
-    // fprintf(stdout, "Reopening **%s**\n", filename);
-
     FILE * file = fopen(filename,"w");
     if(file == NULL) {
         return writing_file;

@@ -55,7 +55,7 @@ START_TEST (test_negot_empty_user) {
     uint8_t data[] = {
         0x01, 
         0x00,
-        0x01,0x01
+        0x01,0x04
     };
     buffer b; 
     FIXBUF(b, data);
