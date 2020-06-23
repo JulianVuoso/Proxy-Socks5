@@ -25,6 +25,7 @@ void request_read_init(const unsigned state, struct selector_key *key) {
     request_parser_init(&st->parser);
     st->current = NULL;
     st->reply_code = REQUEST_RESPONSE_GEN_SOCK_FAIL;
+    st->doh_fd = -1;
 }
 
 unsigned request_read(struct selector_key *key) {
@@ -160,7 +161,6 @@ unsigned request_process(struct selector_key * key) {
         } default: {
             // Unknown Address Type
             abort();
-            break;
         }
     }
     return request_connect(key);
@@ -363,7 +363,6 @@ void request_close(const unsigned state, struct selector_key *key) {
     // }
     logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
-    /** TODO: check next line  */
     freeDohParser(&st->doh_parser);
     if (st->doh_fd != -1) {
         close(st->doh_fd);

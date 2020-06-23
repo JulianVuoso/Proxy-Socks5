@@ -2,6 +2,14 @@
 
 Los archivos de código fuente que no corresponden a testing se encuentran en el directorio src, mientras que los archivos de código fuente de testing se encuentran en el directorio test. Los archivos de headers se encuentran en el directorio include.
 
+* En el subdirectorio src/admin, se encuentran los archivos de la máquina de estados de administración, junto con la configuración de nuevas conexiones de administración.
+* En el subdirectorio src/client, se encuentran los archivos correspondientes a la app cliente.
+* En el subdirectorio src/doh, se encuentran los archivos correspondientes a la generación de la query DNS sobre HTTP y el parseo de la respuesta DNS.
+* En el subdirectorio src/parsers, se encuentran los archivos correspondientes a los demás parsers.
+* En el subdirectorio src/sm, se encuentran los archivos correspondientes a la máquina de estados general.
+* En el subdirectorio src/utils, se encuentran los archivos correspondientes a diversas utilidades usadas a lo largo del código.
+* Sueltos en el directorio src, se encuentran el main y el archivo de configuración de nuevas conexiones para el proxy.
+
 Para generar un ejecutable a partir del código fuente proporcionado, se debe utilizar la herramienta `cmake` (al menos en su versión 2.8). Los pasos a seguir son los siguientes:
 
 1. `mkdir build`

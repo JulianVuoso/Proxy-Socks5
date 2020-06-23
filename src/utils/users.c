@@ -72,33 +72,6 @@ enum file_errors read_users_file(char * filename){
             token = (uint8_t *)strtok(NULL, SEPARATOR);
         }
     }
-
-    // print_users();
-
-    /*************** TESTEO DE USER CONFIG **************/
-    
-/*  printf("#users: %d\n",ulist->size);
-    puts("\n---- cambio pass a peter por parker ----");
-    uint8_t * useraux = malloc(sizeof("peter") + 1);        // SIN MANEJO DE ERRORES PORQUE ERA PARA TESTEAR
-    uint8_t * passaux = malloc(sizeof("parker") + 1);
-    strcpy((char*)useraux, "peter");
-    strcpy((char*)passaux, "parker");
-    add_user_to_list(useraux, passaux, 0);
-    print_users();
-    printf("#users: %d\n",list_users()->size);
-
-    puts("\n---- borro a peter ----");
-    delete_user_from_list(useraux);
-    print_users();
-    printf("#users: %d\n",list_users()->size);
-
-    puts("\n---- borro a beto_ ----");
-    uint8_t * useraux2 = malloc(sizeof("beto_") + 1);        // SIN MANEJO DE ERRORES PORQUE ERA PARA TESTEAR
-    strcpy((char*)useraux2, "beto_");
-    delete_user_from_list(useraux2);
-    print_users();
-    printf("#users: %d\n",list_users()->size);
- */
     
     state = fclose(file);
     if(state != 0) return closing_file;
@@ -231,16 +204,16 @@ static struct UserNode * search_user(uint8_t * user, uint8_t * pwd){
 
 enum file_errors update_users_file(char * filename){
 
-    // fprintf(stdout, "Reopening **%s**\n", filename);
-
     FILE * file = fopen(filename,"w");
     if(file == NULL) {
-        if(fclose(file) != 0)
-            return closing_file;
         return writing_file;
     }
 
-    if(ulist == NULL) return file_no_error;
+    if(ulist == NULL) {
+        if(fclose(file) != 0)
+            return closing_file;
+        return file_no_error;
+    }
     struct UserNode * node = ulist->header;
     while(node != NULL){
         fprintf(file, "%s:%s:%d\n", node->user.username, node->user.password, node->user.level);

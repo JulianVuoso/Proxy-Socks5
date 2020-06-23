@@ -216,7 +216,7 @@ static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans) {
     ans->value[STATUS_INDEX] = admin_error_inv_value;
     char s[MSG_MAX_LEN + 1];
-    int16_t slen = snprintf(s, MSG_MAX_LEN + 1, "%s value must be between %ld AND %ld", type, min, max);
+    int16_t slen = snprintf(s, MSG_MAX_LEN + 1, "%s value must be between %lu AND %lu", type, min, max);
     if (slen < -1) return 0;
     return string_to_byte_array(s, (uint8_t) slen, ans); 
 }

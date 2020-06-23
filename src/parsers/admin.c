@@ -21,7 +21,7 @@ admin_parser_init(struct admin_parser * p) {
     p->data = calloc(1, sizeof(admin_received_data));
     if (p->data == NULL) {
         p->state = admin_error;
-        p->state = admin_error_server_fail;
+        p->error = admin_error_server_fail;
         return;
     }
     admin_parser_reset(p);
@@ -29,7 +29,7 @@ admin_parser_init(struct admin_parser * p) {
     p->data->value2 = calloc(1, sizeof(admin_data_word));
     if (p->data->value1 == NULL || p->data->value2 == NULL) {
         p->state = admin_error;
-        p->state = admin_error_server_fail;
+        p->error = admin_error_server_fail;
         return;
     }
 }

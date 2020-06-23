@@ -6,7 +6,6 @@
 
 
 START_TEST (test_doh_parser_normal) {
-    //TODO
 }
 END_TEST
 

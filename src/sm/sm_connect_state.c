@@ -231,6 +231,7 @@ set_current_addrinfo(struct addrinfo * current, struct sockaddr * sock_address, 
     ret->ai_family = family;
     ret->ai_addr = malloc(length);
     if (ret->ai_addr == NULL) {
+        free(ret);
         return NULL;
     }
     memcpy(ret->ai_addr, sock_address, length);

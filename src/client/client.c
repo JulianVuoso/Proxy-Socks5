@@ -82,7 +82,7 @@ int main(int argc, char * const *argv) {
     int ulen = 0, plen = 0;
     auth[0] = PROTO_VERSION;
 
-    for (int i = 0, pass = 0; userpass[i] != 0 && i < AUTH_MSG_LEN - 2; i++) {
+    for (int i = 0, pass = 0; i < AUTH_MSG_LEN - 2 && userpass[i] != 0; i++) {
         if (userpass[i] == ':') {
             if (pass) {
                 printf("%s User should be -u user:pass\n", cError);
