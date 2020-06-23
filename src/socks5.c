@@ -11,12 +11,9 @@
 #include "socks5mt.h"
 #include "socks5_handler.h"
 
-#include "hello.h"
-#include "negotiation.h"
-#include "request.h"
-
 #include "logger.h"
-#include "netutils.h"
+#include "sm_actions.h"
+#include "config.h"
 
 // Retorna la cantidad de elementos de un arreglo
 #define N(x) (sizeof(x)/sizeof(x[0]))
@@ -24,18 +21,34 @@
 /** obtiene el struct (socks5 *) desde la llave de seleccion  */
 #define ATTACHMENT(key) ( (struct socks5 *)(key)->data)
 
+/* Connection metrics */
 static unsigned concurrent_connections = 0;
+static uint64_t historical_connections = 0;
+
+/* Buffer configuration */
+static uint64_t buffer_read_size = INITIAL_BUF_SIZE, buffer_write_size = INITIAL_BUF_SIZE;
 
 /* Destruye realmente el struct socks5 */
 static void
 socks5_destroy_(struct selector_key *key) {
     struct socks5 * s = ATTACHMENT(key);
+    if (s == NULL) return;
+    /* si me llaman desde selector_unregister_fd, debo liberar lo que corresponda 
+    como si pasara a error. */
+    do_before_error(key);
     if(s->origin_resolution != NULL) {
         /* Si lo llené a mano, libero ai_addr (no lo libera freeaddrinfo) */
-        if (s->fqdn == NULL) {
-            free(s->origin_resolution->ai_addr);
+        if (s->fqdn == NULL || s->option != default_function) {
+            /*  */
+            while (s->origin_resolution != NULL) {
+                free(s->origin_resolution->ai_addr);
+                struct addrinfo * aux = s->origin_resolution;
+                s->origin_resolution = s->origin_resolution->ai_next;
+                free(aux);
+            }
+        } else {
+            freeaddrinfo(s->origin_resolution);
         }
-        freeaddrinfo(s->origin_resolution);
         s->origin_resolution = 0;
     }
     if (s->username != NULL) {
@@ -44,7 +57,13 @@ socks5_destroy_(struct selector_key *key) {
     if (s->fqdn != NULL) {
         free(s->fqdn);
     }
-    free(s);
+
+    if (s->read_buffer_mem != NULL) {
+        free(s->read_buffer_mem);
+    }
+    if (s->write_buffer_mem != NULL) {
+        free(s->write_buffer_mem);
+    }
 
     // Actualizar cantidad de conexiones concurrentes.
     // Habilitar OP_READ si estabamos en el maximo.
@@ -53,6 +72,8 @@ socks5_destroy_(struct selector_key *key) {
         selector_set_interest(key->s, s->proxy_fd, OP_READ);
     }
     concurrent_connections--;
+    
+    free(s);
 }
 
 /**
@@ -92,14 +113,28 @@ static struct socks5 * socks5_new(int client_fd) {
     ret->client_fd = client_fd;
     ret->fqdn = NULL;
     ret->origin_resolution = NULL;
+    ret->option = doh_ipv4;
 
     ret->stm.initial = HELLO_READ;
     ret->stm.max_state = ERROR;
     ret->stm.states = client_statbl;
+    ret->stm.on_timeout = do_when_timeout;
     stm_init(&ret->stm);
 
-    buffer_init(&ret->read_buffer, N(ret->read_buffer_mem), ret->read_buffer_mem);
-    buffer_init(&ret->write_buffer, N(ret->write_buffer_mem), ret->write_buffer_mem);
+    const uint64_t cur_read_size = sizeof(*ret->read_buffer_mem) * buffer_read_size, 
+                    cur_write_size = sizeof(*ret->write_buffer_mem) * buffer_write_size;
+    
+    ret->read_buffer_mem = malloc(cur_read_size);
+    if (ret->read_buffer_mem == NULL) {
+        return NULL;
+    }
+    ret->write_buffer_mem = malloc(cur_write_size);
+    if (ret->write_buffer_mem == NULL) {
+        return NULL;
+    }
+
+    buffer_init(&ret->read_buffer, cur_read_size, ret->read_buffer_mem);
+    buffer_init(&ret->write_buffer, cur_write_size, ret->write_buffer_mem);
 
     ret->username = NULL;
     ret->username_length = 0;
@@ -138,13 +173,14 @@ socks5_passive_accept(struct selector_key *key) {
     // Actualizar cantidad de conexiones concurrentes.
     // Deshabilitar OP_READ si alcanzamos el maximo.
     concurrent_connections++;
+    historical_connections++;
     if (concurrent_connections == MAX_CONCURRENT_CON) {
         // Deshabilito OP_READ del socket pasivo (server solo usa OP_READ)
         selector_set_interest_key(key, OP_NOOP);
     }
 
     if(SELECTOR_SUCCESS != selector_register(key->s, client, &socks5_handler,
-                                              OP_READ, state)) {
+                                              OP_READ, state, GEN_TIMEOUT)) {
         goto fail;
     }
     return ;
@@ -196,6 +232,15 @@ void socks5_close(struct selector_key *key) {
     socks5_destroy(key);
 }
 
+void socks5_timeout(struct selector_key *key) {
+    struct state_machine *stm   = &ATTACHMENT(key)->stm;
+    const enum socks5_state st = stm_handler_timeout(stm, key);
+
+    if(ERROR == st || DONE == st) {
+        socks5_done(key);
+    }
+}
+
 static void
 socks5_done(struct selector_key* key) {
     const int fds[] = {
@@ -210,4 +255,29 @@ socks5_done(struct selector_key* key) {
             close(fds[i]);
         }
     }
+}
+
+unsigned get_concurrent_conn(){
+    return concurrent_connections;
+}
+
+uint64_t get_historical_conn(){
+    return historical_connections;
+}
+
+/* Config getters and setters */
+uint64_t get_buffer_read_size(){
+    return buffer_read_size;
+}
+
+uint64_t get_buffer_write_size(){
+    return buffer_write_size;
+}
+
+void set_buffer_read_size(uint64_t size){
+    buffer_read_size = size;
+}
+
+void set_buffer_write_size(uint64_t size){
+    buffer_write_size = size;
 }
