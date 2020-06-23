@@ -236,8 +236,16 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 exit(0);
                 break;
             case 0xD001:
-                args->doh.ip = optarg;
-                args->doh.ip_family = AF_INET;
+                if (inet_pton(AF_INET, optarg, &ipv4_aux.sin_addr) == 1) {
+                    args->doh.ip = optarg;
+                    args->doh.ip_family = AF_INET;
+                } else if (inet_pton(AF_INET6, optarg, &ipv6_aux.sin6_addr) == 1) {
+                    args->doh.ip = optarg;
+                    args->doh.ip_family = AF_INET6;
+                } else {
+                    fprintf(stderr, "Invalid address: %s.\n", optarg);
+                    exit(1);
+                }
                 break;
             case 0xD002:
                 args->doh.port = port(optarg);
