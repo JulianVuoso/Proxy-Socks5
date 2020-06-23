@@ -6,7 +6,6 @@
 
 
 START_TEST (test_dohclient_normal) {
-    //TODO
 }
 END_TEST
 

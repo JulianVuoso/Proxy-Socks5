@@ -24,9 +24,6 @@
 #include "doh_server_struct.h"
 #include "config.h"
 
-/** TODO: SACAR CUANDO CORRIJAMOS lo de char * a  */
-#define IPV6_ADDRESS    "::"
-
 #define USERS_FILENAME  "users.txt"
 
 #define LOGGER_FD       1
@@ -46,7 +43,6 @@ static const char * file_error_description(enum file_errors error);
 static bool done = false;
 static time_t timeout_gen = INIT_GEN_TIMEOUT, timeout_con = INIT_CON_TIMEOUT;
 
-/** TODO: Ver como libero recursos en este caso  */
 static void
 sigterm_handler(const int signal) {
     printf("signal %d, cleaning up and exiting\n",signal);
@@ -68,8 +64,6 @@ main(const int argc, const char **argv) {
     set_doh_info(args.doh);
     
     const char * err_msg = NULL;
-
-    // close(0);
 
     selector_status   ss      = SELECTOR_SUCCESS;
     fd_selector selector      = NULL;
@@ -99,7 +93,6 @@ main(const int argc, const char **argv) {
     signal(SIGTERM, sigterm_handler);
     signal(SIGINT,  sigterm_handler);
 
-    /** TODO: VER SI LO CAMBIAMOS A 5s */
     const struct selector_init conf = {
         .signal = SIGALRM,
         .select_timeout = {
@@ -119,10 +112,9 @@ main(const int argc, const char **argv) {
     }
 
     /* Initialize logger */
-    // enum logger_level level = ACCESS_LOG;
-    // if (args.disectors_enabled) level = PASS_LOG; 
-    // ss = logger_init(LOGGER_FD, level, selector);
-    ss = logger_init(LOGGER_FD, LOGGER_LEVEL, selector); // TODO: uncomment prev on production
+    enum logger_level level = ACCESS_LOG;
+    if (args.disectors_enabled) level = PASS_LOG; 
+    ss = logger_init(LOGGER_FD, level, selector);
 
 
     const struct fd_handler socks5 = {

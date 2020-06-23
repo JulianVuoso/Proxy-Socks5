@@ -363,7 +363,6 @@ void request_close(const unsigned state, struct selector_key *key) {
     // }
     logger_log(DEBUG, "saliendo de req write\n");
     request_parser_close(&st->parser);
-    /** TODO: check next line  */
     freeDohParser(&st->doh_parser);
     if (st->doh_fd != -1) {
         close(st->doh_fd);

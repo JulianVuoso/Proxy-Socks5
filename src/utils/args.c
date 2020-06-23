@@ -237,7 +237,6 @@ parse_args(const int argc, const char **argv, struct socks5args *args) {
                 break;
             case 0xD001:
                 args->doh.ip = optarg;
-                /** TODO: ver como hacer para validar que sea IPv4 o IPv6 */
                 args->doh.ip_family = AF_INET;
                 break;
             case 0xD002:
