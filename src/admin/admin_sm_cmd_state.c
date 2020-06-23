@@ -22,6 +22,7 @@ void admin_cmd_init(const unsigned state, struct selector_key *key) {
     st->write_buf = &(ADMIN_ATTACH(key)->write_buffer);
     st->reply_word.value = NULL;
     st->irrec_error = false;
+    st->eof = false;
     admin_parser_init(&st->parser);
 }
 
@@ -73,8 +74,18 @@ unsigned admin_cmd_read(struct selector_key *key) {
                 }
             }
         } while (buffer_can_read(st_vars->read_buf));
-    } else ret = ADMIN_ERROR;
-
+    } else if (n == 0 && nbytes != 0) {
+        logger_log(DEBUG, "Finished receiving\n\n");
+        st_vars->eof = true;
+        if (selector_remove_interest(key->s, key->fd, OP_READ) != SELECTOR_SUCCESS) 
+            ret = ADMIN_ERROR;
+        if (!buffer_can_read(st_vars->write_buf)) {
+            logger_log(DEBUG, "Finished sending in read\n\n");
+            ret = ADMIN_DONE;
+        }
+    } else {
+        ret = ADMIN_ERROR;
+    }
     return ret;
 }
 
@@ -91,6 +102,10 @@ unsigned admin_cmd_write(struct selector_key *key) {
             if (selector_remove_interest(key->s, key->fd, OP_WRITE) == SELECTOR_SUCCESS) 
                 ret = ADMIN_CMD;
             else ret = ADMIN_ERROR;
+            if (st_vars->eof) {
+                logger_log(DEBUG, "Finished sending in write\n\n");
+                ret = ADMIN_DONE;
+            }
             if (st_vars->irrec_error) {
                 logger_log(DEBUG, "Admin error. Irrecoverable error\n\n");
                 ret = ADMIN_ERROR;
