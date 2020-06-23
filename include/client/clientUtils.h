@@ -9,24 +9,16 @@
 #include <string.h>
 #include <sys/socket.h>
 
-#define ADD_USER "add-user"
-#define ADD_USER_NO 1
-#define DEL_USER "del-user"
-#define DEL_USER_NO 2
-#define LIST_USER "list-users"
-#define LIST_USERS_NO 3
-#define GET_METRIC "get-metric"
-#define GET_METRIC_NO 4
-#define GET_CONFIG "get-config"
-#define GET_CONFIG_NO 5
-#define SET_CONFIG "set-config"
-#define SET_CONFIG_NO 6
-
 #define MAX_DATA_LEN    514
 #define READBUFFER_LEN  257
 #define MAX_VAL_BYTES   sizeof(uint64_t)
 
+#define sError      "\033[1;31mServer ->\033[0m"
+#define sOk         "\033[1;32mServer ->\033[0m"
+#define sRecError   "\033[1;33mServer ->\033[0m"
 
+#define cError      "\033[1;31mClient ->\033[0m"
+#define cLog        "\033[1;34mClient ->\033[0m"
 
 uint8_t 
 valid_args(int argc, char * const *argv);

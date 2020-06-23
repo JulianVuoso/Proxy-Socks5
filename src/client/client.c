@@ -21,7 +21,7 @@
 int main(int argc, char * const *argv) {
     //checkear que todos los comandos esten al final
     if (!valid_args(argc, argv)) {
-        printf("Wrong arg format error. Commands should go last\n");
+        printf("%s Wrong arg format error. Commands should go last\n", cError);
         return -1;
     }
     
@@ -51,16 +51,9 @@ int main(int argc, char * const *argv) {
     //start of commands
     int cmdStartIndex = optind;
 
-
-    //check theres a command
-    if (argc <= cmdStartIndex) {
-        printf("Error. Missing a command\n");
-        return -1;
-    }
-
     //check for userpass
     if (userpass == NULL) {
-        printf("Error. Missing user:pass\n");
+        printf("%s Missing user credentials\n", cError);
         return -1;
     }
 
@@ -73,7 +66,7 @@ int main(int argc, char * const *argv) {
     for (int i = 0, pass = 0; userpass[i] != 0 && i < AUTH_MSG_LEN - 2; i++) {
         if (userpass[i] == ':') {
             if (pass) {
-                printf("Error. User should be -u user:pass\n");
+                printf("%s User should be -u user:pass\n", cError);
                 return -1;
             }
             pass = 1;
@@ -90,7 +83,7 @@ int main(int argc, char * const *argv) {
 
     //check there actually is a user and password
     if (ulen > 255 || plen > 255) {
-        printf("Error. User/password cant be longer than 255 chararcters\n");
+        printf("%s User/password cant be longer than 255 chararcters\n", cError);
         return -1;
     }
     auth[1] = ulen;
@@ -101,7 +94,7 @@ int main(int argc, char * const *argv) {
 
     //open socket for sctp
     if ((sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP)) < 0) {
-        printf("Error creating socket\n");
+        printf("%s Error creating socket\n", cError);
         return -1;
     }
 
@@ -111,13 +104,13 @@ int main(int argc, char * const *argv) {
 
     //convert ip from string to byte
     if (inet_pton(AF_INET, host, &addr.sin_addr) <= 0) {
-        printf("Invalid Host IP (%s)\n", host);
+        printf("%s Invalid Host IP (%s)\n", cError, host);
         close(sockfd);
         return -1;
     }
     //connect
     if (connect(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        printf("Error connecting proxy\n");
+        printf("%s Error connecting proxy\n", cError);
         close(sockfd);
         return -1;
     }
@@ -127,13 +120,13 @@ int main(int argc, char * const *argv) {
     uint8_t readBuffer[READBUFFER_LEN];
     recv_wrapper(sockfd, readBuffer, 2, 0);
     if (readBuffer[0] != 0x01) {
-        printf("Invalid protocol version.\n");
+        printf("%s Invalid protocol version\n", sError);
         close(sockfd);
         return -1;
     }
 
     if (readBuffer[1] != 0x00) {
-        printf("Bad authentication\n");
+        printf("%s Bad authentication\n", sError);
         close(sockfd);
         return -1;
     }
@@ -143,33 +136,32 @@ int main(int argc, char * const *argv) {
     int cmd[MAX_COMMANDS];
     int amtCmds = 0;
     //send all commands received
-    for (int i = 0,fail = 0; i < MAX_COMMANDS && argc > cmdStartIndex && !fail; i++) {
+    uint8_t cmd_fail = 0;
+    for (int i = 0; i < MAX_COMMANDS && argc > cmdStartIndex && !cmd_fail; i++) {
         //get next command
         cmd[i] = get_next_command(argc, argv, &cmdStartIndex, data, &datalen);
-        if(cmd[i] < 0) {
-            fail = i + 1;
-        } else {
+        if(cmd[i] >= 0) {
             //send it
-            if(send(sockfd, data, datalen, 0) != 0)
+            if(send(sockfd, data, datalen, 0) == datalen)
                 amtCmds++;
-            else
-                fail = i + 1;
-        }
+            else {
+                cmd_fail = 1;
+                printf("%s Error sending request. Stopped sending\n", cError);
+            }
+        } else cmd_fail = 1;
     }
+    if (amtCmds > 0) printf("\n\033[0;34m---------------\tStart Server Responses\t---------------\033[0m\n\n");
     // handle all commands send
-    for (int i = 0; i < amtCmds; i++) {
+    int8_t resp_fail = 0;
+    for (int i = 0; i < amtCmds && resp_fail >= 0; i++) {
         recv_wrapper(sockfd, readBuffer, 2, 0);
-        if (readBuffer[0] != cmd[i]) printf("Error. Answer does not match requested command\n");
-        else {
-            //handle response
-            int res = handle_response(sockfd, cmd[i], readBuffer);
-            if(res<0) {
-                close(sockfd);
-                return -1;
-            }    
-        }
+
+        //handle response
+        resp_fail = handle_response(sockfd, cmd[i], readBuffer);
     }
-    
+    if (amtCmds > 0) printf("\n\033[0;34m---------------\tEnd Server Responses\t---------------\033[0m\n\n");
+    if (cmd_fail) printf("%s Some commands where not sent due to bad format\n", cError);
+    if (resp_fail == -1) printf("%s Server closed connection due to bad request\n\n", cError);
     //close connection and exit
     close(sockfd);
     return 0;
