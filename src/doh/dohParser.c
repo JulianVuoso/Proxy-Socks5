@@ -469,7 +469,7 @@ static DOHQRSM_STATE dohBodyParser(const char c, DOHQueryResSM *qrsm)
 
 DOHQRSM_STATE dohParse(const char c, DOHQueryResSM *qrsm) {
     //if error return inmediately
-    if (qrsm == NULL || doh_parser_is_done(qrsm->state, 0)) {
+    if (doh_parser_is_done(qrsm->state, 0)) {
         return qrsm->state;
     }
     return (*(qrsm->parser))(c, qrsm);

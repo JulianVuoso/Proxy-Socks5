@@ -160,7 +160,6 @@ unsigned request_process(struct selector_key * key) {
         } default: {
             // Unknown Address Type
             abort();
-            break;
         }
     }
     return request_connect(key);

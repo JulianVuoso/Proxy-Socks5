@@ -5,212 +5,188 @@
 #define VAL_SIZE_MAX    sizeof(uint64_t)
 
 static uint8_t 
-ulongToByteArray(uint64_t value, uint8_t * data);
+ulong_to_byte_array(uint64_t value, uint8_t * data);
+static uint8_t
+strint_to_ulong(uint64_t * value, const char * data);
+static uint8_t 
+print_user_list(int sockfd, uint8_t *readBuffer);
+static uint8_t
+get_value_from_answer(uint64_t * value, uint8_t * option, int sockfd, uint8_t *readBuffer);
+static void
+print_string_from_answer(int sockfd, uint8_t *readBuffer);
 
-//chekear que todos los comandos esten al final
-void validateArgv(int argc, char const *argv[]){
+
+
+// Checks for valid arguments position
+uint8_t 
+valid_args(int argc, char * const *argv){
     for (int i = 1, optEnd = 0, optArg = 0; i < argc; i++) {
         if(!optArg) {
             if(argv[i][0] == '-') {
-                if(optEnd) {
-                    printf("Formato erroneo, los comandos deben ir al final\n");
-                    exit(-1);
-                }
+                if(optEnd) return 0;
                 optArg = 1;
             } else optEnd = 1;
         } else optArg = 0;
     }
+    return 1;
 }
 
 //get next command
-int getNextCommand(int argc,char *argv[], int * cmdStartIndex, uint8_t * data, int * datalen) {
+int 
+get_next_command(int argc, char * const *argv, int * cmdStartIndex, uint8_t * data, int * datalen) {
     int cmd;
-    if (strcmp(argv[(*cmdStartIndex)], "add-user") == 0) {
-        cmd = ADD_USER_NO;
+    if (strcmp(argv[(*cmdStartIndex)], "+add-user") == 0) {
+        cmd = command_add_user;
+        data[0] = command_add_user;
         int utypeSpecified = 0;
-        if (argc <= (*cmdStartIndex) + 1) {
-            printf("Missing user:pass\n");
+        if (argc <= (*cmdStartIndex) + 1 || *argv[(*cmdStartIndex) + 1] == '+') {
+            printf("\n%s Missing user:pass\n", cError);
             return -1;
         }
         char *nuser = argv[(*cmdStartIndex) + 1];
         int nulen = 0, nplen = 0;
         //ADD USER
-        data[0] = ADD_USER_NO;
-        for (int i = 0, pass = 0; nuser[i] != 0 && i < MAX_DATA_LEN - 2; i++)
-        {
-            if (nuser[i] == ':')
-            {
-                if (pass)
-                {
-                    printf("Error de formato, el formato del parametro de add-user deberia ser user:pass\n");
+        
+        for (int i = 0, pass = 0; i < MAX_DATA_LEN - 2 && nuser[i] != 0; i++) {
+            if (nuser[i] == ':') {
+                if (pass) {
+                    printf("\n%s add-user should be user:pass\n", cError);
                     return -1;
                 }
                 pass = 1;
-            }
-            else
-            {
-                if (!pass)
-                {
+            } else {
+                if (!pass) {
                     nulen++;
                     data[i + 3] = nuser[i];
-                }
-                else
-                {
+                } else {
                     nplen++;
                     data[i + 3] = nuser[i];
                 }
             }
         }
-        if (nulen <= 0 || nulen > 255 || nplen <= 0 || nplen > 255)
-        {
-            printf("Error de formato, el formato de add-user deberia ser user:pass con ambos una longitud entre 1 y 255\n");
+
+        if (nulen > 255 || nplen > 255) {
+            printf("\n%s User/password cant be longer than 255 chararcters\n", cError);
             return -1;
         }
         data[2] = nulen;
         data[3 + nulen] = nplen;
-        if (argc <= (*cmdStartIndex) + 2 || (argv[(*cmdStartIndex) + 2][0] != '0' && argv[(*cmdStartIndex) + 2][0] != '1'))
-        {
+        if (argc <= (*cmdStartIndex) + 2 || *argv[(*cmdStartIndex) + 2] == '+') {
             data[1] = 0;
-        }
-        else
-        {
-            char *ntype = argv[(*cmdStartIndex) + 2];
-            if (ntype[0] == '0')
-            {
-                data[1] = 0;
-            }
-            else if (ntype[0] == '1')
-            {
-                data[1] = 1;
-            }
-            else
-            {
-                printf("El tipo de usuario debe ser 0 (cliente) o 1 (admin)\n");
+        } else {
+            uint64_t num;
+            if (!strint_to_ulong(&num, argv[(*cmdStartIndex) + 2]) || num > 255) {
+                printf("\n%s Value should be a positive number less than 256\n", cError);
                 return -1;
             }
+
+            data[1] = (uint8_t) num;
             utypeSpecified = 1;
         }
         //cmd|ulen|username|plen|password
         *datalen = 2 + nulen + 1 + nplen + 1;
-        *cmdStartIndex += 2 + (utypeSpecified?1:0);
-    }
-    else if (strcmp(argv[(*cmdStartIndex)], "del-user") == 0)
-    {
-        cmd = DEL_USER_NO;
-        data[0] = DEL_USER_NO;
-        if (argc <= (*cmdStartIndex) + 1)
-        {
-            printf("Falta usuario a borrar\n");
-            return -1;
-        }
-        char *deluser = argv[(*cmdStartIndex) + 1];
+        *cmdStartIndex += 2 + utypeSpecified;
+
+    } else if (strcmp(argv[(*cmdStartIndex)], "+del-user") == 0) {
+
+        cmd = command_del_user;
+        data[0] = command_del_user;
+        int userSpecified = 0;
+
         *datalen = 2;
-        for (int i = 0; deluser[i] != 0 && i < MAX_DATA_LEN; i++)
-        {
-            data[i + 2] = deluser[i];
-            (*datalen)++;
+        if (!(argc <= (*cmdStartIndex) + 1) && *argv[(*cmdStartIndex) + 1] != '+') {
+            char *deluser = argv[(*cmdStartIndex) + 1];    
+            for (int i = 0; i < MAX_DATA_LEN && deluser[i] != 0; i++) {
+                data[i + 2] = deluser[i];
+                (*datalen)++;
+            }
+            userSpecified = 1;
         }
-        if (*datalen <= 0 || *datalen > 255)
-        {
-            printf("Error de formato, el formato de del-user deberia ser user con longitud entre 1 y 255\n");
+
+        if (*datalen - 2 > 255) {
+            printf("\n%s User cant be longer than 255 chararcters\n", cError);
             return -1;
         }
         data[1] = *datalen - 2;
-        *cmdStartIndex += 2;
-    }
-    else if (strcmp(argv[(*cmdStartIndex)], "list-users") == 0)
-    {
-        cmd = LIST_USERS_NO;
-        data[0] = LIST_USERS_NO;
+        *cmdStartIndex += 1 + userSpecified;
+
+    } else if (strcmp(argv[(*cmdStartIndex)], "+list-users") == 0) {
+
+        cmd = command_list_user;
+        data[0] = command_list_user;
         *datalen = 1;
         *cmdStartIndex += 1;
-    }
-    else if (strcmp(argv[(*cmdStartIndex)], "get-metric") == 0)
-    {
-        cmd = GET_METRIC_NO;
-        data[0] = GET_METRIC_NO;
-        if (argc <= (*cmdStartIndex) + 1)
-        {
-            printf("Falta metrica\n");
+
+    } else if (strcmp(argv[(*cmdStartIndex)], "+get-metric") == 0) {
+
+        cmd = command_get_metric;
+        data[0] = command_get_metric;
+        if (argc <= (*cmdStartIndex) + 1 || *argv[(*cmdStartIndex) + 1] == '+') {
+            printf("\n%s Missing metric\n", cError);
             return -1;
-        }
-        char *metric = argv[(*cmdStartIndex) + 1];
-        if (metric[0] >= '0' && metric[0] <= '2')
-        {
-            data[1] = metric[0] - '0';
-        }
-        else
-        {
-            printf("Error en el formato de la metrica. Debe ser 0,1 o 2\n");
-            return -1;
-        }
-        *datalen = 2;
-        *cmdStartIndex += 2;
-    }
-    else if (strcmp(argv[(*cmdStartIndex)], "get-config") == 0)
-    {
-        cmd = GET_CONFIG_NO;
-        data[0] = GET_CONFIG_NO;
-        if (argc <= (*cmdStartIndex) + 1)
-        {
-            printf("Falta configuracion\n");
-            return -1;
-        }
-        char *config = argv[(*cmdStartIndex) + 1];
-        if (config[0] >= '0' && config[0] <= '2')
-        {
-            data[1] = config[0] - '0';
-        }
-        else
-        {
-            printf("Error en el formato de la configuracion. Debe ser 0,1 o 2\n");
-            return -1;
-        }
-        *datalen = 2;
-        *cmdStartIndex += 2;
-    }
-    else if (strcmp(argv[(*cmdStartIndex)], "set-config") == 0)
-    {
-        cmd = SET_CONFIG_NO;
-        data[0] = SET_CONFIG_NO;
-        if (argc <= (*cmdStartIndex) + 1)
-        {
-            printf("Falta configuracion\n");
-            return -1;
-        }
-        char *config = argv[(*cmdStartIndex) + 1];
-        if (config[0] >= '0' && config[0] <= '2')
-        {
-            data[1] = config[0] - '0';
-        }
-        else
-        {
-            printf("Error en el formato de la configuracion. Debe ser 0,1 o 2\n");
-            return -1;
-        }
-        if (argc <= (*cmdStartIndex) + 2)
-        {
-            printf("Falta configuracion\n");
-            return -1;
-        }
-        char *nval = argv[(*cmdStartIndex) + 2];
-        uint64_t val = 0;
-        for (int i = 0; nval[i] != 0; i++) {
-            if(val < (MAX_VAL_UINT64 / 10) && nval[i]>='0' && nval[i]<= '9')
-                val = val * 10 + nval[i] - '0';
-           else{
-                printf("Error en el formato del valor de configuracion. Debe ser un numero de menos de 255 digitos\n");
-                return -1;
-            }
         }
 
-        data[2] = ulongToByteArray(val, data + 3);
+        uint64_t num;
+        if (!strint_to_ulong(&num, argv[(*cmdStartIndex) + 1]) || num > 255) {
+            printf("\n%s Metric should be a positive number less than 256\n", cError);
+            return -1;
+        }
+        data[1] = (uint8_t) num;
+
+        *datalen = 2;
+        *cmdStartIndex += 2;
+
+    } else if (strcmp(argv[(*cmdStartIndex)], "+get-config") == 0) {
+
+        cmd = command_get_config;
+        data[0] = command_get_config;
+        if (argc <= (*cmdStartIndex) + 1 || *argv[(*cmdStartIndex) + 1] == '+') {
+            printf("\n%s Missing configuration\n", cError);
+            return -1;
+        }
+
+        uint64_t num;
+        if (!strint_to_ulong(&num, argv[(*cmdStartIndex) + 1]) || num > 255) {
+            printf("\n%s Config should be a positive number less than 256\n", cError);
+            return -1;
+        }
+        data[1] = (uint8_t) num;
+
+        *datalen = 2;
+        *cmdStartIndex += 2;
+    
+    } else if (strcmp(argv[(*cmdStartIndex)], "+set-config") == 0) {
+        
+        cmd = command_set_config;
+        data[0] = command_set_config;
+        int valueSpecified = 0;
+        if (argc <= (*cmdStartIndex) + 1 || *argv[(*cmdStartIndex) + 1] == '+') {
+            printf("\n%s Missing configuration\n", cError);
+            return -1;
+        }
+        
+        uint64_t num;
+        if (!strint_to_ulong(&num, argv[(*cmdStartIndex) + 1]) || num > 255) {
+            printf("\n%s Config should be a positive number less than 256\n", cError);
+            return -1;
+        }
+        
+        data[1] = (uint8_t) num;
+
+        if (!(argc <= (*cmdStartIndex) + 2) && *argv[(*cmdStartIndex) + 2] != '+') {
+            if (!strint_to_ulong(&num, argv[(*cmdStartIndex) + 2])) {
+                printf("\n%s Config should be a positive representable number\n", cError);
+                return -1;
+            }
+            valueSpecified = 1;
+        }
+
+        data[2] = ulong_to_byte_array(num, data + 3);
         *datalen = data[2] + 3;
-        *cmdStartIndex += 3;
-    }
-    else
-    {
-        printf("Comando invalido\n");
+        *cmdStartIndex += 2 + valueSpecified;
+
+    } else {
+        printf("\n%s Invalid command\n", cError);
         return -1;
     }
 
@@ -219,260 +195,123 @@ int getNextCommand(int argc,char *argv[], int * cmdStartIndex, uint8_t * data, i
 
 
 //handle response
-int handleResponse(int sockfd,int cmd, uint8_t *readBuffer){
-    switch (cmd)
-    {
-    case ADD_USER_NO:
-        if (readBuffer[1] == 0)
-        {
-            printf("usuario creado\n");
-        }
-        else if (readBuffer[1] == 0x02)
-        {
-            printf("Longitud de usuario invalida\n");
-            return -1;
-        }else if (readBuffer[1] == 0x03)
-        {
-            printf("Tipo de usuario invalido\n");
-            return -1;
-        }
-        else if(readBuffer[1]== 0x07){
-            printf("Cantidad de usuarios llena\n");
-            return -1;
-        }else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-            return -1;
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-            return -1;
-        }else{
-            printf("Error inesperado al crear el usuario\n");
-            return -1;
-        }
-        break;
-    case DEL_USER_NO:
-        if (readBuffer[1] == 0)
-        {
-            printf("usuario borrado\n");
-        }else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-            return -1;
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-            return -1;
-        }else{
-            printf("Error inesperado al borrar el usuario\n");
-            return -1;
-        }
-        break;
-    case LIST_USERS_NO:
-        if (readBuffer[1] == 0) {   
-            recvWrapper(sockfd,readBuffer,1,0);
-            unsigned int nuserslen = readBuffer[0];
-            if(nuserslen > sizeof(unsigned long)) {
-                printf("El numero de bytes de respuesta es muy grande para este cliente \n");
-                return -1;
-            }
-            recvWrapper(sockfd, readBuffer, nuserslen, 0);
-            unsigned long nusers = 0;
-            for (unsigned int  i = 0; i < nuserslen; i++)
-                nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
+int 
+handle_response(int sockfd, int cmd, uint8_t *readBuffer) {
 
-            printf("N\tNombre\tPassw\t Tipo\n");
-            fflush(stdout);
-            for (unsigned int i = 0,nulen = 0,utype=0,plen = 0; i < nusers; i++)
-            {
-                recvWrapper(sockfd, readBuffer, 2, 0);
-                utype = readBuffer[0];
-                nulen = readBuffer[1];
-                recvWrapper(sockfd, readBuffer, nulen, 0);
-                printf("%d\t%*.*s\t", i+1, nulen, nulen, readBuffer);
-                recvWrapper(sockfd, readBuffer, 1, 0);
-                plen = readBuffer[0];
-                recvWrapper(sockfd, readBuffer, plen, 0);
-                    printf("%*.*s\t", plen, plen, readBuffer);
-                printf("%s\n", (utype == 0)? "cliente" : "admin");
-            }
-        }else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-            return -1;
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-            return -1;
-        }else{
-            printf("Error inesperado al listar usuarios\n");
-            return -1;
-        }
-        break;
-    case GET_METRIC_NO:
-        if (readBuffer[1] == 0)
-        {
-            recvWrapper(sockfd, readBuffer, 2, 0);
-            int metric = readBuffer[0];
-            int metricLen = readBuffer[1];
-            if(readBuffer[1] > 8){
-                printf("El numero de bytes de respuesta es muy grande para este cliente \n");
-                return -1;
-            }
-            if (metricLen != 0) recvWrapper(sockfd, readBuffer, metricLen, 0);
-            unsigned long metricVal = 0;
-            for (int i = 0; i < metricLen; i++) {
-                metricVal = (metricVal << 8) + readBuffer[i];
-            }
-            
-            switch (metric)
-            {
-            case 0:
-                printf("Conexiones historicas: %lu\n",metricVal);
-                break;
-            case 1:
-                printf("Conexiones concurrentes: %lu\n",metricVal);
-                break;
-            case 2:
-                printf("Transferencia de bytes historica: %lu\n",metricVal);
-                break;
-            default:
-                printf("Metrica desconocida: %lu\n",metricVal);
-                break;
-            }
-        }else if (readBuffer[1] == 0x04)
-        {
-            printf("Metrica invalida\n");
-            return -1;
-        }else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-            return -1;
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-            return -1;
-        }else{
-            printf("Error inesperado al obtener metricas\n");
-            return -1;
-        }
-        break;
-    case GET_CONFIG_NO:
-        if (readBuffer[1] == 0)
-        {
-            recvWrapper(sockfd, readBuffer, 2, 0);
-            int config = readBuffer[0];
-            int configLen = readBuffer[1];
-            if(configLen > 18){
-                printf("El numero de bytes de respuesta es muy grande para este cliente \n");
-                return -1;
-            }
-            if (configLen != 0) recvWrapper(sockfd, readBuffer, configLen, 0);
-            unsigned long configVal = 0;
-            for (int i = 0; i < configLen; i++)
-            {
-                configVal = (configVal << 8) + readBuffer[i];
-            }
-            
-            switch (config)
-            {
-            case 0:
-                printf("Tamaño de buffer de lectura: %lu\n",configVal);
-                break;
-            case 1:
-                printf("Tamaño de buffer de escritura: %lu\n",configVal);
-                break;
-            case 2:
-                printf("Timeout del select: %lu\n",configVal);
-                break;
-            default:
-                printf("Configuracion desconocida: %lu\n",configVal);
-                break;
-            }
-        }else if (readBuffer[1] == 0x05)
-        {
-            printf("Configuracion invalida\n");
-            return -1;
-        }else if (readBuffer[1] == 0x01)
-        {
-            printf("Comando invalido\n");
-            return -1;
-        }
-        else if (readBuffer[1] == 0xFF)
-        {
-            printf("Fallo general del servidor\n");
-            return -1;
-        }else{
-            printf("Error inesperado al obtener configuracion\n");
-            return -1;
-        }
-        break;
-    case SET_CONFIG_NO:
-        if (readBuffer[1] == 0)
-        {
-            printf("Configuracion seteada\n");
-        }else{
-            if (readBuffer[1] == 0x05)
-            {
-                printf("Configuracion invalida\n");
-                
-            }else if (readBuffer[1] == 0x06)
-            {
-                printf("Valor de configuracion invalido\n");
-                
-            }else if (readBuffer[1] == 0x01)
-            {
-                printf("Comando invalido\n");
-                
-            }
-            else if (readBuffer[1] == 0xFF)
-            {
-                printf("Fallo general del servidor\n");
-                
-            }else{
-                printf("Error inesperado al setear configuracion\n");
-                
-            }
-            recvWrapper(sockfd,readBuffer,2,0);
-            unsigned int mlen = readBuffer[1];
-            if(mlen>0){
-                recvWrapper(sockfd,readBuffer,mlen,0);
-                printf("mensaje del servidor: ");
-                fflush(stdout);
-                write(STDOUT_FILENO,readBuffer,mlen);
-                printf("\n");
-            }
-            return -1;
-        }
-        break;
-    default:
-        printf("Hubo un problema\n");
-        return -1;
-        break;
+    
+
+    if (cmd != readBuffer[0]) {
+        printf("%s Bad formatted server answer. Not sent command\n", cError); 
+        return -2;
     }
-    return 0;
+
+    switch (readBuffer[1]) {
+        case error_inv_command: printf("%s Invalid command\n", sError); return -1;
+        case error_server_fail: printf("%s Server general failure\n", sError); return -1;
+    }
+
+    uint64_t value;
+    uint8_t option;
+
+    switch (cmd) {
+        case command_add_user:
+            switch(readBuffer[1]) {
+                case error_none: printf("%s User created/updated successfully\n", sOk); break;
+
+                case error_inv_ulen: printf("%s Invalid user length\n", sError); return -1;
+                case error_inv_plen: printf("%s Invalid password length\n", sError); return -1;
+                case error_inv_utype: printf("%s Invalid user type\n", sError); return -1;
+                case error_max_ucount: printf("%s User capacity full\n", sRecError); break;
+                default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;
+            }
+            break;
+
+        case command_del_user:
+            switch (readBuffer[1]) {
+                case error_none: printf("%s User successfully deleted\n", sOk); break;
+                default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;
+
+            }
+            break;
+
+        case command_list_user:
+            switch (readBuffer[1]) {
+                case error_none: 
+                    if(!print_user_list(sockfd, readBuffer)) return -1; 
+                    break;
+                default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;
+            }
+            break;
+
+        case command_get_metric:
+            switch (readBuffer[1]) {
+                case error_none: 
+                    
+                    if (!get_value_from_answer(&value, &option, sockfd, readBuffer)) return -1;
+                    switch (option) {
+                        case metric_hist_conn: printf("%s Historical connections: %lu\n", sOk, value); break;
+                        case metric_conc_conn: printf("%s Concurrent connections: %lu\n", sOk, value); break;
+                        case metric_hist_btransf: printf("%s Historical byte transfer: %lu bytes\n", sOk, value); break;
+                        default: printf("%s Bad formatted server answer. Invalid received metric\n", cError); return -2;
+                    }
+                    break;
+
+                case error_inv_metric: printf("%s Invalid metric\n", sError); return -1;
+                default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;
+            }
+            break;
+
+        case command_get_config:
+            switch (readBuffer[1]) {
+                case error_none:
+                    if (!get_value_from_answer(&value, &option, sockfd, readBuffer)) return -1;
+                    switch (option) {
+                        case config_buff_read_size: printf("%s Read buffer size: %lu bytes\n", sOk, value); break;
+                        case config_buff_write_size: printf("%s Write buffer size: %lu bytes\n", sOk, value); break;
+                        case config_gen_tout: printf("%s General timeout: %lu s\n", sOk, value); break;
+                        case config_con_tout: printf("%s Connection timeout: %lu s\n", sOk, value); break;
+                        default: printf("%s Bad formatted server answer. Invalid received configuration\n", cError); return -2; 
+                    }
+                    break;
+                
+                case error_inv_config: printf("%s Invalid configuration\n", sError); return -1;
+                default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;
+            }
+            break;
+
+        case command_set_config:
+            switch (readBuffer[1]) {
+                case error_none: printf("%s Configuracion seteada\n", sOk); break;
+                
+                case error_inv_value: print_string_from_answer(sockfd, readBuffer); break;
+                default: printf("%s Bad formatted server answer. Invalid received status\n", cError); return -2;
+            }
+            break;
+        
+        default: printf("%s Error. Big time\n", cError); return -2;
+    }
+    return 1;
 }
 
-void recvWrapper(int sockfd,void *buffer, size_t len, int flags){
-    int res = recv(sockfd,buffer,len,flags);
-    if(res == 0 && len != 0){
-        printf("Cerrando conexion\n");
+void 
+recv_wrapper(int sockfd, void *buffer, size_t len, int flags){
+    int res = recv(sockfd, buffer, len, flags);
+    
+    if(res == 0 && len != 0) {
+        printf("%s Closing connection\n", cLog);
         close(sockfd);
         exit(-1);
-    }else if(res < 0){
-        printf("Error en la conexion\n");
+    } else if(res < 0){
+        printf("%s Error on connection\n", cError);
         close(sockfd);
         exit(-1);
     }
 }
+
+/** Auxiliary functions */
 
 static uint8_t 
-ulongToByteArray(uint64_t value, uint8_t * data) {
+ulong_to_byte_array(uint64_t value, uint8_t * data) {
     uint8_t zeros = 1;
     uint8_t aux, len = 0;
     for (int8_t i = VAL_SIZE_MAX * (BITS_P_BYTE - 1); i >= 0; i -= BITS_P_BYTE ) {
@@ -486,3 +325,73 @@ ulongToByteArray(uint64_t value, uint8_t * data) {
     }
    return len;
 }
+
+
+static uint8_t
+strint_to_ulong(uint64_t * value, const char * data) {
+    *value = 0;
+    for (int i = 0; data[i] != 0; i++) {
+        if(*value < (MAX_VAL_UINT64 / 10) && data[i] >= '0' && data[i] <= '9')
+            *value = *value * 10 + data[i] - '0';
+        else return 0;
+    }
+    return 1;
+}
+
+static uint8_t 
+print_user_list(int sockfd, uint8_t *readBuffer) {
+    recv_wrapper(sockfd, readBuffer, 1,0);
+    uint64_t nuserslen = readBuffer[0];
+    if(nuserslen > MAX_VAL_BYTES) {
+        printf("%s Error. Answer length too big\n", cError);
+        return 0;
+    }
+    recv_wrapper(sockfd, readBuffer, nuserslen, 0);
+    unsigned long nusers = 0;
+    for (unsigned int  i = 0; i < nuserslen; i++)
+        nusers = ((nusers << 8) & 0xFF00) + readBuffer[i];
+
+    printf("%s\033[1m\tN\tName\tPass\t Type\n\033[0m", sOk);
+    for (unsigned int i = 0, nulen = 0, utype=0,plen = 0; i < nusers; i++) {
+        recv_wrapper(sockfd, readBuffer, 2, 0);
+        utype = readBuffer[0];
+        nulen = readBuffer[1];
+        recv_wrapper(sockfd, readBuffer, nulen, 0);
+        printf("\t\t%ud\t%*.*s\t", i+1, nulen, nulen, readBuffer);
+        recv_wrapper(sockfd, readBuffer, 1, 0);
+        plen = readBuffer[0];
+        recv_wrapper(sockfd, readBuffer, plen, 0);
+        printf("%*.*s\t", plen, plen, readBuffer);
+        printf("%s\n", (utype == 0)? "client" : "admin");
+    }
+    return 1;
+}
+
+static uint8_t
+get_value_from_answer(uint64_t * value, uint8_t * option, int sockfd, uint8_t *readBuffer) {
+    recv_wrapper(sockfd, readBuffer, 2, 0);
+    *option = readBuffer[0];
+    uint8_t length = readBuffer[1];
+   
+    if(length > MAX_VAL_BYTES){
+        printf("%s Error. Answer value too big\n", cError);
+        return 0;
+    }
+    if (length != 0) recv_wrapper(sockfd, readBuffer, length, 0);
+    
+    *value = 0;
+    for (int i = 0; i < length; i++) *value = (*value << 8) + readBuffer[i];
+    return 1;
+}
+
+static void
+print_string_from_answer(int sockfd, uint8_t *readBuffer) {
+   recv_wrapper(sockfd, readBuffer, 2,0);
+    uint8_t mlen = readBuffer[1];
+    if(mlen>0){
+        recv_wrapper(sockfd,readBuffer,mlen,0);
+        printf("%s %*.*s\n", sRecError, mlen, mlen, readBuffer);
+    }
+}
+
+

@@ -3,7 +3,7 @@
 
 #include "selector.h"
 
-#define MAX_CONCURRENT_CON_ADMIN    500
+#define MAX_CONCURRENT_CON_ADMIN    400
 
 /* Recibe la llave del item */
 void admin_passive_accept(selector_key * key);

@@ -109,7 +109,8 @@ get_config(enum admin_errors error, struct admin_received_data * data, struct ad
     switch (data->option) {
         case config_buff_read_size: return ulong_to_byte_array(get_buffer_read_size(), ans);
         case config_buff_write_size: return ulong_to_byte_array(get_buffer_write_size(), ans);
-        case config_sel_tout: return ulong_to_byte_array(get_timeout_gen(), ans);
+        case config_gen_tout: return ulong_to_byte_array(get_timeout_gen(), ans);
+        case config_con_tout: return ulong_to_byte_array(get_timeout_con(), ans);
         default: return 0; // Should never reach here
     }
 }
@@ -136,10 +137,15 @@ set_config(enum admin_errors error, struct admin_received_data * data, struct ad
                 return add_inv_value_mssg("Buffer", MIN_BUF_SIZE, MAX_BUF_SIZE, ans);
             set_buffer_write_size(value);
             break;
-        case config_sel_tout:
+        case config_gen_tout:
             if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
-                return add_inv_value_mssg("Timeout", MIN_GEN_TIMEOUT, MAX_GEN_TIMEOUT, ans);
+                return add_inv_value_mssg("General timeout", MIN_GEN_TIMEOUT, MAX_GEN_TIMEOUT, ans);
             set_timeout_gen(value);
+            break;
+        case config_con_tout:
+            if (value > MAX_BUF_SIZE || value < MIN_BUF_SIZE)
+                return add_inv_value_mssg("Connection timeout", MIN_CON_TIMEOUT, MAX_CON_TIMEOUT, ans);
+            set_timeout_con(value);
             break;
         default: return 0; // Should never reach here
     }
@@ -210,7 +216,7 @@ static uint8_t
 add_inv_value_mssg(const char * type, uint64_t min, uint64_t max, struct admin_data_word * ans) {
     ans->value[STATUS_INDEX] = admin_error_inv_value;
     char s[MSG_MAX_LEN + 1];
-    int16_t slen = snprintf(s, MSG_MAX_LEN + 1, "%s value must be between %ld AND %ld", type, min, max);
+    int16_t slen = snprintf(s, MSG_MAX_LEN + 1, "%s value must be between %lu AND %lu", type, min, max);
     if (slen < -1) return 0;
     return string_to_byte_array(s, (uint8_t) slen, ans); 
 }

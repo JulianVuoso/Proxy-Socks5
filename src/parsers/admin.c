@@ -21,7 +21,7 @@ admin_parser_init(struct admin_parser * p) {
     p->data = calloc(1, sizeof(admin_received_data));
     if (p->data == NULL) {
         p->state = admin_error;
-        p->state = admin_error_server_fail;
+        p->error = admin_error_server_fail;
         return;
     }
     admin_parser_reset(p);
@@ -29,7 +29,7 @@ admin_parser_init(struct admin_parser * p) {
     p->data->value2 = calloc(1, sizeof(admin_data_word));
     if (p->data->value1 == NULL || p->data->value2 == NULL) {
         p->state = admin_error;
-        p->state = admin_error_server_fail;
+        p->error = admin_error_server_fail;
         return;
     }
 }
@@ -99,9 +99,14 @@ admin_parser_feed(struct admin_parser * p, uint8_t byte) {
             break;
 
         case admin_get_plen:
-        /* Gets password length */
-            p->state = admin_get_pass;
-            admin_data_word_init(p, PASS, byte);
+        /* Gets password length, cant be 0 */
+            if (byte == 0) {
+                p->state = admin_error;
+                p->error = admin_error_inv_plen;
+            } else {
+                p->state = admin_get_pass;
+                admin_data_word_init(p, PASS, byte);
+            }
             break;
 
         case admin_get_pass:
@@ -143,7 +148,8 @@ admin_parser_feed(struct admin_parser * p, uint8_t byte) {
             switch (byte) {
                 case config_buff_read_size:
                 case config_buff_write_size:
-                case config_sel_tout:
+                case config_gen_tout:
+                case config_con_tout:
                     if (p->data->command == command_get_config)
                         p->state = admin_done_p;
                     else p->state = admin_get_vlen;
@@ -187,6 +193,9 @@ admin_error_description(const struct admin_parser * p) {
             break;
         case admin_error_inv_ulen:
             ret = "invalid user length";
+            break;
+        case admin_error_inv_plen:
+            ret = "invalid password length";
             break;
         case admin_error_inv_metric:
             ret = "invalid matric";
@@ -263,6 +272,7 @@ admin_data_word_init(admin_parser * p, uint8_t type, uint8_t length) {
         p->state = admin_error;
         p->error = admin_error_server_fail;
     }
+    word->value[length] = '\0';
 }
 
 static bool
