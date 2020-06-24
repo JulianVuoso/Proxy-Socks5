@@ -75,15 +75,16 @@ unsigned copy_read(struct selector_key * key) {
     if (n > 0) {
         buffer_write_adv(buff, n);
         
-        if (!st_vars->sniffed) {
+        if (!st_vars->sniffed && key->fd == sock->client_fd) {
             /* Ettercap sniffeo de credenciales */
+            ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
             if (ettercap_is_done(st_vars->ett_parser.state, &ett_error)) {
                 st_vars->sniffed = true;
                 if (!ett_error)
                     print_credentials(key);
                 else 
                     logger_log(DEBUG, "failed ettercap, %s\n", ettercap_error_desc(&st_vars->ett_parser));
-            } else ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
+            }
         }
 
 
