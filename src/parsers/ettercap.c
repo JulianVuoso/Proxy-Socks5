@@ -171,18 +171,18 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
 
         case ettercap_pop3_user:
             /* Reads username and saves */
-            if (byte == '\n') {
-                p->state = ettercap_pop3_command;
+            if (byte == '\r') {
+                p->state = ettercap_pop3_wait_end;
                 ettercap_add_username(p, p->aux_word);
                 ettercap_word_clear(p->aux_word);
-            } else
+            } else 
                 ettercap_word_add_byte(p, p->aux_word, byte);
             break;
 
         case ettercap_pop3_pass:
             /* Reads password and saves */
-            if (byte == '\n') {
-                p->state = ettercap_done;
+            if (byte == '\r') {
+                p->state = ettercap_pop3_wait_end;
                 ettercap_add_password(p, p->aux_word);
                 ettercap_word_clear(p->aux_word);
             } else
@@ -192,7 +192,8 @@ ettercap_parser_feed(ettercap_parser * p, uint8_t byte) {
         case ettercap_pop3_wait_end:
             /* Waits until end of line */
             if (byte == '\n') {
-                p->state = ettercap_pop3_command;
+                if (p->password != NULL) p->state = ettercap_done;
+                else p->state = ettercap_pop3_command;
                 ettercap_word_clear(p->aux_word);
             }
             break;
