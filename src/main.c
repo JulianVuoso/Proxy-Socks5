@@ -45,7 +45,7 @@ static time_t timeout_gen = INIT_GEN_TIMEOUT, timeout_con = INIT_CON_TIMEOUT;
 
 static void
 sigterm_handler(const int signal) {
-    printf("signal %d, cleaning up and exiting\n",signal);
+    fprintf(stderr, "signal %d, cleaning up and exiting\n",signal);
     done = true;
 }
 
@@ -55,7 +55,7 @@ main(const int argc, const char **argv) {
     /* Try to read users file */
     enum file_errors file_state = read_users_file(USERS_FILENAME);
     if(file_state != file_no_error){
-        fprintf(stdout, "Users file read failed. Issue: %s\n", file_error_description(file_state));
+        fprintf(stderr, "Users file read failed. Issue: %s\n", file_error_description(file_state));
     }
 
     /* Parse args */
@@ -159,7 +159,7 @@ main(const int argc, const char **argv) {
 
     file_state = update_users_file(USERS_FILENAME);
     if(file_state != file_no_error){
-        fprintf(stdout, "Users file updating failed. Error: %s\n", file_error_description(file_state));
+        fprintf(stderr, "Users file updating failed. Error: %s\n", file_error_description(file_state));
     }
 
     if(err_msg == NULL) {

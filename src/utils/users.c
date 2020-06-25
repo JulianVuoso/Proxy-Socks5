@@ -153,7 +153,7 @@ void print_users() {
     if(ulist == NULL) return;
     struct UserNode * node = ulist->header;
     while(node != NULL){
-        printf("User: %s\t Pass: %s\t Level: %d\n", node->user.username, node->user.password, node->user.level);
+        fprintf(stderr, "User: %s\t Pass: %s\t Level: %d\n", node->user.username, node->user.password, node->user.level);
         node = node->next;
     }
 }

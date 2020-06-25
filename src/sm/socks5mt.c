@@ -5,5 +5,5 @@
 #include "selector.h"
 
 void error_arrival(const unsigned state, struct selector_key *key) {
-    puts("ERROR");
+    //puts("ERROR");
 }

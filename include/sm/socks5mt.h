@@ -265,7 +265,6 @@ static const struct state_definition client_statbl[] = {
     },
     {
         .state            = ERROR,
-        .on_arrival       = error_arrival,
     },
 };
 
