@@ -703,7 +703,7 @@ void selector_check_timeout(fd_selector s, time_t timeout_gen, time_t timeout_co
             {
                 case GEN_TIMEOUT:
                     if ((item->last_time + timeout_gen) < curr_time) {
-                        fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld\n", i, item->last_time, curr_time);
+                        // fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld\n", i, item->last_time, curr_time);
                         selector_unregister_fd(s, i);
                         close(i);
                     }
@@ -715,11 +715,11 @@ void selector_check_timeout(fd_selector s, time_t timeout_gen, time_t timeout_co
                             .fd   = item->fd,
                             .data = item->data,
                         };
-                        fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld. Procedo a handle_timeout\n", i, item->last_time, curr_time);
+                        // fprintf(stdout, "Deregistrando el fd %d. Last time: %ld, Curr time: %ld. Procedo a handle_timeout\n", i, item->last_time, curr_time);
                         if (item->handler->handle_timeout != 0) {
                             item->handler->handle_timeout(&key);
                         } else {
-                            fprintf(stdout, "No hay handle_timeout\n");
+                            // fprintf(stderr, "No hay handle_timeout\n");
                             selector_unregister_fd(s, i);
                             close(i);
                         }

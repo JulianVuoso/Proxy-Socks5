@@ -19,7 +19,7 @@ enum file_errors read_users_file(char * filename){
         if(state > 0) return state;
     }
 
-    fprintf(stdout, "Opening **%s**\n", filename);
+    fprintf(stderr, "Opening **%s**\n", filename);
     
     int fd = open(filename, O_NONBLOCK);
     if (fd < 0) return opening_file;
@@ -153,7 +153,7 @@ void print_users() {
     if(ulist == NULL) return;
     struct UserNode * node = ulist->header;
     while(node != NULL){
-        printf("User: %s\t Pass: %s\t Level: %d\n", node->user.username, node->user.password, node->user.level);
+        fprintf(stderr, "User: %s\t Pass: %s\t Level: %d\n", node->user.username, node->user.password, node->user.level);
         node = node->next;
     }
 }

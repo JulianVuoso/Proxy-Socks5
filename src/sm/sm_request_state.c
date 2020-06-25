@@ -421,7 +421,7 @@ static void access_log(struct socks5 * sock) {
     sockaddr_to_human_no_port(ip_client, MAX_ADDRESS_LENGTH, clientaddr);
     uint16_t port_client = get_port_from_sockaddr((struct sockaddr *) &sock->client_addr);
 
-    logger_log(ACCESS_LOG, "\n%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%d\t%s\t%d\t%d\n\n", 
+    logger_log(ACCESS_LOG, "%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%d\t%s\t%d\t%d\n", 
         tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec, 
             sock->username, ACCESS_CHAR,  ip_client, port_client, ip_server, port, sock->client.request.reply_code);
 

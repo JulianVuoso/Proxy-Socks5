@@ -75,15 +75,16 @@ unsigned copy_read(struct selector_key * key) {
     if (n > 0) {
         buffer_write_adv(buff, n);
         
-        if (!st_vars->sniffed) {
+        if (!st_vars->sniffed && key->fd == sock->client_fd) {
             /* Ettercap sniffeo de credenciales */
+            ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
             if (ettercap_is_done(st_vars->ett_parser.state, &ett_error)) {
                 st_vars->sniffed = true;
                 if (!ett_error)
                     print_credentials(key);
                 else 
                     logger_log(DEBUG, "failed ettercap, %s\n", ettercap_error_desc(&st_vars->ett_parser));
-            } else ettercap_consume(buff, &st_vars->ett_parser, &ett_error);
+            }
         }
 
 
@@ -227,7 +228,7 @@ static void print_credentials(struct selector_key *key) {
         protocol = POP3_PROT;
     else protocol = HTTP_PROT;
 
-    logger_log(PASS_LOG, "%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n\n", 
+    logger_log(PASS_LOG, "%d-%02d-%02dT%02d:%02d:%02dZ\t%s\t%c\t%s\t%s\t%d\t%s\t%s\n", 
             tm_st->tm_year + 1900, tm_st->tm_mon + 1, tm_st->tm_mday, tm_st->tm_hour, tm_st->tm_min, tm_st->tm_sec,
             sock->username, PASS_CHAR, protocol, ip, port, st->ett_parser.username, st->ett_parser.password);
     if (ip != sock->fqdn) free(ip);

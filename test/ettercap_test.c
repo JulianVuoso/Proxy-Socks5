@@ -172,7 +172,7 @@ END_TEST
 START_TEST (test_ettercap_pop_ok_1) {
     ettercap_parser parser;
     ettercap_parser_init(&parser, POP3_PORT);
-    uint8_t  data[] = "user algunusuario\npass algunapassword\n";
+    uint8_t  data[] = "user algunusuario\r\npass algunapassword\r\n";
     buffer b;
     FIXBUF(b, data);
     bool errored = false;
@@ -189,7 +189,7 @@ END_TEST
 START_TEST (test_ettercap_pop_ok_2) {
     ettercap_parser parser;
     ettercap_parser_init(&parser, POP3_PORT);
-    uint8_t  data[] = "user hello\nuser algunusuario\npass algunapassword\n";
+    uint8_t  data[] = "user hello\r\nuser algunusuario\r\npass algunapassword\r\n";
     buffer b;
     FIXBUF(b, data);
     bool errored = false;
@@ -206,7 +206,7 @@ END_TEST
 START_TEST (test_ettercap_pop_ok_3) {
     ettercap_parser parser;
     ettercap_parser_init(&parser, POP3_PORT);
-    uint8_t  data[] = "badcommand\nuser algunusuario\npass algunapassword\n";
+    uint8_t  data[] = "badcommand\r\nuser algunusuario\r\npass algunapassword\r\n";
     buffer b;
     FIXBUF(b, data);
     bool errored = false;
