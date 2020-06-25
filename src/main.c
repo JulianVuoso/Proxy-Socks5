@@ -86,7 +86,7 @@ main(const int argc, const char **argv) {
         }
     }
 
-    fprintf(stdout, "Listening on TCP port %u\n", args.socks_port);
+    fprintf(stderr, "Listening on TCP port %u\n", args.socks_port);
 
     // registrar sigterm es útil para terminar el programa normalmente.
     // esto ayuda mucho en herramientas como valgrind.

@@ -19,7 +19,7 @@ enum file_errors read_users_file(char * filename){
         if(state > 0) return state;
     }
 
-    fprintf(stdout, "Opening **%s**\n", filename);
+    fprintf(stderr, "Opening **%s**\n", filename);
     
     int fd = open(filename, O_NONBLOCK);
     if (fd < 0) return opening_file;
