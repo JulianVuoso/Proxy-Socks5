@@ -186,6 +186,8 @@ unsigned dns_write(struct selector_key *key) {
         }
     } else {
         logger_log(DEBUG, "DOH server write failed\n");
+        /* Reseteo el buffer por si quedo informacion sin consumir */
+        buffer_reset(st_vars->write_buf);
         /* Defaulteo a getaddrinfo */
         return prepare_blocking_doh(key);
     }
@@ -215,6 +217,8 @@ unsigned dns_read(struct selector_key *key) {
         }
     } else {
         logger_log(DEBUG, "DOH server read failed\n");
+        /* Reseteo el buffer por si quedo informacion sin consumir */
+        buffer_reset(st_vars->read_buf);
         /* Defaulteo a getaddrinfo */
         return prepare_blocking_doh(key);
     }
@@ -305,6 +309,9 @@ unsigned dns_answer_process(struct selector_key *key, bool errored) {
     close(st_vars->doh_fd);
     st_vars->doh_fd = -1;
     
+    /* Reseteo el buffer por si quedo informacion sin consumir */
+    buffer_reset(st_vars->read_buf);
+
     /* Si fue con error */
     if (errored) {
         /* Si estaba en IPv4, intento nuevamente con IPv6 */
